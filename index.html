@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Symphony Ops Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Enterprise Theme -->
+  <link rel="stylesheet" href="styles/enterprise-theme.css">
+
+  <link rel="stylesheet" href="styles/pages/alert-monitor.css">
+</head>
+<body class="overflow-hidden">
+
+    <div class="flex h-screen overflow-hidden">
+        
+
+        <!-- MODAL: CREATE ALERT -->
+        <div id="modal-create-alert" class="modal-backdrop hidden">
+            <div class="bg-white rounded-[2rem] w-full max-w-lg md:max-w-2xl shadow-2xl fade-in overflow-hidden max-h-[85vh] overflow-y-auto">
+                <div class="p-8 border-b flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h3 class="font-bold text-xl text-slate-800">Create New Alert</h3>
+                        <p class="text-xs text-slate-400 font-medium uppercase tracking-widest mt-1">NOC Support Center</p>
+                    </div>
+                    <button id="btn-close-create-alert" type="button" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <form id="create-incident-form" class="p-6 md:p-8 space-y-5">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Work Type
+                    </label>
+
+                    <select id="f-type"
+                    class="w-full bg-slate-100 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+
+                    <option value="Fiber">Fiber Maintenance</option>
+                    <option value="Equipment">Equipment Repair</option>
+                    <option value="Other">Others</option>
+
+                    </select>
+                    </div>
+
+                    <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Incident Number
+                    </label>
+
+                    <input id="f-incidentId"
+                    class="w-full bg-slate-100 rounded-xl px-4 py-3 text-sm"
+                    placeholder="Incident Number">
+                    </div>
+
+                    </div>
+                    <!-- Incident Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- Node -->
+                    <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Node Name / ID
+                    </label>
+
+                    <input id="f-node"
+                    class="w-full bg-slate-100 rounded-lg px-3 py-2"
+                    placeholder="เช่น Samrong_01_M8">
+                    </div>
+
+                    <!-- Alarm -->
+                    <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Alarm
+                    </label>
+
+                    <input id="f-alarm"
+                    class="w-full bg-slate-100 rounded-lg px-3 py-2">
+                    </div>
+
+                    </div>
+
+                    <!-- Detail -->
+                    <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Detail
+                    </label>
+
+                    <textarea id="f-detail"
+                    class="w-full bg-slate-100 rounded-lg px-3 py-2 h-24">
+                    </textarea>
+                    </div>
+
+                        <hr class="my-6">
+
+                        <h3 class="text-sm font-semibold text-slate-600">
+                        Symphony Ticket
+                        </h3>
+
+                        <button type="button"
+                        id="btn-add-ticket"
+                        class="text-sm text-indigo-600 font-semibold mb-3">
+                        + Add Symphony Ticket
+                        </button>
+
+                        <div id="ticket-container" class="space-y-4">
+
+                        <div class="ticket-item grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <input id="f-ticket" placeholder="Symphony Ticket"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-cid" placeholder="Symphony CID"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-port" placeholder="Port"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-downTime" type="datetime-local"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-clearTime" type="datetime-local"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-pending" placeholder="Pending"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-originate" placeholder="Originate"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        <input id="f-terminate" placeholder="Terminate"
+                        class="w-full bg-slate-100 rounded-lg px-3 py-2">
+
+                        </div>
+
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button type="button" id="btn-discard-create-alert" class="flex-1 px-4 py-4 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-all">Discard</button>
+                        <button type="submit" class="flex-1 px-4 py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all">Create Ticket</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- RESPONSE MODAL -->
+
+        <div id="modal-response" class="modal-backdrop hidden">
+
+            <div class="bg-white rounded-2xl w-full max-w-md p-6">
+
+            <h3 class="text-lg font-bold mb-4">แก้ไข: NS Response</h3>
+
+            <div class="space-y-3">
+
+            <label class="block text-sm">ETA (เวลาที่จะถึงหน้างาน)</label>
+
+            <div class="grid grid-cols-2 gap-2">
+
+            <label><input type="radio" name="eta" value="30 นาที"> 30 นาที</label>
+            <label><input type="radio" name="eta" value="1 ชั่วโมง"> 1 ชั่วโมง</label>
+            <label><input type="radio" name="eta" value="1.30 ชั่วโมง"> 1.30 ชั่วโมง</label>
+            <label><input type="radio" name="eta" value="2 ชั่วโมง"> 2 ชั่วโมง</label>
+            <label><input type="radio" name="eta" value="2.30 ชั่วโมง"> 2.30 ชั่วโมง</label>
+            <label><input type="radio" name="eta" value="3 ชั่วโมง"> 3 ชั่วโมง</label>
+
+            </div>
+
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+
+            <button id="btn-cancel-response"
+            class="px-4 py-2 bg-gray-200 rounded-lg">
+            ยกเลิก
+            </button>
+
+            <button id="btn-save-response"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+            บันทึกการแก้ไข
+            </button>
+
+            </div>
+
+            </div>
+        </div>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar w-72 flex flex-col shrink-0 border-r border-slate-800">
+            <div class="p-8 pb-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <i data-lucide="activity" class="text-white w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-white text-xl leading-none">NOC NEXT</h1>
+                        <p class="text-[10px] text-slate-500 font-bold tracking-widest mt-1">ENTERPRISE OPS</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto space-y-6 py-4">
+                <section>
+                    <h3 class="sidebar-label">Main Menu</h3>
+                    <div data-view="dashboard" id="nav-dashboard" class="nav-item active">
+                        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                        <span>Dashboard</span>
+                    </div>
+                    <div data-view="calendar" id="nav-calendar" class="nav-item">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                        <span>Calendar</span>
+                    </div>
+                    <div data-view="alert" id="nav-alert" class="nav-item">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span>Alert Monitor</span>
+                    </div>
+                    
+                    <div>
+                        <!-- Corrective -->
+                    <div id="menu-corrective" class="nav-item flex items-center justify-between cursor-pointer">
+
+                    <div class="flex items-center gap-3">
+                    <i data-lucide="wrench" class="w-5 h-5"></i>
+                    <span>Corrective</span>
+                    </div>
+
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+
+                    </div>
+
+                    <!-- Sub menu -->
+                    <div id="corrective-submenu" class="ml-10 mt-1 space-y-1 hidden">
+
+                    <div class="nav-item text-sm" data-view="corrective">Fiber</div>
+                    <div class="nav-item text-sm" data-view="corrective">Equipment</div>
+                    <div class="nav-item text-sm" data-view="corrective">Other</div>
+
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="sidebar-label">Reports & Archive</h3>
+                    <div data-view="subcontractor" class="nav-item">
+                        <i data-lucide="briefcase" class="w-5 h-5"></i>
+                        <span>Subcontractor</span>
+                    </div>
+                    <div data-view="history" id="nav-history" class="nav-item">
+                        <i data-lucide="box" class="w-5 h-5"></i>
+                        <span>Incident History</span>
+                    </div>
+                </section>
+
+                <section class="pt-4 border-t border-slate-800/50">
+                    <div data-view="recycle" id="nav-recycle" class="nav-item text-rose-400 hover:bg-rose-500/10">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        <span>Recycle Bin</span>
+                    </div>
+                </section>
+            </nav>
+
+            <div class="p-6 bg-slate-950/30 border-t border-slate-800">
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AN</div>
+                        <span class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></span>
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-xs font-bold text-white truncate">Administrator</p>
+                        <p class="text-[10px] text-slate-500 font-medium">NOC Level 3</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN AREA -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0 z-40">
+                <div class="flex items-center flex-1 max-w-2xl">
+                    <div class="relative w-full group">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </span>
+                        <input type="text" id="global-search"
+                               class="block w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all duration-300">
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-600 rounded-full border border-green-100 hidden md:flex">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">Online</span>
+                    </div>
+                    <button id="btn-create-alert" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Create Alert
+                    </button>
+                </div>
+            </header>
+                
+                <!-- VIEW: DASHBOARD -->
+                <div id="view-dashboard" class="view-content fade-in space-y-8">
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Assignment Interruption System</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="dashboard-stats-grid">
+                        <!-- Stats injected by JS -->
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-700">รายการงานปัจจุบัน (Active Jobs)</h3>
+                        </div>
+                        <div id="incident-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ALERT MONITOR -->
+                <div id="view-alert" class="view-content hidden p-8">
+                <div id="alert-table-container"></div>
+                </div>
+
+                <!-- VIEW: ALERT DETAIL -->
+                <div id="view-alert-detail" class="view-content hidden p-8 space-y-8">
+                <div id="incident-summary"></div>
+                <div id="ticket-table"></div>
+                </div>
+
+                <!-- VIEW: CORRECTIVE -->
+                <div id="view-corrective" class="view-content hidden p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">
+                    Corrective Queue
+                </h2>
+                <div id="corrective-container"></div>
+                </div>
+
+                <!-- VIEW: SUBCONTRACTOR -->
+                <div id="view-subcontractor" class="view-content hidden fade-in space-y-8">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-slate-800">Subcontractor Hub</h2>
+                        <div class="flex gap-3">
+                            <button class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i> Print PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="sub-stats-grid">
+                        <!-- Stats injected by JS -->
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <div class="lg:col-span-5 glass-card p-8"><h4 class="font-bold mb-6">สัดส่วนค่าใช้จ่าย (Cost by Status)</h4><div class="h-64"><canvas id="chartStatusSub"></canvas></div></div>
+                        <div class="lg:col-span-7 glass-card p-8"><h4 class="font-bold mb-6">ภาระงานรายผู้รับเหมา</h4><div class="h-64"><canvas id="chartWorkload"></canvas></div></div>
+                    </div>
+
+                    <div class="glass-card overflow-hidden shadow-sm">
+                        <div class="p-6 border-b border-slate-100 font-bold bg-white">Subcontractor Performance Summary</div>
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50/50 text-slate-500 font-bold uppercase text-[10px]">
+                                <tr><th class="px-6 py-4">Name</th><th class="px-6 py-4 text-center">Total Jobs</th><th class="px-6 py-4 text-center">Finish</th><th class="px-6 py-4 text-right">Total Cost</th></tr>
+                            </thead>
+                            <tbody id="sub-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW: HISTORY -->
+                <div id="view-history" class="view-content hidden fade-in space-y-8">
+                    <h2 class="text-2xl font-bold text-slate-800">Incident History</h2>
+                    <div id="history-grid" class="grid grid-cols-1 gap-4"></div>
+                </div>
+
+                <!-- VIEW: RECYCLE -->
+                <div id="view-recycle" class="view-content hidden fade-in space-y-8">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-rose-600">Recycle Bin</h2>
+                        <button id="btn-clear-recycle" class="text-xs font-bold text-slate-400 hover:text-rose-600 transition-colors">ล้างถังขยะทั้งหมด</button>
+                    </div>
+                    <div id="recycle-grid" class="grid grid-cols-1 gap-4 opacity-75"></div>
+                </div>
+
+                <!-- VIEW: CALENDAR -->
+                <div id="view-calendar" class="view-content hidden fade-in py-10">
+                    <div class="glass-card p-10 text-center">
+                        <i data-lucide="calendar" class="w-16 h-16 mx-auto text-slate-300 mb-4"></i>
+                        <h3 class="text-xl font-bold text-slate-800">Calendar View</h3>
+                        <p class="text-slate-400">ข้อมูลตารางงานนัดหมายจะแสดงที่นี่</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+<!-- STATE -->
+<script src="scripts/state/store.js"></script>
+
+<!-- REPOSITORIES -->
+<script src="scripts/repositories/incident.repository.js"></script>
+<script src="scripts/repositories/email.repository.js"></script>
+
+<!-- PARSERS -->
+<script src="scripts/parsers/email.parser.js"></script>
+
+<!-- SERVICES -->
+<script src="scripts/services/localdb.service.js"></script>
+<script src="scripts/services/incident.service.js"></script>
+<script src="scripts/services/alert.service.js"></script>
+
+<!-- UI -->
+<script src="scripts/ui/alert.ui.js"></script>
+<script src="scripts/ui/dashboard.ui.js"></script>
+<script src="scripts/ui/corrective.ui.js"></script>
+<script src="scripts/ui/calendar.ui.js"></script>
+<script src="scripts/ui/history.ui.js"></script>
+<script src="scripts/ui/recycle.ui.js"></script>
+<script src="scripts/ui/alert-detail.ui.js"></script>
+<script>
+function showView(view){
+document.querySelectorAll(".view-content").forEach(v=>{
+v.classList.add("hidden")
+})
+const el = document.getElementById("view-" + view)
+if(el){
+el.classList.remove("hidden")
+}
+}
+</script>
+<!-- BOOTSTRAP -->
+<script type="module" src="scripts/app.js"></script>
+<script>
+document.getElementById("menu-corrective").onclick = () => {
+
+const submenu = document.getElementById("corrective-submenu")
+submenu.classList.toggle("hidden")
+
+}
+
+document.querySelectorAll("#corrective-submenu div").forEach(menu=>{
+
+menu.onclick = ()=>{
+
+const type = menu.innerText.toLowerCase()
+
+Store.dispatch(state=>({
+...state,
+ui:{
+...state.ui,
+currentView:"corrective",
+activeCorrectiveTab:type
+}
+}))
+
+}
+
+})
+</script>
+<script>lucide.createIcons()</script>
+</body>
+</html>
