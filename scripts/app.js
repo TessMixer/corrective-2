@@ -28,6 +28,40 @@ function showView(view) {
     }
   }
 
+
+
+  // ===== MOBILE SIDEBAR =====
+  const sidebarToggleBtn = document.getElementById("btn-toggle-sidebar");
+  const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+  function setSidebarOpen(isOpen) {
+    document.body.classList.toggle("sidebar-open", isOpen);
+  }
+
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener("click", () => {
+      const nextState = !document.body.classList.contains("sidebar-open");
+      setSidebarOpen(nextState);
+    });
+  }
+
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", () => setSidebarOpen(false));
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setSidebarOpen(false);
+    }
+  });
+
+  document.querySelectorAll(".nav-item, .sub-nav-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      if (window.innerWidth <= 1024) {
+        setSidebarOpen(false);
+      }
+    });
+  });
   // ===== CREATE ALERT BUTTONS =====
   const btnCreate = document.getElementById("btn-create-alert");
   if (btnCreate) {
