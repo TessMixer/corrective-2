@@ -1,3 +1,5 @@
+import { initFirebase } from "./services/firebase.service.js";
+
 // ===== VIEW SWITCHER =====
 function showView(view) {
   document.querySelectorAll(".view-content").forEach((section) => {
@@ -11,6 +13,7 @@ function showView(view) {
 }
 
 (function bootstrapApp() {
+  const firebaseReady = initFirebase();
   const createAlertModal = document.getElementById("modal-create-alert");
 
   function openModal(modalEl) {
@@ -707,10 +710,14 @@ function showView(view) {
               </div>
             </div>
 
-            <div class="border rounded-xl p-4 bg-slate-50 space-y-3">
+            <div class="border rounded-xl p-3 bg-slate-100 space-y-3 solution-builder">
               <div class="flex flex-wrap gap-2 items-center">
-                <button id="btn-generate-repair" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg">🪄 สร้างคำอธิบายอัตโนมัติ</button>
-                <select id="finish-method" class="w-full max-w-xs bg-white border border-slate-200 rounded-lg px-3 py-2">
+                <button id="btn-generate-repair" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold">🪄 สร้างคำอธิบายอัตโนมัติ</button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+                <label class="text-sm text-slate-700">วิธีการ:</label>
+                <select id="finish-method" class="md:col-span-2 w-full bg-white border border-teal-500 rounded-lg px-3 py-2">
                   <option value="">เลือกวิธีการ</option>
                   <option value="ลากคร่อม">ลากคร่อม</option>
                   <option value="ร่นลูป">ร่นลูป</option>
@@ -720,29 +727,54 @@ function showView(view) {
                 </select>
               </div>
 
-              <div id="finish-method-common" class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <input id="finish-method-distance" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2" placeholder="ระยะ (เมตร)">
-                <input id="finish-cutpoint" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2" placeholder="ตัดต่อใหม่ (จุด)">
-                <input id="finish-core-point" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2" placeholder="จุดละ (Core)">
+              <div id="finish-distance-row" class="grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+                <label class="text-sm text-slate-700">ระยะ:</label>
+                <input id="finish-method-distance" class="md:col-span-2 w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เมตร">
+                <span class="text-sm text-slate-700">เมตร</span>
               </div>
 
-              <div id="finish-method-yoke" class="hidden border rounded-lg p-3 bg-teal-50 space-y-2">
-                <div class="text-sm text-slate-700 font-semibold">รายละเอียดโยก Core</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <input id="finish-site-a" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2" placeholder="จุดต้นทาง (Site/B/J/S)">
-                  <input id="finish-site-b" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2" placeholder="จุดปลายทาง (Site/B/J/S)">
+              <div id="finish-cut-core-row" class="grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+                <label class="text-sm text-slate-700">ตัดต่อใหม่:</label>
+                <input id="finish-cutpoint" class="md:col-span-2 w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="จุด">
+                <label class="text-sm text-slate-700">จุดละ:</label>
+                <input id="finish-core-point" class="md:col-span-2 w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="Core">
+              </div>
+
+              <div id="finish-method-yoke" class="hidden border rounded-lg p-3 bg-slate-200 space-y-2">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+                  <label class="text-sm text-slate-700">จุดที่ 1 (Site/BJ/S/):</label>
+                  <input id="finish-site-a" class="md:col-span-4 w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระบุชื่อจุดที่ 1">
+                  <label class="text-sm text-slate-700">จุดที่ 2 (Site/BJ/S/):</label>
+                  <input id="finish-site-b" class="md:col-span-4 w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระบุชื่อจุดที่ 2">
                 </div>
-                <textarea id="finish-circuit-list" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 h-24" placeholder="รายละเอียดลูกค้า/Circuit"></textarea>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <select id="finish-urgent-level" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2"><option>มีค่าเร่งด่วน</option><option>ไม่มีค่าเร่งด่วน</option></select>
-                <input id="finish-head-joint" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2" placeholder="หัวต่อ">
-                <select id="finish-connector-choice" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2"><option>ไม่ใช้หัวต่อ</option><option>ใช้หัวต่อ</option></select>
+              <div id="finish-method-yoke-detail" class="hidden border rounded-xl p-4 bg-teal-50 border-teal-400 space-y-3">
+                <div class="font-bold text-teal-900 text-xl">📝 รายละเอียดการโยก Core</div>
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+                  <label class="text-teal-900 font-semibold">จุดที่ 1:</label>
+                  <input id="finish-yoke-loc-a" class="md:col-span-2 w-full bg-lime-50 border border-lime-300 rounded-lg px-3 py-2" placeholder="ใส่ชื่อจุดที่ด้านบน...">
+                  <label class="text-teal-900 font-semibold">จุดที่ 2:</label>
+                  <input id="finish-yoke-loc-b" class="md:col-span-2 w-full bg-lime-50 border border-lime-300 rounded-lg px-3 py-2" placeholder="ใส่ชื่อจุดที่ด้านบน...">
+                </div>
+                <div id="finish-yoke-circuit-rows" class="space-y-3"></div>
+                <button id="btn-add-yoke-circuit" class="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold">+ เพิ่มลูกค้า/Circuit</button>
               </div>
 
-              <textarea id="finish-repair-text" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 h-24" placeholder="คำอธิบายการแก้ไข"></textarea>
-              <select id="finish-patch-status" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2"><option>ไม่ปรับ</option><option>ปรับ</option></select>
+              <div id="finish-urgent-row" class="grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+                <label class="text-sm text-slate-700">ค่าเร่งด่วน:</label>
+                <select id="finish-urgent-level" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2"><option>มีค่าเร่งด่วน</option><option>ไม่มีค่าเร่งด่วน</option></select>
+                <label class="text-sm text-slate-700">หัวต่อ:</label>
+                <input id="finish-head-joint" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หัว">
+                <label class="text-sm text-slate-700">ตัวเลือก:</label>
+                <select id="finish-connector-choice" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2"><option>ใช้หัวต่อ</option><option>ไม่ใช้หัวต่อ</option></select>
+              </div>
+
+              <textarea id="solution" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 h-24" placeholder="คำอธิบายจะสร้างอัตโนมัติ หรือใส่ข้อมูลเอง"></textarea>
+              <div>
+                <label class="text-slate-700">ปรับ/ไม่ปรับ:</label>
+                <select id="finish-patch-status" class="mt-1 w-full bg-white border border-slate-300 rounded-xl px-3 py-2"><option>ไม่ปรับ</option><option>ปรับ</option></select>
+              </div>
             </div>
           </div>
 
@@ -769,10 +801,9 @@ function showView(view) {
     });
 
     document.getElementById("finish-method").addEventListener("change", (e) => {
-      const method = e.target.value;
-      document.getElementById("finish-method-yoke").classList.toggle("hidden", method !== "โยก Core");
-      document.getElementById("finish-method-common").classList.toggle("hidden", method === "ค่าเร่งด่วน");
+      toggleSolutionFields(e.target.value);
     });
+    document.getElementById("btn-add-yoke-circuit").onclick = () => addYokeCircuitRow();
 
     document.getElementById("btn-finish-map").onclick = () => {
       const q = document.getElementById("finish-latlng").value || document.getElementById("finish-area").value;
@@ -786,41 +817,121 @@ function showView(view) {
         document.getElementById("finish-latlng").value = `${pos.coords.latitude}, ${pos.coords.longitude}`;
       });
     };
+    document.getElementById("finish-site-a").addEventListener("input", (event) => {
+      document.getElementById("finish-yoke-loc-a").value = event.target.value;
+    });
+    document.getElementById("finish-site-b").addEventListener("input", (event) => {
+      document.getElementById("finish-yoke-loc-b").value = event.target.value;
+    });
+    document.getElementById("finish-yoke-loc-a").addEventListener("input", (event) => {
+      document.getElementById("finish-site-a").value = event.target.value;
+    });
+    document.getElementById("finish-yoke-loc-b").addEventListener("input", (event) => {
+      document.getElementById("finish-site-b").value = event.target.value;
+    });
   }
 
-  function generateRepairText() {
+  function toggleSolutionFields(selectedMethod = "") {
+    const method = selectedMethod || document.getElementById("finish-method").value || "";
+    const isYoke = method === "โยก Core";
+    const isUrgentOnly = method === "ค่าเร่งด่วน";
+    const useDistance = method === "ลากคร่อม" || method === "ร่นลูป";
+
+    document.getElementById("finish-distance-row").classList.toggle("hidden", !useDistance);
+    document.getElementById("finish-cut-core-row").classList.toggle("hidden", isUrgentOnly);
+    document.getElementById("finish-method-yoke").classList.toggle("hidden", !isYoke);
+    document.getElementById("finish-method-yoke-detail").classList.toggle("hidden", !isYoke);
+    document.getElementById("finish-urgent-row").classList.toggle("hidden", isUrgentOnly);
+
+    if (isUrgentOnly && !document.getElementById("solution").value.trim()) {
+      document.getElementById("solution").value = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
+    }
+  }
+
+  function addYokeCircuitRow(data = {}) {
+    const container = document.getElementById("finish-yoke-circuit-rows");
+    if (!container) return;
+    const index = container.querySelectorAll(".finish-yoke-circuit-card").length + 1;
+    const card = document.createElement("div");
+    card.className = "finish-yoke-circuit-card bg-white border border-slate-300 rounded-lg p-3 space-y-2";
+    card.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="font-semibold">ลูกค้า/Circuit ที่ ${index}</div>
+        <button type="button" class="px-2 py-1 rounded bg-rose-100 text-rose-700 text-sm">ลบ</button>
+      </div>
+      <input class="finish-yoke-customer w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ชื่อลูกค้า / CID (เช่น ML25574...)" value="${data.customer || ""}">
+      <div class="border border-dashed rounded-lg p-2 space-y-2">
+        <div class="font-semibold text-teal-900">ข้อมูล ณ จุดที่ 1:</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input class="finish-yoke-a-old bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="Core เดิม (ต่อ) เช่น 25" value="${data.aOld || ""}">
+          <input class="finish-yoke-a-new bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="Core ใหม่ (ต่อ) เช่น 32" value="${data.aNew || ""}">
+        </div>
+      </div>
+      <div class="border border-dashed rounded-lg p-2 space-y-2">
+        <div class="font-semibold text-teal-900">ข้อมูล ณ จุดที่ 2:</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input class="finish-yoke-b-old bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="Core เดิม (ต่อ) เช่น 25" value="${data.bOld || ""}">
+          <input class="finish-yoke-b-new bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="Core ใหม่ (ต่อ) เช่น 32" value="${data.bNew || ""}">
+        </div>
+      </div>
+    `;
+    card.querySelector("button").onclick = () => card.remove();
+    container.appendChild(card);
+  }
+
+  function buildSolution() {
     const method = document.getElementById("finish-method").value || "";
-    const methodDistance = document.getElementById("finish-method-distance").value || "-";
+    const distance = document.getElementById("finish-method-distance").value || "-";
     const cutPoint = document.getElementById("finish-cutpoint").value || "-";
     const corePoint = document.getElementById("finish-core-point").value || "-";
-    const siteA = document.getElementById("finish-site-a").value || "-";
-    const siteB = document.getElementById("finish-site-b").value || "-";
-    const circuitList = document.getElementById("finish-circuit-list").value || "-";
+    const urgentLevel = document.getElementById("finish-urgent-level").value || "มีค่าเร่งด่วน";
+    const headJoint = document.getElementById("finish-head-joint").value || "";
+    const connectorChoice = document.getElementById("finish-connector-choice").value || "ไม่ใช้หัวต่อ";
 
-    let repairText = "";
+    const connectorText = connectorChoice === "ใช้หัวต่อ"
+      ? ` ใช้หัวต่อ ${headJoint || "-"} หัว`
+      : " ไม่ใช้หัวต่อ";
 
-    if (method === "ลากคร่อม") {
-      repairText = `ดำเนินการลากคร่อมระยะทาง ${methodDistance} เมตร แล้วใช้งานได้ตามปกติ`;
-    } else if (method === "ร่นลูป") {
-      repairText = `ดำเนินการร่นลูประยะทาง ${methodDistance} เมตร แล้วใช้งานได้ตามปกติ`;
+    let result = "";
+    if (method === "ลากคร่อม" || method === "ร่นลูป") {
+      result = `${method} ${distance} เมตร${connectorText}`;
     } else if (method === "ตัดต่อใหม่") {
-      repairText = `ดำเนินการตัดต่อใหม่จำนวน ${cutPoint} จุด จุดละ ${corePoint} Core แล้วใช้งานได้ตามปกติ`;
+      result = `ตัดต่อใหม่ ${cutPoint} จุด จุดละ ${corePoint} Core${connectorText}`;
     } else if (method === "โยก Core") {
-      repairText = [
-        `ดำเนินการโยก Core จากจุด ${siteA} ไปยังจุด ${siteB}`,
-        `พร้อมตัดต่อใหม่จำนวน ${cutPoint} จุด จุดละ ${corePoint} Core`,
-        `รายละเอียด Circuit ที่โยก:\n${circuitList}`,
-        "หลังดำเนินการแล้วใช้งานได้ตามปกติ",
-      ].join("\n");
+      const locA = document.getElementById("finish-site-a").value || document.getElementById("finish-yoke-loc-a").value || "-";
+      const locB = document.getElementById("finish-site-b").value || document.getElementById("finish-yoke-loc-b").value || "-";
+      const cards = Array.from(document.querySelectorAll(".finish-yoke-circuit-card"));
+      const lines = cards.map((card, idx) => {
+        const customer = card.querySelector(".finish-yoke-customer")?.value || "-";
+        const aOld = card.querySelector(".finish-yoke-a-old")?.value || "-";
+        const aNew = card.querySelector(".finish-yoke-a-new")?.value || "-";
+        const bOld = card.querySelector(".finish-yoke-b-old")?.value || "-";
+        const bNew = card.querySelector(".finish-yoke-b-new")?.value || "-";
+        return `${idx + 1}) ${customer} | จุด1: ${aOld}->${aNew} | จุด2: ${bOld}->${bNew}`;
+      });
+      result = [`โยก Core ${locA} ไป ${locB}`, ...lines].join("\n")
     } else if (method === "ค่าเร่งด่วน") {
-      repairText = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
+      result = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
     }
 
-    if (!repairText) {
-      return;
+    if (!result && urgentLevel) {
+      result = urgentLevel;
     }
 
-    document.getElementById("finish-repair-text").value = repairText;
+    if (result) {
+      document.getElementById("solution").value = result;
+    }
+  }
+
+  function collectYokeCircuitList() {
+    return Array.from(document.querySelectorAll(".finish-yoke-circuit-card")).map((card, idx) => {
+      const customer = card.querySelector(".finish-yoke-customer")?.value || "-";
+      const aOld = card.querySelector(".finish-yoke-a-old")?.value || "-";
+      const aNew = card.querySelector(".finish-yoke-a-new")?.value || "-";
+      const bOld = card.querySelector(".finish-yoke-b-old")?.value || "-";
+      const bNew = card.querySelector(".finish-yoke-b-new")?.value || "-";
+      return `${idx + 1}) ${customer} | จุด1: ${aOld}->${aNew} | จุด2: ${bOld}->${bNew}`;
+    }).join("\n")
   }
 
   function openCorrectiveFinishModal(incidentId) {
@@ -854,8 +965,16 @@ function showView(view) {
     document.getElementById("finish-core-point").value = "";
     document.getElementById("finish-site-a").value = "";
     document.getElementById("finish-site-b").value = "";
-    document.getElementById("finish-circuit-list").value = "";
-    document.getElementById("finish-repair-text").value = "";
+    document.getElementById("solution").value = "";
+    document.getElementById("finish-head-joint").value = "";
+    document.getElementById("finish-yoke-loc-a").value = latestUpdate.siteA || "";
+    document.getElementById("finish-yoke-loc-b").value = latestUpdate.siteB || "";
+    document.getElementById("finish-yoke-circuit-rows").innerHTML = "";
+    const savedCircuits = String(latestUpdate.circuitList || "").split("\n").map((line) => line.trim()).filter(Boolean);
+    if (savedCircuits.length) {
+      savedCircuits.forEach((line) => addYokeCircuitRow({ customer: line }));
+    }
+    toggleSolutionFields(document.getElementById("finish-method").value);
 
     document.querySelectorAll(".finish-sub").forEach((el) => {
       el.checked = (latestUpdate.subcontractors || []).includes(el.value);
@@ -880,7 +999,7 @@ function showView(view) {
 
     fillAutoTimes();
     document.getElementById("btn-auto-times").onclick = fillAutoTimes;
-    document.getElementById("btn-generate-repair").onclick = generateRepairText;
+    document.getElementById("btn-generate-repair").onclick = buildSolution;
 
     document.getElementById("btn-save-finish").onclick = () => {
       const current = Store.getState();
@@ -913,11 +1032,11 @@ function showView(view) {
           corePoint: document.getElementById("finish-core-point").value,
           siteA: document.getElementById("finish-site-a").value,
           siteB: document.getElementById("finish-site-b").value,
-          circuitList: document.getElementById("finish-circuit-list").value,
+          circuitList: collectYokeCircuitList(),
           urgentLevel: document.getElementById("finish-urgent-level").value,
           headJoint: document.getElementById("finish-head-joint").value,
           connectorChoice: document.getElementById("finish-connector-choice").value,
-          repairText: document.getElementById("finish-repair-text").value,
+          repairText: document.getElementById("solution").value,
           patchStatus: document.getElementById("finish-patch-status").value,
         },
       };
@@ -944,7 +1063,8 @@ function showView(view) {
 
   // ===== INITIAL LOAD =====
   (async function init() {
-    AlertService.loadFromLocal();
+    await firebaseReady;
+    await AlertService.loadFromLocal();
     // await AlertService.loadFromEmail();
   })();
 })();

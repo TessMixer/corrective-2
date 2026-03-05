@@ -2,44 +2,70 @@ const LocalDB = {
   KEY: "noc-store",
   LEGACY_ALERT_KEY: "noc-alerts",
 
+  normalizeState(input) {
+    return {
+      alerts: Array.isArray(input?.alerts) ? input.alerts : [],
+      corrective: input?.corrective || { fiber: [], equipment: [], other: [] },
+    };
+  },
+
   getState() {
     const data = localStorage.getItem(this.KEY);
 
     if (data) {
       try {
-        const parsed = JSON.parse(data);
-        return {
-          alerts: Array.isArray(parsed.alerts) ? parsed.alerts : [],
-          corrective: parsed.corrective || { fiber: [], equipment: [], other: [] },
-        };
+        return this.normalizeState(JSON.parse(data));
       } catch {
-        return { alerts: [], corrective: { fiber: [], equipment: [], other: [] } };
+        return this.normalizeState({});
       }
     }
 
     const legacyAlerts = localStorage.getItem(this.LEGACY_ALERT_KEY);
     if (legacyAlerts) {
       try {
-        return {
+        return this.normalizeState({
           alerts: JSON.parse(legacyAlerts) || [],
           corrective: { fiber: [], equipment: [], other: [] },
-        };
+        });
       } catch {
-        return { alerts: [], corrective: { fiber: [], equipment: [], other: [] } };
+        return this.normalizeState({});
       }
     }
 
-    return { alerts: [], corrective: { fiber: [], equipment: [], other: [] } };
+    return this.normalizeState({});
   },
 
-  saveState(nextState) {
-    const state = {
-      alerts: Array.isArray(nextState.alerts) ? nextState.alerts : [],
-      corrective: nextState.corrective || { fiber: [], equipment: [], other: [] },
-    };
+  async syncFromCloud() {
+    if (!window.FirebaseSync?.loadCloudState) {
+      return this.getState();
+    }
+
+    try {
+      const cloudState = await window.FirebaseSync.loadCloudState();
+      if (!cloudState) {
+        return this.getState();
+      }
+
+      const normalized = this.normalizeState(cloudState);
+      this.saveState(normalized, { skipCloudSync: true });
+      return normalized;
+    } catch (error) {
+      console.warn("Cloud sync (read) failed, using local state:", error);
+      return this.getState();
+    }
+  },
+
+  saveState(nextState, options = {}) {
+    const state = this.normalizeState(nextState);
 
     localStorage.setItem(this.KEY, JSON.stringify(state));
     localStorage.setItem(this.LEGACY_ALERT_KEY, JSON.stringify(state.alerts));
+
+    if (!options.skipCloudSync && window.FirebaseSync?.saveCloudState) {
+      window.FirebaseSync.saveCloudState(state).catch((error) => {
+        console.warn("Cloud sync (write) failed:", error);
+      });
+    }
   },
 
   getAlerts() {
