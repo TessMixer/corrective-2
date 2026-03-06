@@ -17,6 +17,7 @@ const Store = (function () {
 
       incidents: [],
       alerts: [],
+      calendarEvents: [],
 
       corrective: { 
         fiber: [],
@@ -28,6 +29,10 @@ const Store = (function () {
         currentView: 'dashboard',
         selectedDate: null,
         activeCorrectiveTab: 'fiber',
+        activeHistoryTab: 'fiber',
+        historyPage: 1,
+        calendarMode: 'month',
+        calendarFocusDate: new Date().toISOString(),
         modal: null
       }
     };

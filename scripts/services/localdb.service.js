@@ -5,6 +5,7 @@ const LocalDB = {
   normalizeState(input) {
     return {
       alerts: Array.isArray(input?.alerts) ? input.alerts : [],
+      calendarEvents: Array.isArray(input?.calendarEvents) ? input.calendarEvents : [],
       corrective: input?.corrective || { fiber: [], equipment: [], other: [] },
     };
   },
@@ -56,7 +57,14 @@ const LocalDB = {
   },
 
   saveState(nextState, options = {}) {
-    const state = this.normalizeState(nextState);
+    const current = this.getState();
+    const merged = {
+      alerts: nextState?.alerts ?? current.alerts,
+      corrective: nextState?.corrective ?? current.corrective,
+      calendarEvents: nextState?.calendarEvents ?? current.calendarEvents,
+    };
+
+    const state = this.normalizeState(merged);
 
     localStorage.setItem(this.KEY, JSON.stringify(state));
     localStorage.setItem(this.LEGACY_ALERT_KEY, JSON.stringify(state.alerts));
@@ -84,6 +92,15 @@ const LocalDB = {
   saveCorrective(corrective) {
     const current = this.getState();
     this.saveState({ ...current, corrective });
+  },
+
+  getCalendarEvents() {
+    return this.getState().calendarEvents;
+  },
+
+  saveCalendarEvents(calendarEvents) {
+    const current = this.getState();
+    this.saveState({ ...current, calendarEvents });
   },
 
   addAlert(alert) {

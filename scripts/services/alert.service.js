@@ -4,11 +4,13 @@ window.AlertService = {
   async loadFromLocal() {
     const syncedState = await LocalDB.syncFromCloud();
     const alerts = syncedState.alerts || [];
+    const calendarEvents = syncedState.calendarEvents || [];
     const corrective = syncedState.corrective || { fiber: [], equipment: [], other: [] };
 
     Store.dispatch((state) => ({
       ...state,
       alerts,
+      calendarEvents,
       corrective: {
         fiber: corrective.fiber || [],
         equipment: corrective.equipment || [],

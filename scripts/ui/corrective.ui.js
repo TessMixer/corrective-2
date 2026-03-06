@@ -1,7 +1,7 @@
 const CorrectiveUI = {
   render(state) {
     const tab = state.ui.activeCorrectiveTab;
-    const incidents = state.corrective[tab] || [];
+    const incidents = (state.corrective[tab] || []).filter((incident) => incident.status !== "COMPLETE");
 
     const container = document.createElement("div");
     container.className = "space-y-4";
@@ -57,7 +57,7 @@ const CorrectiveUI = {
             <button class="btn-action btn-action-success btn-corrective-finish" data-id="${incident.incidentId}">NS Finish</button>
             <button class="btn-action btn-action-danger">Cancel</button>
           </div>
-          <button class="btn-action btn-action-purple">View Detail</button>
+          <button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incident.incidentId}">View Detail</button>
         </div>
       `;
 
@@ -66,4 +66,4 @@ const CorrectiveUI = {
 
     return container;
   },
-};
+}

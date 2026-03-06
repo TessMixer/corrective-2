@@ -217,6 +217,23 @@ function showView(view) {
       }
     }
 
+    if (state.ui.currentView === "calendar") {
+      const container = document.getElementById("calendar-container");
+      if (container) {
+        container.innerHTML = "";
+        container.appendChild(CalendarUI.render(state));
+      }
+    }
+
+
+    if (state.ui.currentView === "history") {
+      const container = document.getElementById("history-grid");
+      if (container) {
+        container.innerHTML = "";
+        container.appendChild(HistoryUI.render(state));
+      }
+    }
+
     const activeView = document.getElementById(`view-${state.ui.currentView}`);
     if (activeView) {
       activeView.classList.remove("hidden");
@@ -375,7 +392,238 @@ function showView(view) {
     };
   });
 
+  document.addEventListener("click", (event) => {
+    const tabButton = event.target.closest("[data-history-tab]");
+    if (tabButton) {
+      Store.dispatch((state) => ({
+        ...state,
+        ui: {
+          ...state.ui,
+          activeHistoryTab: tabButton.dataset.historyTab,
+          historyPage: 1,
+        },
+      }));
+      return;
+    }
 
+    const pageButton = event.target.closest("[data-history-page]");
+    if (!pageButton) return;
+
+    const direction = pageButton.dataset.historyPage;
+    Store.dispatch((state) => {
+      const currentPage = Number(state.ui.historyPage || 1);
+      const nextPage = direction === "prev" ? currentPage - 1 : currentPage + 1;
+
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          historyPage: Math.max(1, nextPage),
+        },
+      };
+    });
+  });
+
+  function ensureCalendarCreateModal() {
+    if (document.getElementById("modal-calendar-create")) return;
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal-calendar-create" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-800">Create Calendar Job</h3>
+            <button id="btn-close-calendar-create" class="px-3 py-1 bg-slate-100 rounded-lg">ปิด</button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-slate-600">Incident Number</label>
+              <select id="calendar-incident-select" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></select>
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Title</label>
+              <input id="calendar-title" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น ตรวจสอบหน้างาน">
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">Start time</label>
+              <input id="calendar-start" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">End time</label>
+              <input id="calendar-end" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button id="btn-cancel-calendar-create" class="px-4 py-2 bg-slate-100 rounded-lg">Cancel</button>
+            <button id="btn-save-calendar-create" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    document.getElementById("btn-close-calendar-create").onclick = () => closeModal(document.getElementById("modal-calendar-create"));
+    document.getElementById("btn-cancel-calendar-create").onclick = () => closeModal(document.getElementById("modal-calendar-create"));
+  }
+
+  function getOnProcessIncidents() {
+    const state = Store.getState();
+    return [
+      ...(state.corrective.fiber || []),
+      ...(state.corrective.equipment || []),
+      ...(state.corrective.other || []),
+    ].filter((item) => item.status === "PROCESS");
+  }
+
+  function toLocalInputValue(date) {
+    if (!date) return "";
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function openCalendarCreateModal() {
+    ensureCalendarCreateModal();
+
+    const modal = document.getElementById("modal-calendar-create");
+    const select = document.getElementById("calendar-incident-select");
+    const incidents = getOnProcessIncidents();
+
+    select.innerHTML = incidents.length
+      ? incidents.map((item) => `<option value="${item.incidentId}">${item.incidentId} - ${item.node || "-"}</option>`).join("")
+      : '<option value="">ไม่มีงาน PROCESS</option>';
+
+    const now = new Date();
+    const after1h = new Date(now.getTime() + 60 * 60000);
+    document.getElementById("calendar-start").value = toLocalInputValue(now);
+    document.getElementById("calendar-end").value = toLocalInputValue(after1h);
+
+    document.getElementById("calendar-title").value = "";
+
+    document.getElementById("btn-save-calendar-create").onclick = () => {
+      const incidentId = select.value;
+      if (!incidentId) {
+        alert("ยังไม่มี Incident ที่เป็น PROCESS");
+        return;
+      }
+
+      const startAt = document.getElementById("calendar-start").value;
+      const endAt = document.getElementById("calendar-end").value;
+      if (!startAt || !endAt) {
+        alert("กรุณาเลือกวันเวลา Start/End");
+        return;
+      }
+
+      if (new Date(endAt) <= new Date(startAt)) {
+        alert("End time ต้องมากกว่า Start time");
+        return;
+      }
+
+      const source = incidents.find((item) => item.incidentId === incidentId);
+      const title = document.getElementById("calendar-title").value.trim() || source?.alarm || "Scheduled corrective";
+
+      const current = Store.getState();
+      const calendarEvents = [
+        ...(current.calendarEvents || []),
+        {
+          id: `cal-${Date.now()}`,
+          incidentId,
+          title,
+          startAt,
+          endAt,
+          node: source?.node || "-",
+          workType: source?.workType || "-",
+          status: source?.status || "PROCESS",
+        },
+      ];
+
+      LocalDB.saveState({ calendarEvents });
+      Store.dispatch((state) => ({ ...state, calendarEvents }));
+      closeModal(modal);
+      alert("บันทึกตารางงานเรียบร้อย");
+    };
+
+    openModal(modal);
+  }
+
+  function openCalendarEventCard(eventId) {
+    const current = Store.getState();
+    const eventData = (current.calendarEvents || []).find((item) => item.id === eventId);
+    if (!eventData) return;
+
+    const found = getCorrectiveIncidentById(eventData.incidentId);
+    if (found) {
+      openCorrectiveDetailModal(eventData.incidentId);
+      return;
+    }
+
+    alert(`Incident ${eventData.incidentId}`);
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-calendar-action]");
+    if (!target) return;
+
+    const action = target.dataset.calendarAction;
+    const current = Store.getState();
+    const mode = current.ui.calendarMode || "month";
+    const focusDate = new Date(current.ui.calendarFocusDate || new Date().toISOString());
+
+    if (action === "open-create") {
+      openCalendarCreateModal();
+      return;
+    }
+
+    if (action === "open-event") {
+      openCalendarEventCard(target.dataset.eventId);
+      return;
+    }
+
+    if (action === "set-mode") {
+      Store.dispatch((state) => ({
+        ...state,
+        ui: { ...state.ui, calendarMode: target.dataset.mode || "month" },
+      }));
+      return;
+    }
+
+    if (action === "today") {
+      Store.dispatch((state) => ({
+        ...state,
+        ui: { ...state.ui, calendarFocusDate: new Date().toISOString(), calendarMode: state.ui.calendarMode || "month" },
+      }));
+      return;
+    }
+
+    if (action === "prev" || action === "next") {
+      const next = CalendarUI.shiftDate(focusDate, mode, action === "next" ? 1 : -1);
+      Store.dispatch((state) => ({
+        ...state,
+        ui: { ...state.ui, calendarFocusDate: next.toISOString() },
+      }));
+      return;
+    }
+
+    if (action === "pick-date") {
+      const value = target.value;
+      if (!value) return;
+      Store.dispatch((state) => ({
+        ...state,
+        ui: { ...state.ui, calendarFocusDate: new Date(`${value}T00:00:00`).toISOString() },
+      }));
+      return;
+    }
+
+    if (action === "pick-day") {
+      const value = target.dataset.date;
+      if (!value) return;
+      Store.dispatch((state) => ({
+        ...state,
+        ui: { ...state.ui, calendarFocusDate: new Date(`${value}T00:00:00`).toISOString(), calendarMode: "day" },
+      }));
+    }
+  });
 
   function getCorrectiveIncidentById(incidentId) {
     const state = Store.getState();
@@ -388,6 +636,91 @@ function showView(view) {
 
 
     return null;
+  }
+
+  function formatTimelineDate(value) {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function buildWhatWhereHowText(update = {}, finish = {}) {
+    const who = (update.subcontractors || finish.subcontractors || []).join(", ") || "-";
+    const what = finish.details?.repairText || update.message || "-";
+    const where = finish.details?.area || update.area || update.site || "-";
+    const how = finish.details?.method || update.workCase || "-";
+
+    return { who, what, where, how };
+  }
+
+  function openCorrectiveDetailModal(incidentId) {
+    const found = getCorrectiveIncidentById(incidentId);
+    if (!found) return;
+
+    const { incident, tab } = found;
+    const latestUpdate = (incident.updates || []).slice(-1)[0] || {};
+    const finish = incident.nsFinish || {};
+    const summary = buildWhatWhereHowText(latestUpdate, finish);
+
+    const timeline = [
+      ...(incident.updates || []).map((item) => ({
+        title: "NS Update",
+        at: item.at,
+        detail: item.message || "-",
+      })),
+      finish.times ? {
+        title: "NS Finish",
+        at: finish.times.upTime || incident.completedAt,
+        detail: finish.details?.repairText || "-",
+      } : null,
+    ].filter(Boolean);
+
+    const modal = document.getElementById("modal-corrective-detail") || (() => {
+      document.body.insertAdjacentHTML("beforeend", `
+        <div id="modal-corrective-detail" class="modal-backdrop hidden">
+          <div class="bg-white rounded-2xl w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+              <h3 id="detail-title" class="text-xl font-bold text-slate-800">View Detail</h3>
+              <button id="btn-close-corrective-detail" class="px-4 py-2 bg-slate-100 rounded-lg">ปิด</button>
+            </div>
+            <div id="corrective-detail-body"></div>
+          </div>
+        </div>
+      `);
+      document.getElementById("btn-close-corrective-detail").onclick = () => closeModal(document.getElementById("modal-corrective-detail"));
+      return document.getElementById("modal-corrective-detail");
+    })();
+
+    document.getElementById("detail-title").textContent = `View Detail (${incident.incidentId})`;
+    document.getElementById("corrective-detail-body").innerHTML = `
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Type</div><div class="font-semibold">${tab}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Node</div><div class="font-semibold">${incident.node || "-"}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Who (ใคร)</div><div class="font-semibold">${summary.who}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">What (ทำอะไร)</div><div class="font-semibold">${summary.what}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Where (ที่ไหน)</div><div class="font-semibold">${summary.where}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">How (อย่างไร)</div><div class="font-semibold">${summary.how}</div></div>
+        </div>
+
+        <div class="ops-panel p-4">
+          <div class="text-sm font-semibold text-slate-700 mb-2">Timeline</div>
+          <div class="space-y-2">
+            ${timeline.length ? timeline.map((item) => `
+              <div class="border rounded-lg p-3">
+                <div class="text-sm font-semibold text-slate-700">${item.title}</div>
+                <div class="text-xs text-slate-500">${formatTimelineDate(item.at)}</div>
+                <div class="text-sm mt-1">${item.detail}</div>
+              </div>
+            `).join("") : '<div class="text-slate-400">ยังไม่มี timeline</div>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    openModal(modal);
   }
 
     const ofcTypeOptions = [
@@ -1340,7 +1673,7 @@ function showView(view) {
 
       const nextCorrective = { ...current.corrective };
       nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
-        item.incidentId === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE" } : item
+        item.incidentId === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
       );
 
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
@@ -1357,6 +1690,13 @@ function showView(view) {
     if (!target) return;
     openCorrectiveFinishModal(target.dataset.id);
   });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest(".btn-corrective-detail");
+    if (!target) return;
+    openCorrectiveDetailModal(target.dataset.id);
+  });
+
 
   // ===== INITIAL LOAD =====
   (async function init() {
