@@ -17,7 +17,9 @@ const CorrectiveUI = {
 
     incidents.forEach((incident) => {
       const card = document.createElement("article");
-      card.className = "corrective-card";
+      const isHighlighted = state.ui.highlightIncidentId === incident.incidentId;
+      card.className = `corrective-card ${isHighlighted ? "corrective-card-highlight" : ""}`;
+      card.dataset.correctiveId = incident.incidentId;
 
       const etaText = incident.eta || "-";
       const totalTickets = incident.tickets?.length || 0;

@@ -452,6 +452,18 @@ function showView(view) {
               <label class="text-sm text-slate-600">End time</label>
               <input id="calendar-end" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
             </div>
+            <div>
+              <label class="text-sm text-slate-600">👤 เจ้าหน้าที่ On site</label>
+              <input id="calendar-onsite" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น Somchai, Nattapon">
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">👤 เจ้าหน้าที่รับเรื่อง</label>
+              <input id="calendar-receiver" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น NOC Level 2">
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-sm text-slate-600">☎️ Contact</label>
+              <input id="calendar-contact" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น 08x-xxx-xxxx">
+            </div>
           </div>
 
           <div class="flex justify-end gap-2">
@@ -465,6 +477,63 @@ function showView(view) {
     document.getElementById("btn-close-calendar-create").onclick = () => closeModal(document.getElementById("modal-calendar-create"));
     document.getElementById("btn-cancel-calendar-create").onclick = () => closeModal(document.getElementById("modal-calendar-create"));
   }
+
+  function ensureCalendarEventDetailModal() {
+    if (document.getElementById("modal-calendar-detail")) return;
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal-calendar-detail" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-800">Interruption Plan Detail</h3>
+            <button id="btn-close-calendar-detail" class="px-3 py-1 bg-slate-100 rounded-lg">ปิด</button>
+          </div>
+          <div id="calendar-detail-body" class="space-y-2 text-slate-700"></div>
+          <div class="pt-3 border-t">
+            <div class="text-sm font-semibold text-slate-700 mb-2">จัดการงาน (Actions)</div>
+            <div class="flex gap-2 flex-wrap">
+              <button id="btn-calendar-action-open" class="px-3 py-2 rounded-lg bg-indigo-600 text-white">Actions</button>
+              <button id="btn-calendar-action-cancel" class="px-3 py-2 rounded-lg bg-rose-500 text-white">Cancel Job</button>
+              <button id="btn-calendar-action-edit" class="px-3 py-2 rounded-lg bg-slate-700 text-white">Edit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    document.getElementById("btn-close-calendar-detail").onclick = () => closeModal(document.getElementById("modal-calendar-detail"));
+  }
+
+  function ensureCalendarCancelModal() {
+    if (document.getElementById("modal-calendar-cancel")) return;
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal-calendar-cancel" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4">
+          <h3 class="text-lg font-bold text-slate-800">ยกเลิกงาน Calendar</h3>
+          <div>
+            <label class="text-sm text-slate-600">ผู้แจ้งยกเลิก</label>
+            <select id="calendar-cancel-reporter" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
+              <option value="NOC">NOC</option>
+              <option value="On Site">On Site</option>
+              <option value="Customer">Customer</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">สาเหตุการยกเลิก</label>
+            <textarea id="calendar-cancel-reason" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" rows="3" placeholder="ระบุสาเหตุ..."></textarea>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button id="btn-calendar-cancel-close" class="px-4 py-2 bg-slate-100 rounded-lg">Cancel</button>
+            <button id="btn-calendar-cancel-ok" class="px-4 py-2 bg-rose-600 text-white rounded-lg">OK</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    document.getElementById("btn-calendar-cancel-close").onclick = () => closeModal(document.getElementById("modal-calendar-cancel"));
+  }
+
 
   function getOnProcessIncidents() {
     const state = Store.getState();
@@ -483,7 +552,12 @@ function showView(view) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  function openCalendarCreateModal() {
+  function saveCalendarEvents(calendarEvents) {
+    LocalDB.saveState({ calendarEvents });
+    Store.dispatch((state) => ({ ...state, calendarEvents }));
+  }
+
+  function openCalendarCreateModal(eventToEdit = null) {
     ensureCalendarCreateModal();
 
     const modal = document.getElementById("modal-calendar-create");
@@ -496,10 +570,15 @@ function showView(view) {
 
     const now = new Date();
     const after1h = new Date(now.getTime() + 60 * 60000);
-    document.getElementById("calendar-start").value = toLocalInputValue(now);
-    document.getElementById("calendar-end").value = toLocalInputValue(after1h);
-
-    document.getElementById("calendar-title").value = "";
+    document.getElementById("calendar-start").value = toLocalInputValue(eventToEdit?.startAt || now);
+    document.getElementById("calendar-end").value = toLocalInputValue(eventToEdit?.endAt || after1h);
+    document.getElementById("calendar-title").value = eventToEdit?.title || "";
+    document.getElementById("calendar-onsite").value = eventToEdit?.onSiteStaff || "";
+    document.getElementById("calendar-receiver").value = eventToEdit?.receiverStaff || "";
+    document.getElementById("calendar-contact").value = eventToEdit?.contact || "";
+    if (eventToEdit?.incidentId) {
+      select.value = eventToEdit.incidentId;
+    }
 
     document.getElementById("btn-save-calendar-create").onclick = () => {
       const incidentId = select.value;
@@ -522,43 +601,82 @@ function showView(view) {
 
       const source = incidents.find((item) => item.incidentId === incidentId);
       const title = document.getElementById("calendar-title").value.trim() || source?.alarm || "Scheduled corrective";
-
+      const nextEvent = {
+        id: eventToEdit?.id || `cal-${Date.now()}`,
+        incidentId,
+        title,
+        startAt,
+        endAt,
+        node: source?.node || eventToEdit?.node || "-",
+        workType: String(source?.workType || eventToEdit?.workType || "other").toLowerCase(),
+        status: eventToEdit?.status || source?.status || "PROCESS",
+        onSiteStaff: document.getElementById("calendar-onsite").value.trim(),
+        receiverStaff: document.getElementById("calendar-receiver").value.trim(),
+        contact: document.getElementById("calendar-contact").value.trim(),
+      };
       const current = Store.getState();
-      const calendarEvents = [
-        ...(current.calendarEvents || []),
-        {
-          id: `cal-${Date.now()}`,
-          incidentId,
-          title,
-          startAt,
-          endAt,
-          node: source?.node || "-",
-          workType: source?.workType || "-",
-          status: source?.status || "PROCESS",
-        },
-      ];
+      const calendarEvents = eventToEdit
+        ? (current.calendarEvents || []).map((item) => (item.id === eventToEdit.id ? nextEvent : item))
+        : [...(current.calendarEvents || []), nextEvent];
 
-      LocalDB.saveState({ calendarEvents });
-      Store.dispatch((state) => ({ ...state, calendarEvents }));
+      saveCalendarEvents(calendarEvents);
       closeModal(modal);
-      alert("บันทึกตารางงานเรียบร้อย");
+      alert(eventToEdit ? "แก้ไขตารางงานเรียบร้อย" : "บันทึกตารางงานเรียบร้อย");
     };
 
     openModal(modal);
   }
+    let activeCalendarEventId = null;
 
   function openCalendarEventCard(eventId) {
+    ensureCalendarEventDetailModal();
     const current = Store.getState();
     const eventData = (current.calendarEvents || []).find((item) => item.id === eventId);
     if (!eventData) return;
 
-    const found = getCorrectiveIncidentById(eventData.incidentId);
-    if (found) {
-      openCorrectiveDetailModal(eventData.incidentId);
-      return;
-    }
+    activeCalendarEventId = eventId;
 
-    alert(`Incident ${eventData.incidentId}`);
+    const body = document.getElementById("calendar-detail-body");
+    body.innerHTML = `
+      <div><b>Incident Number :</b> ${eventData.incidentId || "-"}</div>
+      <div><b>📝 Description :</b> ${eventData.title || "-"}</div>
+      <div><b>📅 Action Date :</b> ${CalendarUI.formatDate(eventData.startAt)}</div>
+      <div><b>⏰ Time :</b> ${CalendarUI.formatTime(eventData.startAt)} - ${CalendarUI.formatTime(eventData.endAt)}</div>
+      <div><b>👤 เจ้าหน้าที่ On site :</b> ${eventData.onSiteStaff || "-"}</div>
+      <div><b>👤 เจ้าหน้าที่รับเรื่อง :</b> ${eventData.receiverStaff || "-"}</div>
+      <div><b>☎️ Contact :</b> ${eventData.contact || "-"}</div>
+    `;
+
+    document.getElementById("btn-calendar-action-open").onclick = () => {
+      const found = getCorrectiveIncidentById(eventData.incidentId);
+      closeModal(document.getElementById("modal-calendar-detail"));
+      if (!found) {
+        alert("ไม่พบงานใน Corrective");
+        return;
+      }
+
+      Store.dispatch((state) => ({
+        ...state,
+        ui: {
+          ...state.ui,
+          currentView: "corrective",
+          activeCorrectiveTab: found.tab,
+          highlightIncidentId: eventData.incidentId,
+        },
+      }));
+    };
+
+    document.getElementById("btn-calendar-action-edit").onclick = () => {
+      closeModal(document.getElementById("modal-calendar-detail"));
+      openCalendarCreateModal(eventData);
+    };
+
+    document.getElementById("btn-calendar-action-cancel").onclick = () => {
+      ensureCalendarCancelModal();
+      openModal(document.getElementById("modal-calendar-cancel"));
+    };
+
+    openModal(document.getElementById("modal-calendar-detail"));
   }
 
   document.addEventListener("click", (event) => {
@@ -588,29 +706,11 @@ function showView(view) {
       return;
     }
 
-    if (action === "today") {
-      Store.dispatch((state) => ({
-        ...state,
-        ui: { ...state.ui, calendarFocusDate: new Date().toISOString(), calendarMode: state.ui.calendarMode || "month" },
-      }));
-      return;
-    }
-
     if (action === "prev" || action === "next") {
       const next = CalendarUI.shiftDate(focusDate, mode, action === "next" ? 1 : -1);
       Store.dispatch((state) => ({
         ...state,
         ui: { ...state.ui, calendarFocusDate: next.toISOString() },
-      }));
-      return;
-    }
-
-    if (action === "pick-date") {
-      const value = target.value;
-      if (!value) return;
-      Store.dispatch((state) => ({
-        ...state,
-        ui: { ...state.ui, calendarFocusDate: new Date(`${value}T00:00:00`).toISOString() },
       }));
       return;
     }
@@ -623,6 +723,71 @@ function showView(view) {
         ui: { ...state.ui, calendarFocusDate: new Date(`${value}T00:00:00`).toISOString(), calendarMode: "day" },
       }));
     }
+  });
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target?.matches("[data-calendar-action=\"set-filter\"]")) return;
+
+    Store.dispatch((state) => ({
+      ...state,
+      ui: { ...state.ui, calendarFilter: target.value || "all" },
+    }));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.id !== "btn-calendar-cancel-ok") return;
+    if (!activeCalendarEventId) return;
+
+    const reporter = document.getElementById("calendar-cancel-reporter")?.value || "-";
+    const reason = document.getElementById("calendar-cancel-reason")?.value?.trim() || "-";
+    const current = Store.getState();
+
+    const calendarEvents = (current.calendarEvents || []).map((item) =>
+      item.id === activeCalendarEventId
+        ? { ...item, status: "CANCELLED", cancelReporter: reporter, cancelReason: reason }
+        : item
+    );
+
+    saveCalendarEvents(calendarEvents);
+    closeModal(document.getElementById("modal-calendar-cancel"));
+    closeModal(document.getElementById("modal-calendar-detail"));
+    alert("ยกเลิกงานเรียบร้อย");
+  });
+  function buildAlertDetailIncidentFromCorrective(incident) {
+    if (!incident) return null;
+
+    return {
+      id: incident.incidentId,
+      node: incident.node || "-",
+      alarm: incident.alarm || "Network Alert",
+      detail: incident.detail || incident.latestUpdateMessage || "-",
+      nocBy: incident.nocBy || "System",
+      downTime: incident.tickets?.[0]?.downTime || incident.createdAt || new Date().toISOString(),
+      severity: incident.severity || "Medium",
+      type: incident.workType || "Network",
+      status: incident.status === "COMPLETE" ? "resolved" : "active",
+      createdAt: incident.createdAt || new Date().toISOString(),
+      tickets: incident.tickets || [],
+    };
+  }
+
+  document.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-corrective-id]");
+    if (!card) return;
+    if (event.target.closest("button")) return;
+
+    const found = getCorrectiveIncidentById(card.dataset.correctiveId);
+    if (!found) return;
+
+    const incidentForDetail = buildAlertDetailIncidentFromCorrective(found.incident);
+    Store.dispatch((state) => ({
+      ...state,
+      ui: {
+        ...state.ui,
+        currentView: "alert-detail",
+        selectedIncident: incidentForDetail,
+      },
+    }));
   });
 
   function getCorrectiveIncidentById(incidentId) {

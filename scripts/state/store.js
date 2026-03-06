@@ -33,6 +33,7 @@ const Store = (function () {
         historyPage: 1,
         calendarMode: 'month',
         calendarFocusDate: new Date().toISOString(),
+        calendarFilter: 'all',
         modal: null
       }
     };
