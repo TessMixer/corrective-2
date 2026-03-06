@@ -24,40 +24,40 @@ const CorrectiveUI = {
       const workType = incident.workType || "Fiber";
 
       card.innerHTML = `
-        <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start justify-between gap-2">
           <div>
-            <h3 class="text-2xl md:text-3xl font-extrabold text-orange-600 leading-tight">${incident.incidentId}</h3>
-            <p class="text-slate-500 text-base md:text-xl mt-1.5">${workType} - ${incident.node || "-"}</p>
+            <h3 class="incident-title text-orange-600">${incident.incidentId}</h3>
+            <p class="incident-subtitle mt-1">${workType} - ${incident.node || "-"}</p>
           </div>
-          <span class="eta-badge" style="font-size:12px;padding:5px 10px">${etaText}</span>
+          <span class="eta-badge">${etaText}</span>
         </div>
 
-        <div class="corrective-grid mt-5 md:mt-6">
+        <div class="corrective-grid mt-3">
           <div>
             <p class="corrective-label">Node</p>
-            <p class="corrective-value" style="font-size:clamp(1rem,2.4vw,1.75rem);line-height:1.35">${incident.node || "-"}</p>
+            <p class="corrective-value">${incident.node || "-"}</p>
           </div>
           <div>
             <p class="corrective-label">Alarm</p>
-            <p class="corrective-value" style="font-size:clamp(1rem,2.4vw,1.75rem);line-height:1.35">${incident.alarm || "-"}</p>
+            <p class="corrective-value alarm-text">${incident.alarm || "-"}</p>
           </div>
           <div>
             <p class="corrective-label">Response</p>
-            <p class="corrective-value" style="font-size:clamp(1rem,2.4vw,1.75rem);line-height:1.35">${etaText}</p>
+            <p class="corrective-value metric-number">${etaText}</p>
           </div>
           <div>
             <p class="corrective-label">Total Tickets</p>
-            <p class="corrective-value" style="font-size:clamp(1rem,2.4vw,1.75rem);line-height:1.35">${totalTickets}</p>
+            <p class="corrective-value metric-number">${totalTickets}</p>
           </div>
         </div>
 
-        <div class="corrective-footer mt-5">
-          <div class="flex gap-3 flex-wrap">
-            <button class="btn-action btn-action-primary btn-corrective-update" data-id="${incident.incidentId}" style="font-size:12px;padding:6px 10px">Update</button>
-            <button class="btn-action btn-action-success btn-corrective-finish" data-id="${incident.incidentId}" style="font-size:12px;padding:6px 10px">NS Finish</button>
-            <button class="btn-action btn-action-danger" style="font-size:12px;padding:6px 10px">Cancel</button>
+        <div class="corrective-footer">
+          <div class="flex gap-2 flex-wrap">
+            <button class="btn-action btn-action-primary btn-corrective-update" data-id="${incident.incidentId}">Update</button>
+            <button class="btn-action btn-action-success btn-corrective-finish" data-id="${incident.incidentId}">NS Finish</button>
+            <button class="btn-action btn-action-danger">Cancel</button>
           </div>
-          <button class="btn-action btn-action-purple" style="font-size:12px;padding:6px 10px">View Detail</button>
+          <button class="btn-action btn-action-purple">View Detail</button>
         </div>
       `;
 

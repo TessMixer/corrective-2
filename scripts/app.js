@@ -4,11 +4,13 @@ import { initFirebase } from "./services/firebase.service.js";
 function showView(view) {
   document.querySelectorAll(".view-content").forEach((section) => {
     section.classList.add("hidden");
+    section.style.display = "none";
   });
 
   const targetView = document.getElementById(`view-${view}`);
   if (targetView) {
     targetView.classList.remove("hidden");
+    targetView.style.display = "block";
   }
 }
 
@@ -28,23 +30,93 @@ function showView(view) {
     }
   }
 
+
+
+  // ===== MOBILE SIDEBAR =====
+  const sidebarToggleBtn = document.getElementById("btn-toggle-sidebar");
+  const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+  const mobileBreakpoint = 1024;
+
+  function setSidebarDesktopCollapsed(isCollapsed) {
+    document.body.classList.toggle("sidebar-collapsed", isCollapsed);
+  }
+
+  function setSidebarMobileOpen(isOpen) {
+    document.body.classList.toggle("sidebar-open", isOpen);
+  }
+
+  function isMobileViewport() {
+    return window.innerWidth <= mobileBreakpoint;
+  }
+
+
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener("click", () => {
+      if (isMobileViewport()) {
+        const nextState = !document.body.classList.contains("sidebar-open");
+        setSidebarMobileOpen(nextState);
+        return;
+      }
+
+      setSidebarMobileOpen(false);
+
+      const nextState = !document.body.classList.contains("sidebar-collapsed");
+      setSidebarDesktopCollapsed(nextState);
+    });
+  }
+
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", () => setSidebarMobileOpen(false));
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setSidebarMobileOpen(false);
+    }
+  });
+
+  document.querySelectorAll(".nav-item, .sub-nav-item").forEach((item) => {
+    item.addEventListener("click", () => {
+       if (isMobileViewport()) {
+        setSidebarMobileOpen(false);
+      }
+    });
+  });
+  
+    window.addEventListener("resize", () => {
+      updateLayout();
+
+      if (window.innerWidth <= 1024) {
+        document.body.classList.remove("sidebar-collapsed");
+      } else {
+        document.body.classList.remove("sidebar-open");
+      }
+    });
   // ===== CREATE ALERT BUTTONS =====
   const btnCreate = document.getElementById("btn-create-alert");
   if (btnCreate) {
     btnCreate.addEventListener("click", () => openModal(createAlertModal));
   }
 
+
   const btnClose = document.getElementById("btn-close-create-alert");
   if (btnClose) {
-    btnClose.addEventListener("click", () => closeModal(createAlertModal));
+    btnClose.addEventListener("click", () => {
+      closeModal(createAlertModal);
+      resetCreateTicketForm();
+    });
   }
 
   const btnDiscard = document.getElementById("btn-discard-create-alert");
   if (btnDiscard) {
-    btnDiscard.addEventListener("click", () => closeModal(createAlertModal));
+    btnDiscard.addEventListener("click", () => {
+      closeModal(createAlertModal);
+      resetCreateTicketForm();
+    });
   }
 
-  // ===== CREATE INCIDENT FORM =====
+  // ===== CREATE INCIDENT FORM =====␊
   const incidentForm = document.getElementById("create-incident-form");
 
   function generateIncidentId() {
@@ -95,13 +167,13 @@ function showView(view) {
         tickets: buildTicketsFromForm(),
       };
 
-      AlertService.createAlert(data);
+        AlertService.createAlert(data);
       closeModal(createAlertModal);
-      incidentForm.reset();
+      resetCreateTicketForm();
     });
   }
 
-  // ===== NAVIGATION =====
+  // ===== NAVIGATION =====␊
   document.querySelectorAll("[data-view]").forEach((el) => {
     el.addEventListener("click", () => {
       Store.dispatch((state) => ({
@@ -114,10 +186,11 @@ function showView(view) {
     });
   });
 
-  // ===== RENDER =====
+  // ===== RENDER =====␊
   function render(state) {
     document.querySelectorAll(".view-content").forEach((view) => {
       view.classList.add("hidden");
+      view.style.display = "none";
     });
 
     if (state.ui.currentView === "alert") {
@@ -147,6 +220,7 @@ function showView(view) {
     const activeView = document.getElementById(`view-${state.ui.currentView}`);
     if (activeView) {
       activeView.classList.remove("hidden");
+      activeView.style.display = "block";
     }
 
     document.querySelectorAll(".nav-item, .sub-nav-item").forEach((nav) => {
@@ -214,31 +288,41 @@ function showView(view) {
   }
 
   Store.subscribe(render);
+  render(Store.getState());
 
   // ===== ADD TICKET BUTTON =====
   const ticketContainer = document.getElementById("ticket-container");
   const addTicketBtn = document.getElementById("btn-add-ticket");
+  const defaultTicketFieldsMarkup = ticketContainer ? ticketContainer.innerHTML : "";
 
-  if (addTicketBtn && ticketContainer) {
+  function resetCreateTicketForm() {
+    incidentForm?.reset();
+    if (ticketContainer) {
+      ticketContainer.innerHTML = defaultTicketFieldsMarkup;
+    }
+  }
+
+    if (addTicketBtn && ticketContainer) {
     addTicketBtn.addEventListener("click", () => {
-      const ticketHTML = `
-        <div class="ticket-item grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <input placeholder="Symphony Ticket" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input placeholder="Symphony CID" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input placeholder="Port" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input type="datetime-local" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input type="datetime-local" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input placeholder="Pending" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input placeholder="Originate" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
-          <input placeholder="Terminate" class="ticket-field w-full bg-slate-100 rounded-lg px-3 py-2">
+      const ticketHTML = `␊
+        <div class="ticket-item grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50/60">
+          <input placeholder="Symphony Ticket" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input placeholder="Symphony CID" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input placeholder="Port" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input type="datetime-local" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input type="datetime-local" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input placeholder="Pending" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input placeholder="Originate" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
+          <input placeholder="Terminate" class="ticket-field w-full bg-white rounded-lg px-3 py-2 border border-slate-200">
         </div>
       `;
+
 
       ticketContainer.insertAdjacentHTML("beforeend", ticketHTML);
     });
   }
 
-  // ===== RESPONSE MODAL =====
+  // ===== RESPONSE MODAL =====␊
   const responseModal = document.getElementById("modal-response");
   const cancelResponse = document.getElementById("btn-cancel-response");
   const saveResponse = document.getElementById("btn-save-response");
@@ -275,7 +359,7 @@ function showView(view) {
     });
   }
 
-  // ===== CORRECTIVE MENU =====
+  // ===== CORRECTIVE MENU =====␊
   document.querySelectorAll("#corrective-submenu div").forEach((menu) => {
     menu.onclick = () => {
       const type = menu.innerText.toLowerCase();
@@ -292,6 +376,7 @@ function showView(view) {
   });
 
 
+
   function getCorrectiveIncidentById(incidentId) {
     const state = Store.getState();
     const tabs = ["fiber", "equipment", "other"];
@@ -301,7 +386,61 @@ function showView(view) {
       if (incident) return { incident, tab };
     }
 
+
     return null;
+  }
+
+    const ofcTypeOptions = [
+    "Flat type 2 Core",
+    "4 Core ADSS",
+    "12 Core ADSS",
+    "24 Core ADSS",
+    "48 Core ADSS",
+    "60 Core ADSS",
+    "144 Core ADSS",
+    "216 Core ADSS",
+    "312 Core ADSS",
+    "12 Core Armour",
+    "48 Core Armour",
+    "60 Core Armour",
+    "144 Core Armour",
+  ];
+
+  function normalizeMultiOfcData(rawData) {
+    const normalized = {};
+    Object.entries(rawData || {}).forEach(([type, qty]) => {
+      const amount = Number.parseInt(qty, 10);
+      if (Number.isFinite(amount) && amount > 0) {
+        normalized[type] = amount;
+      }
+    });
+    return normalized;
+  }
+
+  function summarizeMultiOfcData(rawData) {
+    const normalized = normalizeMultiOfcData(rawData);
+    return Object.entries(normalized).map(([type, qty]) => `${type} ${qty} เส้น`);
+  }
+
+  function renderOfcSummaryBox(boxEl, rawData) {
+    if (!boxEl) return;
+    const summaryList = summarizeMultiOfcData(rawData);
+    if (!summaryList.length) {
+      boxEl.classList.add("hidden");
+      boxEl.textContent = "";
+      return;
+    }
+
+    boxEl.classList.remove("hidden");
+    boxEl.textContent = summaryList.join(", ");
+  }
+
+  function readMultiOfcFromModalDataset(modalEl) {
+    try {
+      return normalizeMultiOfcData(JSON.parse(modalEl?.dataset?.multiOfcDetails || "{}"));
+    } catch {
+      return {};
+    }
   }
 
   function ensureUpdateModal() {
@@ -311,14 +450,14 @@ function showView(view) {
       "beforeend",
       `
       <div id="modal-corrective-update" class="modal-backdrop hidden">
-        <div class="bg-white rounded-2xl w-full max-w-5xl p-5 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between mb-4">
+        <div class="bg-white rounded-2xl w-full max-w-6xl p-5 md:p-6 max-h-[92vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
             <h3 id="corrective-update-title" class="text-xl font-bold text-slate-800">NS Update</h3>
             <button id="btn-close-corrective-update" class="px-3 py-1 bg-slate-100 rounded-lg">ปิด</button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="border rounded-xl p-4 space-y-4">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div class="border rounded-xl p-4 md:p-5 space-y-4 bg-slate-50/40">
               <h4 class="font-semibold text-slate-700">📍 ข้อมูลจุดเสีย</h4>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -326,10 +465,15 @@ function showView(view) {
                   <label class="text-sm text-slate-600">OFC Type:</label>
                   <select id="upd-ofc-type" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
                     <option value="">เลือกประเภท</option>
+                    <option>หลายเส้น</option>
                     <option>Flat type 2 Core</option><option>4 Core ADSS</option><option>12 Core ADSS</option><option>24 Core ADSS</option>
                     <option>48 Core ADSS</option><option>60 Core ADSS</option><option>144 Core ADSS</option><option>216 Core ADSS</option>
                     <option>312 Core ADSS</option><option>12 Core Armour</option><option>48 Core Armour</option><option>60 Core Armour</option><option>144 Core Armour</option>
                   </select>
+                  <div class="mt-2 p-3 rounded-lg border border-emerald-300 bg-emerald-50 hidden" id="upd-multi-ofc-summary-wrap">
+                    <div class="font-semibold text-slate-800">ข้อมูล OFC ที่เลือก:</div>
+                    <div id="upd-multi-ofc-summary" class="text-emerald-800"></div>
+                  </div>
                 </div>
                 <div>
                   <label class="text-sm text-slate-600">สาเหตุ:</label>
@@ -348,7 +492,7 @@ function showView(view) {
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 <div>
                   <label class="text-xs text-slate-600">ชื่อ Site:</label>
                   <input id="upd-site" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น PKD">
@@ -384,8 +528,7 @@ function showView(view) {
                 <button id="btn-get-pin" class="px-3 py-2 bg-red-500 text-white rounded-lg">📍 กดได้และดึงข้อมูล</button>
               </div>
             </div>
-
-            <div class="border rounded-xl p-4 space-y-3">
+            <div class="border rounded-xl p-4 md:p-5 space-y-3 bg-slate-50/40">
               <h4 class="font-semibold text-slate-700">🖼️ รูปภาพ / การดำเนินงาน</h4>
 
               <input id="upd-camera-input" type="file" accept="image/*" capture="environment" class="hidden">
@@ -413,9 +556,12 @@ function showView(view) {
                 </select>
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <input id="upd-etr-hour" class="bg-slate-100 rounded-lg px-3 py-2" placeholder="ชั่วโมง">
-                <input id="upd-etr-min" class="bg-slate-100 rounded-lg px-3 py-2" placeholder="นาที">
+              <div>
+                <label class="text-sm text-slate-600">ETR:</label>
+                <div class="grid grid-cols-2 gap-3 mt-1">
+                  <input id="upd-etr-hour" type="number" min="0" class="bg-slate-100 rounded-lg px-3 py-2" placeholder="ชั่วโมง">
+                  <input id="upd-etr-min" type="number" min="0" max="59" class="bg-slate-100 rounded-lg px-3 py-2" placeholder="นาที">
+                </div>
               </div>
 
               <button id="btn-generate-update" class="w-full px-3 py-2 bg-blue-500 text-white rounded-lg">⚙️ สร้างสรุป Update</button>
@@ -428,12 +574,99 @@ function showView(view) {
             <button id="btn-save-corrective-update" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">บันทึก</button>
           </div>
         </div>
+      </div>
+
+      <div id="modal-multi-ofc" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-xl p-5 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between">
+            <h4 class="text-2xl font-bold text-slate-800">🔌 หลายเส้น</h4>
+          </div>
+          <p class="text-sm text-slate-600 mt-2 mb-4">กรุณาระบุจำนวนเส้นสำหรับแต่ละประเภท</p>
+          <div id="multi-ofc-inputs" class="space-y-2"></div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button id="btn-cancel-multi-ofc" class="px-4 py-2 bg-slate-200 rounded-lg">ยกเลิก</button>
+            <button id="btn-confirm-multi-ofc" class="px-4 py-2 bg-emerald-500 text-white rounded-lg">ยืนยัน</button>
+          </div>
+        </div>
       </div>`
     );
 
     const modal = document.getElementById("modal-corrective-update");
+    const ofcTypeSelect = document.getElementById("upd-ofc-type");
+    const multiOfcSummaryWrap = document.getElementById("upd-multi-ofc-summary-wrap");
+    const multiOfcSummary = document.getElementById("upd-multi-ofc-summary");
+    const multiOfcModal = document.getElementById("modal-multi-ofc");
+    const multiOfcInputs = document.getElementById("multi-ofc-inputs");
+
+    multiOfcInputs.innerHTML = ofcTypeOptions
+      .map(
+        (type) => `
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <label class="col-span-2 text-slate-700">${type}:</label>
+            <input type="number" min="0" data-type="${type}" class="multi-ofc-input w-full bg-slate-50 border rounded-lg px-3 py-2" placeholder="เส้น">
+          </div>`
+      )
+      .join("");
+
+    function readMultiOfcFromPopup() {
+      const raw = {};
+      multiOfcInputs.querySelectorAll(".multi-ofc-input").forEach((input) => {
+        raw[input.dataset.type] = input.value;
+      });
+      return normalizeMultiOfcData(raw);
+    }
+
+    function renderUpdateMultiOfcSummary(rawData) {
+      renderOfcSummaryBox(multiOfcSummary, rawData);
+      const hasData = summarizeMultiOfcData(rawData).length > 0;
+      multiOfcSummaryWrap.classList.toggle("hidden", !hasData);
+    }
+
+    function setPopupValues(rawData) {
+      const normalized = normalizeMultiOfcData(rawData);
+      multiOfcInputs.querySelectorAll(".multi-ofc-input").forEach((input) => {
+        input.value = normalized[input.dataset.type] || "";
+      });
+    }
+
+    function getStoredMultiOfcData() {
+      try {
+        return JSON.parse(modal.dataset.multiOfcDetails || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function setStoredMultiOfcData(rawData) {
+      const normalized = normalizeMultiOfcData(rawData);
+      modal.dataset.multiOfcDetails = JSON.stringify(normalized);
+      renderUpdateMultiOfcSummary(normalized);
+    }
+
     document.getElementById("btn-close-corrective-update").onclick = () => closeModal(modal);
     document.getElementById("btn-cancel-corrective-update").onclick = () => closeModal(modal);
+
+    ofcTypeSelect.onchange = () => {
+      if (ofcTypeSelect.value === "หลายเส้น") {
+        setPopupValues(getStoredMultiOfcData());
+        openModal(multiOfcModal);
+      } else {
+        setStoredMultiOfcData({});
+      }
+    };
+
+    document.getElementById("btn-cancel-multi-ofc").onclick = () => {
+      closeModal(multiOfcModal);
+      if (!summarizeMultiOfcData(getStoredMultiOfcData()).length) {
+        ofcTypeSelect.value = "";
+      }
+    };
+
+    document.getElementById("btn-confirm-multi-ofc").onclick = () => {
+      const data = readMultiOfcFromPopup();
+      setStoredMultiOfcData(data);
+      closeModal(multiOfcModal);
+    };
 
     document.getElementById("upd-start").onclick = () => {
       document.getElementById("upd-clock-status").textContent = "STARTED";
@@ -550,19 +783,59 @@ function showView(view) {
     document.getElementById("upd-attachments-preview").textContent = "ยังไม่ได้เลือกไฟล์";
     modal.dataset.startClockAt = "";
     modal.dataset.stopClockAt = "";
+    modal.dataset.multiOfcDetails = "{}";
+    renderOfcSummaryBox(document.getElementById("upd-multi-ofc-summary"), {});
+    document.getElementById("upd-multi-ofc-summary-wrap").classList.add("hidden");
 
     document.getElementById("btn-generate-update").onclick = () => {
       const latest = getCorrectiveIncidentById(updateIncidentId)?.incident;
       const updateNo = ((latest?.updates || []).length || 0) + 1;
 
       const ofcType = document.getElementById("upd-ofc-type").value || "OFC";
-      const cause = document.getElementById("upd-cause").value || "ไม่ทราบสาเหตุ";
-      const site = document.getElementById("upd-site").value || "ไม่ระบุ Site";
-      const distanceM = document.getElementById("upd-distance").value || "0";
-      const area = document.getElementById("upd-area").value || "ไม่ระบุพื้นที่";
+      const multiOfcDetails = readMultiOfcFromModalDataset(modal);
+      const multiOfcSummary = summarizeMultiOfcData(multiOfcDetails);
+      const cause = document.getElementById("upd-cause").value.trim();
+      const site = document.getElementById("upd-site").value.trim();
+      const distanceM = document.getElementById("upd-distance").value.trim();
+      const area = document.getElementById("upd-area").value.trim();
+      const etrHour = document.getElementById("upd-etr-hour").value.trim();
+      const etrMin = document.getElementById("upd-etr-min").value.trim();
+      const subcontractors = Array.from(document.querySelectorAll(".upd-sub:checked")).map((el) => el.value);
 
-      const km = (Number(distanceM || 0) / 1000).toFixed(3);
-      document.getElementById("upd-message").value = `Update#${updateNo}: ตรวจสอบพบ ${ofcType} มีปัญหาห่างจาก Site ${site} ${km} km บริเวณ ${area}. สาเหตุ ${cause} กำลังเร่งดำเนินการแก้ไข.`;
+      const summaryParts = [`Update#${updateNo}: ตรวจสอบพบ OFC ${ofcType}`];
+      if (site && distanceM) {
+        const numericDistance = Number(distanceM);
+        if (Number.isFinite(numericDistance)) {
+          const km = (numericDistance / 1000).toFixed(3);
+          summaryParts.push(`มีปัญหาห่างจาก Site ${site} ${km} km`);
+        } else {
+          summaryParts.push(`มีปัญหาห่างจาก Site ${site}`);
+        }
+      } else if (site) {
+        summaryParts.push(`มีปัญหาที่ Site ${site}`);
+      } else {
+        summaryParts.push("มีปัญหา");
+      }
+
+      if (area) {
+        summaryParts.push(`บริเวณ ${area}`);
+      }
+      if (cause) {
+        summaryParts.push(`สาเหตุ ${cause}`);
+      }
+
+      const lines = [`${summaryParts.join(" ")}. กำลังเร่งดำเนินการแก้ไข.`];
+      if (multiOfcSummary.length) {
+        lines.push(`OFC : ${multiOfcSummary.join(", ")}`);
+      }
+      if (etrHour || etrMin) {
+        lines.push(`ETR : ${etrHour || "0"}.${String(etrMin || "0").padStart(2, "0")} ชั่วโมง`);
+      }
+      if (subcontractors.length) {
+        lines.push(`Sub Contractor : ${subcontractors.join(", ")}`);
+      }
+
+      document.getElementById("upd-message").value = lines.join("\n");
     };
 
     document.getElementById("btn-save-corrective-update").onclick = () => {
@@ -570,6 +843,7 @@ function showView(view) {
       const updatePayload = {
         at: new Date().toISOString(),
         ofcType: document.getElementById("upd-ofc-type").value,
+        multiOfcDetails: readMultiOfcFromModalDataset(modal),
         cause: document.getElementById("upd-cause").value,
         originate: document.getElementById("upd-originate").value,
         terminate: document.getElementById("upd-terminate").value,
@@ -689,7 +963,14 @@ function showView(view) {
             <div class="border-t pt-3">
               <h4 class="font-bold text-slate-800 mb-2">รายละเอียดงาน</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><label class="text-sm text-slate-700">OFC Type:</label><select id="finish-ofc-type" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><option value="">เลือกประเภท</option><option>Flat type 2 Core</option><option>4 Core ADSS</option><option>12 Core ADSS</option><option>24 Core ADSS</option><option>48 Core ADSS</option><option>60 Core ADSS</option><option>144 Core ADSS</option><option>216 Core ADSS</option><option>312 Core ADSS</option><option>12 Core Armour</option><option>48 Core Armour</option><option>60 Core Armour</option><option>144 Core Armour</option></select></div>
+                                <div>
+                  <label class="text-sm text-slate-700">OFC Type:</label>
+                  <select id="finish-ofc-type" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><option value="">เลือกประเภท</option><option>หลายเส้น</option><option>Flat type 2 Core</option><option>4 Core ADSS</option><option>12 Core ADSS</option><option>24 Core ADSS</option><option>48 Core ADSS</option><option>60 Core ADSS</option><option>144 Core ADSS</option><option>216 Core ADSS</option><option>312 Core ADSS</option><option>12 Core Armour</option><option>48 Core Armour</option><option>60 Core Armour</option><option>144 Core Armour</option></select>
+                  <div id="finish-multi-ofc-summary-wrap" class="hidden mt-2 p-3 rounded-lg border border-emerald-300 bg-emerald-50">
+                    <div class="font-semibold text-slate-800">ข้อมูล OFC ที่เลือก:</div>
+                    <div id="finish-multi-ofc-summary" class="text-emerald-800"></div>
+                  </div>
+                </div>
                 <div><label class="text-sm text-slate-700">ระยะห่างจาก Site (เมตร):</label><input id="finish-distance" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2" placeholder="เช่น 90"></div>
                 <div><label class="text-sm text-slate-700">ชื่อ Site:</label><input id="finish-site" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2" placeholder="เช่น BTS Tower"></div>
                 <div><label class="text-sm text-slate-700">สาเหตุ:</label><select id="finish-cause" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><option value="">เลือกสาเหตุ</option><option>Animal gnawing</option><option>รถเกี่ยวสาย</option><option>ไฟไหม้</option><option>อุบัติเหตุทางถนน</option><option>OFC ปกติ</option></select></div>
@@ -715,9 +996,11 @@ function showView(view) {
                 <button id="btn-generate-repair" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold">🪄 สร้างคำอธิบายอัตโนมัติ</button>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-start">
                 <label class="text-sm text-slate-700">วิธีการ:</label>
-                <select id="finish-method" class="md:col-span-2 w-full bg-white border border-teal-500 rounded-lg px-3 py-2">
+
+                <select id="finish-method"
+                  class="md:col-span-2 w-full bg-white border border-teal-500 rounded-lg px-3 py-2">
                   <option value="">เลือกวิธีการ</option>
                   <option value="ลากคร่อม">ลากคร่อม</option>
                   <option value="ร่นลูป">ร่นลูป</option>
@@ -828,6 +1111,13 @@ function showView(view) {
     });
     document.getElementById("finish-yoke-loc-b").addEventListener("input", (event) => {
       document.getElementById("finish-site-b").value = event.target.value;
+    });
+
+    document.getElementById("finish-ofc-type").addEventListener("change", () => {
+      if (document.getElementById("finish-ofc-type").value !== "หลายเส้น") {
+        renderOfcSummaryBox(document.getElementById("finish-multi-ofc-summary"), {});
+        document.getElementById("finish-multi-ofc-summary-wrap").classList.add("hidden");
+      }
     });
   }
 
@@ -950,6 +1240,12 @@ function showView(view) {
     document.getElementById("finish-circuit").value = `${firstTicket.cid || ""} ${firstTicket.port || ""}`.trim();
 
     document.getElementById("finish-ofc-type").value = latestUpdate.ofcType || "";
+    const latestMultiOfc = normalizeMultiOfcData(latestUpdate.multiOfcDetails || {});
+    renderOfcSummaryBox(document.getElementById("finish-multi-ofc-summary"), latestMultiOfc);
+    document.getElementById("finish-multi-ofc-summary-wrap").classList.toggle(
+      "hidden",
+      !(document.getElementById("finish-ofc-type").value === "หลายเส้น" && summarizeMultiOfcData(latestMultiOfc).length)
+    );
     document.getElementById("finish-distance").value = latestUpdate.distance || "";
     document.getElementById("finish-site").value = latestUpdate.site || "";
     document.getElementById("finish-cause").value = latestUpdate.cause || "";
@@ -1021,6 +1317,7 @@ function showView(view) {
         },
         details: {
           ofcType: document.getElementById("finish-ofc-type").value,
+          multiOfcDetails: latestMultiOfc,
           distance: document.getElementById("finish-distance").value,
           site: document.getElementById("finish-site").value,
           cause: document.getElementById("finish-cause").value,
@@ -1063,7 +1360,12 @@ function showView(view) {
 
   // ===== INITIAL LOAD =====
   (async function init() {
-    await firebaseReady;
+        try {
+      await firebaseReady;
+    } catch (error) {
+      console.warn("Firebase init failed, fallback to local data only:", error);
+    }
+
     await AlertService.loadFromLocal();
     // await AlertService.loadFromEmail();
   })();
