@@ -1,16 +1,16 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+const { initializeApp } = require("firebase/app");
+const { getFirestore, collection, addDoc } = require("firebase/firestore");
 
 const firebaseConfig = {
- apiKey: process.env.FB_APIKEY,
- authDomain: process.env.FB_AUTHDOMAIN,
- projectId: process.env.FB_PROJECTID
+ apiKey: process.env.FIREBASE_API_KEY,
+ projectId: process.env.FIREBASE_PROJECT_ID,
+ appId: process.env.FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export async function handler(event) {
+exports.handler = async (event) => {
 
  if(event.httpMethod !== "POST"){
   return {
@@ -64,4 +64,4 @@ export async function handler(event) {
 
  }
 
-}
+};
