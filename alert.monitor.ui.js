@@ -89,9 +89,9 @@ function renderTable(alerts) {
   table.innerHTML = `
     <thead>
       <tr>
-        <th>Job ID</th>
-        <th>Title</th>
-        <th>Priority</th>
+        <th>Incident</th>
+        <th>Node</th>
+        <th>Severity</th>
         <th>Status</th>
         <th>Created</th>
         <th>Action</th>
@@ -101,10 +101,10 @@ function renderTable(alerts) {
       ${alerts.map(a => `
         <tr>
           <td>${a.incident}</td>
-          <td>${a.title || '-'}</td>
+          <td>${a.node || '-'}</td>
           <td>
-            <span class="priority ${a.priority?.toLowerCase()}">
-              ${a.priority || '-'}
+            <span class="priority ${a.severity?.toLowerCase()}">
+              ${a.severity || '-'}
             </span>
           </td>
           <td>
@@ -112,10 +112,10 @@ function renderTable(alerts) {
               ${a.status}
             </span>
           </td>
-          <td>${a.createdAt || '-'}</td>
+          <td>${new Date(a.createdAt).toLocaleString()}</td>
           <td>
-            <button data-id="${a.jobId}" class="complete-btn">✓</button>
-            <button data-id="${a.jobId}" class="cancel-btn">✕</button>
+            <button data-id="${a.incident}" class="complete-btn">✓</button>
+            <button data-id="${a.incident}" class="cancel-btn">✕</button>
           </td>
         </tr>
       `).join('')}
