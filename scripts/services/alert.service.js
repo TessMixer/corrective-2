@@ -75,20 +75,21 @@ window.AlertService = {
     }));
   },
 
-  responseAlert(incidentId, eta) {
+  responseAlert(incidentId, eta, workType) {
     const state = Store.getState();
     const alert = state.alerts.find((item) => item.incidentId === incidentId);
 
     if (!alert) return;
+    const selectedType = workType || alert.workType || "Other";
 
     let type = "other";
-    if (alert.workType === "Fiber") type = "fiber";
-    if (alert.workType === "Equipment") type = "equipment";
+    if (selectedType === "Fiber") type = "fiber";
+    if (selectedType === "Equipment") type = "equipment";
 
     const updatedAlerts = state.alerts.filter((item) => item.incidentId !== incidentId);
     const updatedCorrective = {
       ...state.corrective,
-      [type]: [...(state.corrective[type] || []), { ...alert, eta, status: "PROCESS", respondedAt: new Date().toISOString() }],
+      [type]: [...(state.corrective[type] || []), { ...alert, workType: selectedType, eta, status: "PROCESS", respondedAt: new Date().toISOString() }],
     };
 
     LocalDB.saveState({

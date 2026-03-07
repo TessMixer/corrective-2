@@ -157,7 +157,7 @@ function showView(view) {
 
       const data = {
         incidentId: generateIncidentId(),
-        workType: document.getElementById("f-type").value,
+        workType: "",
         node: document.getElementById("f-node").value,
         alarm: document.getElementById("f-alarm").value,
         detail: document.getElementById("f-detail").value,
@@ -343,6 +343,7 @@ function showView(view) {
   const responseModal = document.getElementById("modal-response");
   const cancelResponse = document.getElementById("btn-cancel-response");
   const saveResponse = document.getElementById("btn-save-response");
+  const responseWorkType = document.getElementById("response-work-type");
   let responseIncidentId = null;
 
   document.addEventListener("click", (event) => {
@@ -351,6 +352,11 @@ function showView(view) {
     }
 
     responseIncidentId = event.target.dataset.id || null;
+    if (responseWorkType) {
+      const alert = Store.getState().alerts.find((item) => item.incidentId === responseIncidentId);
+      responseWorkType.value = alert?.workType || "";
+    }
+    document.querySelectorAll('input[name="eta"]').forEach((el) => { el.checked = false; });
     openModal(responseModal);
   });
 
@@ -365,13 +371,17 @@ function showView(view) {
         alert("กรุณาเลือก ETA");
         return;
       }
+      if (!responseWorkType?.value) {
+        alert("กรุณาเลือก Work Type");
+        return;
+      }
 
       if (!responseIncidentId) {
         alert("ไม่พบ Incident ที่ต้องการตอบรับ");
         return;
       }
 
-      AlertService.responseAlert(responseIncidentId, eta.value);
+      AlertService.responseAlert(responseIncidentId, eta.value, responseWorkType.value);
       closeModal(responseModal);
     });
   }
@@ -789,6 +799,89 @@ function showView(view) {
       },
     }));
   });
+
+  function mapWorkTypeToTab(type) {
+    if (type === "Fiber") return "fiber";
+    if (type === "Equipment") return "equipment";
+    return "other";
+  }
+
+  function ensureEditWorkTypeModal() {
+    if (document.getElementById("modal-edit-worktype")) return;
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal-edit-worktype" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+          <h3 class="text-lg font-bold text-slate-800">Edit Work Type</h3>
+          <select id="edit-worktype-select" class="w-full bg-slate-100 rounded-lg px-3 py-2">
+            <option value="Fiber">Fiber</option>
+            <option value="Equipment">Equipment</option>
+            <option value="Other">Other</option>
+          </select>
+          <div class="flex justify-end gap-2">
+            <button id="btn-cancel-edit-worktype" class="px-4 py-2 bg-slate-100 rounded-lg">Cancel</button>
+            <button id="btn-save-edit-worktype" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    document.getElementById("btn-cancel-edit-worktype").onclick = () => closeModal(document.getElementById("modal-edit-worktype"));
+  }
+
+  let editingWorkTypeIncidentId = null;
+
+  function openEditWorkTypeModal(incidentId) {
+    const found = getCorrectiveIncidentById(incidentId);
+    if (!found) return;
+
+    ensureEditWorkTypeModal();
+    editingWorkTypeIncidentId = incidentId;
+
+    const modal = document.getElementById("modal-edit-worktype");
+    const select = document.getElementById("edit-worktype-select");
+    select.value = found.incident.workType || "Other";
+
+    document.getElementById("btn-save-edit-worktype").onclick = () => {
+      const selectedType = select.value;
+      const targetTab = mapWorkTypeToTab(selectedType);
+
+      const current = Store.getState();
+      const nextCorrective = {
+        fiber: [...(current.corrective.fiber || [])],
+        equipment: [...(current.corrective.equipment || [])],
+        other: [...(current.corrective.other || [])],
+      };
+
+      let movedIncident = null;
+      ["fiber", "equipment", "other"].forEach((tab) => {
+        const idx = nextCorrective[tab].findIndex((item) => item.incidentId === editingWorkTypeIncidentId);
+        if (idx !== -1) {
+          movedIncident = { ...nextCorrective[tab][idx], workType: selectedType };
+          nextCorrective[tab].splice(idx, 1);
+        }
+      });
+
+      if (!movedIncident) return;
+      nextCorrective[targetTab].push(movedIncident);
+
+      LocalDB.saveState({ corrective: nextCorrective });
+      Store.dispatch((state) => ({
+        ...state,
+        corrective: nextCorrective,
+        ui: {
+          ...state.ui,
+          activeCorrectiveTab: targetTab,
+          highlightIncidentId: movedIncident.incidentId,
+        },
+      }));
+
+      closeModal(modal);
+      alert("แก้ไข Work Type เรียบร้อย");
+    };
+
+    openModal(modal);
+  }
 
   function getCorrectiveIncidentById(incidentId) {
     const state = Store.getState();
@@ -1241,6 +1334,299 @@ function showView(view) {
       window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, "_blank");
     };
   }
+  function ensureEquipmentUpdateModal() {
+    if (document.getElementById("modal-corrective-update-equipment")) return;
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal-corrective-update-equipment" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[92vh] overflow-y-auto space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 id="equipment-update-title" class="text-4 font-bold text-slate-800">NS Update Equipment</h3>
+            <button id="btn-close-equipment-update" class="px-3 py-2 bg-slate-100 rounded-lg">ปิด</button>
+          </div>
+
+          <div class="text-slate-700 font-semibold">รายละเอียด Update (Equipment)</div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700">สถานะปัจจุบัน:</label>
+            <select id="eq-upd-status" class="w-full bg-slate-100 rounded-lg px-3 py-2">
+              <option value="">-- เลือกสถานะ --</option>
+              <option>เดินทางถึงลูกค้าแล้ว</option>
+              <option>ตรวจสอบพบ</option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700">สิ่งที่ตรวจสอบพบ:</label>
+            <select id="eq-upd-finding" class="w-full bg-slate-100 rounded-lg px-3 py-2">
+              <option value="">-- เลือกสิ่งที่ตรวจพบ --</option>
+              <option>อุปกรณ์ Hang</option>
+              <option>SFP Hang/เสีย</option>
+              <option>Rectifier Fail</option>
+              <option>พัดลมเสีย/ดัง</option>
+              <option>Card Fail</option>
+              <option>Port เสีย</option>
+              <option>Config มีปัญหา</option>
+              <option>Adapter เสีย</option>
+              <option>UPS มีปัญหา</option>
+              <option>สาย LAN หลวม</option>
+              <option>Patch Cord มีปัญหา</option>
+              <option>สายไฟหลวม</option>
+              <option>สาย Fiber หลวม</option>
+              <option>ระบบไฟฟ้าที่ลูกค้ามีปัญหา</option>
+              <option>อื่นๆ</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-sm text-slate-600">Circuit ID + Customer (ไม่บังคับ):</label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+              <select id="eq-upd-originate" class="w-full bg-slate-100 rounded-lg px-3 py-2"></select>
+              <select id="eq-upd-terminate" class="w-full bg-slate-100 rounded-lg px-3 py-2"></select>
+            </div>
+          </div>
+
+          <div class="border rounded-xl p-3 bg-slate-50">
+            <div class="font-semibold text-violet-600 mb-2">📷 รูปภาพประกอบ</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <button id="btn-eq-capture" class="px-3 py-2 bg-slate-100 rounded-lg">📸 ถ่ายภาพ</button>
+              <button id="btn-eq-attach" class="px-3 py-2 bg-slate-100 rounded-lg">📎 แนบไฟล์</button>
+            </div>
+            <input id="eq-upd-camera-input" type="file" accept="image/*" capture="environment" class="hidden">
+            <input id="eq-upd-file-input" type="file" multiple class="hidden">
+            <div id="eq-upd-attachments-preview" class="text-xs text-slate-500 mt-2">ยังไม่ได้เลือกไฟล์</div>
+          </div>
+
+          <button id="btn-generate-eq-update" class="w-full px-4 py-2 bg-indigo-500 text-white rounded-lg font-semibold">⚙️ สร้างสรุป Update</button>
+
+          <div>
+            <label class="text-sm font-semibold text-slate-700">ข้อความอัปเดต:</label>
+            <textarea id="eq-upd-message" rows="5" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="สรุปปรากฏการณ์..."></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button id="btn-cancel-equipment-update" class="px-4 py-2 bg-slate-100 rounded-lg">ยกเลิก</button>
+            <button id="btn-save-equipment-update" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">บันทึก</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    const modal = document.getElementById("modal-corrective-update-equipment");
+    document.getElementById("btn-close-equipment-update").onclick = () => closeModal(modal);
+    document.getElementById("btn-cancel-equipment-update").onclick = () => closeModal(modal);
+
+    const camInput = document.getElementById("eq-upd-camera-input");
+    const fileInput = document.getElementById("eq-upd-file-input");
+    const preview = document.getElementById("eq-upd-attachments-preview");
+
+    function renderPreview() {
+      const names = [
+        ...Array.from(camInput.files || []).map((f) => f.name),
+        ...Array.from(fileInput.files || []).map((f) => f.name),
+      ];
+      preview.textContent = names.length ? `ไฟล์ที่เลือก: ${names.join(", ")}` : "ยังไม่ได้เลือกไฟล์";
+    }
+
+    document.getElementById("btn-eq-capture").onclick = () => camInput.click();
+    document.getElementById("btn-eq-attach").onclick = () => fileInput.click();
+    camInput.onchange = renderPreview;
+    fileInput.onchange = renderPreview;
+  }
+
+  function openEquipmentUpdateModal(incidentId) {
+    const found = getCorrectiveIncidentById(incidentId);
+    if (!found) return;
+
+    ensureEquipmentUpdateModal();
+    const modal = document.getElementById("modal-corrective-update-equipment");
+    const { incident, tab } = found;
+
+    document.getElementById("equipment-update-title").textContent = `NS Update ${incident.incidentId}`;
+
+    const tickets = incident.tickets || [];
+    const origins = [...new Set(tickets.map((t) => t.originate).filter(Boolean))];
+    const terms = [...new Set(tickets.map((t) => t.terminate).filter(Boolean))];
+    document.getElementById("eq-upd-originate").innerHTML = `<option value="">-- เลือก Originate --</option>${origins.map((o) => `<option>${o}</option>`).join("")}`;
+    document.getElementById("eq-upd-terminate").innerHTML = `<option value="">-- เลือก Terminate --</option>${terms.map((t) => `<option>${t}</option>`).join("")}`;
+
+    document.getElementById("eq-upd-status").value = "";
+    document.getElementById("eq-upd-finding").value = "";
+    document.getElementById("eq-upd-message").value = "";
+    document.getElementById("eq-upd-camera-input").value = "";
+    document.getElementById("eq-upd-file-input").value = "";
+    document.getElementById("eq-upd-attachments-preview").textContent = "ยังไม่ได้เลือกไฟล์";
+
+    document.getElementById("btn-generate-eq-update").onclick = () => {
+      const status = document.getElementById("eq-upd-status").value || "-";
+      const finding = document.getElementById("eq-upd-finding").value || "-";
+      document.getElementById("eq-upd-message").value = `สถานะปัจจุบัน: ${status}
+สิ่งที่ตรวจสอบพบ: ${finding}
+กำลังเร่งดำเนินการแก้ไข`; 
+    };
+
+    document.getElementById("btn-save-equipment-update").onclick = () => {
+      const current = Store.getState();
+      const updatePayload = {
+        at: new Date().toISOString(),
+        equipmentStatus: document.getElementById("eq-upd-status").value,
+        equipmentFinding: document.getElementById("eq-upd-finding").value,
+        originate: document.getElementById("eq-upd-originate").value,
+        terminate: document.getElementById("eq-upd-terminate").value,
+        message: document.getElementById("eq-upd-message").value,
+        attachments: [
+          ...Array.from(document.getElementById("eq-upd-camera-input").files || []).map((f) => f.name),
+          ...Array.from(document.getElementById("eq-upd-file-input").files || []).map((f) => f.name),
+        ],
+      };
+
+      const nextCorrective = { ...current.corrective };
+      nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
+        item.incidentId === incidentId
+          ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message }
+          : item
+      );
+
+      LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
+      Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
+      closeModal(modal);
+      alert("บันทึก Update Equipment เรียบร้อย");
+    };
+
+    openModal(modal);
+  }
+
+  function ensureEquipmentFinishModal() {
+    if (document.getElementById("modal-corrective-finish-equipment")) return;
+
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="modal-corrective-finish-equipment" class="modal-backdrop hidden">
+        <div class="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[92vh] overflow-y-auto space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 id="equipment-finish-title" class="text-2xl font-bold text-slate-800">NS Finish Equipment</h3>
+            <button id="btn-close-equipment-finish" class="px-3 py-2 bg-slate-100 rounded-lg">ปิด</button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="text-sm">Incident Number:</label><input id="eq-finish-incident" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+            <div><label class="text-sm">Node:</label><input id="eq-finish-node" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+            <div class="md:col-span-2"><label class="text-sm">Device Type:</label><input id="eq-finish-device" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น Router"></div>
+            <div class="md:col-span-2"><label class="text-sm">Alarm/Problem:</label><textarea id="eq-finish-problem" rows="2" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></textarea></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="text-sm">Down Time:</label><input id="eq-finish-down" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+            <div><label class="text-sm">Up Time:</label><input id="eq-finish-up" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+            <div><label class="text-sm">NS Response:</label><input id="eq-finish-response" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+            <div><label class="text-sm">Arrival Time:</label><input id="eq-finish-arrive" type="datetime-local" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm">สาเหตุ:</label>
+              <select id="eq-finish-cause" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
+                <option value="">เลือกสาเหตุ</option>
+                <option>Hardware Failure</option>
+                <option>Software/Config Issue</option>
+                <option>Power Issue (Internal)</option>
+                <option>Power Issue (External)</option>
+                <option>Unknown</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm">ส่วนที่เสีย:</label>
+              <select id="eq-finish-damaged" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
+                <option value="">เลือกส่วนที่เสีย</option>
+                <option>Router</option><option>Switch</option><option>SFP/Transceiver</option><option>Rectifier/Power Supply</option>
+                <option>Fan</option><option>Card/Module</option><option>UPS</option><option>Controller</option><option>Adapter</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-sm">การแก้ไข:</label>
+              <select id="eq-finish-fix" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
+                <option value="">เลือกการแก้ไข</option>
+                <option>Reboot</option><option>Replace</option><option>Reseat</option><option>Config Change</option><option>Firmware Upgrade</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm">สรุปการดำเนินการเพิ่มเติม:</label>
+            <textarea id="eq-finish-summary" rows="3" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="เช่น ตรวจสอบพบ SFP Hang แก้ไขโดยการ Reset SFP ใหม่..."></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label class="text-sm">S/N เดิม:</label><input id="eq-finish-old-sn" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+            <div><label class="text-sm">S/N ใหม่:</label><input id="eq-finish-new-sn" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2"></div>
+          </div>
+
+          <button id="btn-save-equipment-finish" class="w-full px-4 py-3 rounded-lg text-white font-semibold" style="background: linear-gradient(90deg,#0ea5a4,#059669);">✅ ปิดงาน (NS Finish)</button>
+
+          <div class="flex justify-end">
+            <button id="btn-cancel-equipment-finish" class="px-4 py-2 bg-slate-100 rounded-lg">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    const modal = document.getElementById("modal-corrective-finish-equipment");
+    document.getElementById("btn-close-equipment-finish").onclick = () => closeModal(modal);
+    document.getElementById("btn-cancel-equipment-finish").onclick = () => closeModal(modal);
+  }
+
+  function openEquipmentFinishModal(incidentId) {
+    const found = getCorrectiveIncidentById(incidentId);
+    if (!found) return;
+
+    ensureEquipmentFinishModal();
+    const { incident, tab } = found;
+    const modal = document.getElementById("modal-corrective-finish-equipment");
+
+    document.getElementById("equipment-finish-title").textContent = `NS Finish Equipment ${incident.incidentId}`;
+    document.getElementById("eq-finish-incident").value = incident.incidentId || "";
+    document.getElementById("eq-finish-node").value = incident.node || "";
+    document.getElementById("eq-finish-problem").value = incident.alarm || "";
+
+    const firstTicket = (incident.tickets || [])[0] || {};
+    document.getElementById("eq-finish-down").value = formatDateTimeInput(firstTicket.downTime || incident.downTime || incident.createdAt);
+    document.getElementById("eq-finish-response").value = formatDateTimeInput(incident.respondedAt || incident.createdAt);
+
+    document.getElementById("btn-save-equipment-finish").onclick = () => {
+      const current = Store.getState();
+      const payload = {
+        incidentNumber: document.getElementById("eq-finish-incident").value,
+        times: {
+          downTime: document.getElementById("eq-finish-down").value,
+          upTime: document.getElementById("eq-finish-up").value,
+          nsResponse: document.getElementById("eq-finish-response").value,
+          arrivalTime: document.getElementById("eq-finish-arrive").value,
+        },
+        details: {
+          node: document.getElementById("eq-finish-node").value,
+          deviceType: document.getElementById("eq-finish-device").value,
+          problem: document.getElementById("eq-finish-problem").value,
+          cause: document.getElementById("eq-finish-cause").value,
+          damagedPart: document.getElementById("eq-finish-damaged").value,
+          fixAction: document.getElementById("eq-finish-fix").value,
+          summary: document.getElementById("eq-finish-summary").value,
+          oldSn: document.getElementById("eq-finish-old-sn").value,
+          newSn: document.getElementById("eq-finish-new-sn").value,
+        },
+      };
+
+      const nextCorrective = { ...current.corrective };
+      nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
+        item.incidentId === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
+      );
+
+      LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
+      Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
+      closeModal(modal);
+      alert("บันทึก NS Finish Equipment เรียบร้อย");
+    };
+
+    openModal(modal);
+  }
 
 
   let updateIncidentId = null;
@@ -1248,6 +1634,11 @@ function showView(view) {
   function openCorrectiveUpdateModal(incidentId) {
     const found = getCorrectiveIncidentById(incidentId);
     if (!found) return;
+
+    if (found.tab === "equipment") {
+      openEquipmentUpdateModal(incidentId);
+      return;
+    }
 
     updateIncidentId = incidentId;
     const { incident } = found;
@@ -1725,7 +2116,10 @@ function showView(view) {
   function openCorrectiveFinishModal(incidentId) {
     const found = getCorrectiveIncidentById(incidentId);
     if (!found) return;
-
+    if (found.tab === "equipment") {
+      openEquipmentFinishModal(incidentId);
+      return;
+    }
     const { incident, tab } = found;
     ensureFinishModal();
     const modal = document.getElementById("modal-corrective-finish");
@@ -1854,6 +2248,12 @@ function showView(view) {
     const target = event.target.closest(".btn-corrective-finish");
     if (!target) return;
     openCorrectiveFinishModal(target.dataset.id);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest(".btn-corrective-edit-type");
+    if (!target) return;
+    openEditWorkTypeModal(target.dataset.id);
   });
 
   document.addEventListener("click", (event) => {
