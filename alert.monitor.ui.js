@@ -100,7 +100,7 @@ function renderTable(alerts) {
     <tbody>
       ${alerts.map(a => `
         <tr>
-          <td>${a.jobId}</td>
+          <td>${a.incident}</td>
           <td>${a.title || '-'}</td>
           <td>
             <span class="priority ${a.priority?.toLowerCase()}">
