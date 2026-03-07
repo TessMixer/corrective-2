@@ -2,21 +2,20 @@
 
 window.AlertService = {
   async loadFromLocal() {
-    const syncedState = await LocalDB.syncFromCloud();
-    const alerts = syncedState.alerts || [];
-    const calendarEvents = syncedState.calendarEvents || [];
-    const corrective = syncedState.corrective || { fiber: [], equipment: [], other: [] };
+
+    const res = await fetch(
+      "https://corrective.netlify.app/.netlify/functions/get-alerts"
+    );
+
+    const data = await res.json();
+
+    const alerts = data.alerts || [];
 
     Store.dispatch((state) => ({
       ...state,
-      alerts,
-      calendarEvents,
-      corrective: {
-        fiber: corrective.fiber || [],
-        equipment: corrective.equipment || [],
-        other: corrective.other || [],
-      },
+      alerts
     }));
+
   },
 
   async loadFromEmail() {
