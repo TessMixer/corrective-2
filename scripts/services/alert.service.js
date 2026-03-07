@@ -47,7 +47,7 @@ window.AlertService = {
 
   cancelAlert(incidentId) {
     const updated = Store.getState().alerts.map((alert) =>
-      alert.incidentId === incidentId ? { ...alert, status: "CANCEL" } : alert
+      alert.incidentId === incidentId ? { ...alert, previousStatus: alert.status, status: "CANCEL", cancelledAt: new Date().toISOString() } : alert
     );
 
     LocalDB.saveAlerts(updated);

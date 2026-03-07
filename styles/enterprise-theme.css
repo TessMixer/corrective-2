@@ -3,7 +3,9 @@
             --main-bg: #f8fafc;
             --accent: #6366f1;
         }
-
+        html {
+            font-size: 100%;
+        }
         body {
             font-family: 'Inter', 'Sarabun', sans-serif;
             background-color: var(--main-bg);
@@ -87,6 +89,7 @@
         .tile-accent-orange { border-top: 4px solid #f97316; }
         .tile-accent-green { border-top: 4px solid #22c55e; }
         .tile-accent-purple { border-top: 4px solid #a855f7; }
+        .tile-accent-rose { border-top: 4px solid #f43f5e; }
 
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn {
@@ -457,4 +460,96 @@ body.sidebar-collapsed #app-sidebar {
 @keyframes correctivePulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), 0 8px 20px rgba(245, 158, 11, 0.18); }
   50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.25), 0 10px 24px rgba(245, 158, 11, 0.22); }
+}
+
+.app-zoom-toolbar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .app-zoom-toolbar {
+    display: flex;
+  }
+}
+
+
+.dashboard-chart-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dashboard-chart-card h4 {
+  flex: 0 0 auto;
+}
+
+.chart-shell {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: clamp(240px, 28vw, 340px);
+}
+
+.chart-shell--wide {
+  height: clamp(260px, 30vw, 380px);
+}
+
+.chart-shell--compact {
+  height: clamp(220px, 24vw, 280px);
+}
+
+.chart-shell--donut {
+  height: clamp(260px, 26vw, 320px);
+}
+
+.dashboard-chart-card canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (max-width: 1024px) {
+  .chart-shell,
+  .chart-shell--wide,
+  .chart-shell--compact,
+  .chart-shell--donut {
+    height: clamp(220px, 42vw, 300px);
+  }
+}
+
+@media (max-width: 640px) {
+  .chart-shell,
+  .chart-shell--wide,
+  .chart-shell--compact,
+  .chart-shell--donut {
+    height: clamp(200px, 56vw, 260px);
+  }
+}
+
+
+.recycle-card {
+  border-left: 4px solid #f43f5e;
+}
+
+.recycle-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.recycle-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  background: #fff1f2;
+  color: #e11d48;
+  font-size: 0.75rem;
+  font-weight: 700;
 }

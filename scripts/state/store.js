@@ -34,6 +34,7 @@ const Store = (function () {
         calendarMode: 'month',
         calendarFocusDate: new Date().toISOString(),
         calendarFilter: 'all',
+        dashboardSubView: 'main',
         modal: null
       }
     };

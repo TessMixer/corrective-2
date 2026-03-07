@@ -85,14 +85,81 @@ function showView(view) {
   });
   
     window.addEventListener("resize", () => {
-      updateLayout();
-
+  
       if (window.innerWidth <= 1024) {
         document.body.classList.remove("sidebar-collapsed");
       } else {
         document.body.classList.remove("sidebar-open");
       }
+      if (typeof currentZoom !== "undefined") {
+        applyAppZoom(currentZoom);
+      }
     });
+
+  // ===== APP ZOOM CONTROLS =====
+  const ZOOM_KEY = "ops_app_zoom";
+   const ZOOM_VERSION_KEY = "ops_app_zoom_version";
+  const ZOOM_VERSION = "v6";
+  const ZOOM_MIN = 85;
+  const ZOOM_MAX = 115;
+  const ZOOM_STEP = 5;
+  const ZOOM_DEFAULT = 100;
+
+  function clampZoom(value) {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+  }
+
+  function updateZoomLabel(value) {
+    const label = document.getElementById("app-zoom-label");
+    if (label) label.textContent = `${value}%`;
+  }
+
+  function applyAppZoom(value) {
+    const zoom = clampZoom(value);
+    const effectiveZoom = window.innerWidth <= 1024 ? 100 : zoom;
+    const appShell = document.getElementById("app-shell");
+    if (appShell) {
+      appShell.style.zoom = `${effectiveZoom}%`;
+      appShell.style.transform = "";
+      appShell.style.width = "";
+      appShell.style.height = "";
+    }
+    localStorage.setItem(ZOOM_KEY, String(zoom));
+    localStorage.setItem(ZOOM_VERSION_KEY, ZOOM_VERSION);
+    updateZoomLabel(effectiveZoom);
+
+    return zoom;
+  }
+  if (localStorage.getItem(ZOOM_VERSION_KEY) !== ZOOM_VERSION) {
+    localStorage.removeItem(ZOOM_KEY);
+  }
+
+  const storedZoom = Number(localStorage.getItem(ZOOM_KEY));
+  const initialZoom = Number.isFinite(storedZoom) ? storedZoom : ZOOM_DEFAULT;
+  let currentZoom = applyAppZoom(initialZoom);
+
+  const btnZoomIn = document.getElementById("btn-app-zoom-in");
+  const btnZoomOut = document.getElementById("btn-app-zoom-out");
+  const btnZoomReset = document.getElementById("btn-app-zoom-reset");
+
+  if (btnZoomIn) {
+    btnZoomIn.addEventListener("click", () => {
+      currentZoom = applyAppZoom(currentZoom + ZOOM_STEP);
+    });
+  }
+
+  if (btnZoomOut) {
+    btnZoomOut.addEventListener("click", () => {
+      currentZoom = applyAppZoom(currentZoom - ZOOM_STEP);
+    });
+  }
+
+  if (btnZoomReset) {
+    btnZoomReset.addEventListener("click", () => {
+      currentZoom = applyAppZoom(ZOOM_DEFAULT);
+    });
+  }
+
   // ===== CREATE ALERT BUTTONS =====
   const btnCreate = document.getElementById("btn-create-alert");
   if (btnCreate) {
@@ -176,11 +243,13 @@ function showView(view) {
   // ===== NAVIGATION =====␊
   document.querySelectorAll("[data-view]").forEach((el) => {
     el.addEventListener("click", () => {
+      const dashboardSubview = el.dataset.dashboardSubview;
       Store.dispatch((state) => ({
         ...state,
         ui: {
           ...state.ui,
           currentView: el.dataset.view,
+          ...(dashboardSubview ? { dashboardSubView: dashboardSubview } : {}),
         },
       }));
     });
@@ -192,7 +261,9 @@ function showView(view) {
       view.classList.add("hidden");
       view.style.display = "none";
     });
-
+    if (state.ui.currentView === "dashboard") {
+      renderDashboardView(state);
+    }
     if (state.ui.currentView === "alert") {
       const container = document.getElementById("alert-table-container");
       if (container) {
@@ -234,6 +305,13 @@ function showView(view) {
       }
     }
 
+    if (state.ui.currentView === "recycle") {
+      renderRecycleView(state);
+    }
+
+    if (state.ui.currentView === "subcontractor") {
+      renderSubcontractorView(state);
+    }
     const activeView = document.getElementById(`view-${state.ui.currentView}`);
     if (activeView) {
       activeView.classList.remove("hidden");
@@ -244,9 +322,994 @@ function showView(view) {
       nav.classList.remove("active");
     });
 
-    const activeNav = document.querySelector(`[data-view="${state.ui.currentView}"]`);
-    if (activeNav) {
-      activeNav.classList.add("active");
+    if (state.ui.currentView === "dashboard") {
+      const parent = document.getElementById("menu-dashboard");
+      if (parent) parent.classList.add("active");
+      const sub = document.querySelector(`#dashboard-submenu [data-dashboard-subview="${state.ui.dashboardSubView || "main"}"]`);
+      if (sub) sub.classList.add("active");
+    } else {
+      const activeNav = document.querySelector(`[data-view="${state.ui.currentView}"]`);
+      if (activeNav) {
+        activeNav.classList.add("active");
+      }
+    }
+  }
+
+  const dashboardCharts = {
+    status: null,
+    mttrTrend: null,
+    workType: null,
+    zone: null,
+    summaryMttr: null,
+    summaryCause: null,
+    regionWeekly: null,
+    reportMain: null,
+    reportIncident: null,
+    reportCause: null,
+    reportDelayed: null,
+  };
+
+  function destroyDashboardChart(key) {
+    if (dashboardCharts[key]) {
+      dashboardCharts[key].destroy();
+      dashboardCharts[key] = null;
+    }
+  }
+
+  function getChartFontSize() {
+    if (window.innerWidth <= 640) return 10;
+    if (window.innerWidth <= 1280) return 11;
+    return 12;
+  }
+
+  function createLegend(position = "top") {
+    return {
+      position,
+      align: "end",
+      labels: {
+        usePointStyle: true,
+        boxWidth: 10,
+        boxHeight: 10,
+        padding: 14,
+        font: { size: getChartFontSize() },
+      },
+    };
+  }
+
+  function buildBaseChartOptions(overrides = {}) {
+    const fontSize = getChartFontSize();
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 120,
+      animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: createLegend(),
+        tooltip: {
+          padding: 10,
+          bodyFont: { size: fontSize },
+          titleFont: { size: fontSize },
+        },
+      },
+      ...overrides,
+    };
+  }
+
+  function buildCartesianOptions(overrides = {}) {
+    const fontSize = getChartFontSize();
+    return buildBaseChartOptions({
+      scales: {
+        x: {
+          ticks: { autoSkip: true, maxRotation: 0, minRotation: 0, font: { size: fontSize } },
+          grid: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          grace: "10%",
+          ticks: { precision: 0, font: { size: fontSize } },
+        },
+      },
+      ...overrides,
+    });
+  }
+
+  const doughnutValuePlugin = {
+    id: "doughnutValuePlugin",
+    afterDatasetsDraw(chart, args, pluginOptions) {
+      if (!pluginOptions?.enabled) return;
+      if (!["doughnut", "pie"].includes(chart.config.type)) return;
+
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const dataset = chart.data.datasets?.[0];
+      if (!meta?.data?.length || !dataset) return;
+
+      ctx.save();
+      meta.data.forEach((arc, index) => {
+        const rawValue = Number(dataset.data?.[index] || 0);
+        if (!rawValue) return;
+
+        const pos = arc.tooltipPosition();
+        const outerRadius = arc.outerRadius || 0;
+        const innerRadius = arc.innerRadius || 0;
+        const fontSize = Math.max(11, Math.min(18, (outerRadius - innerRadius) * 0.42));
+
+        ctx.font = `700 ${fontSize}px Inter, Sarabun, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.28)";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeText(String(rawValue), pos.x, pos.y);
+        ctx.fillText(String(rawValue), pos.x, pos.y);
+      });
+      ctx.restore();
+    },
+  };
+
+  if (window.Chart && !window.__nocDoughnutValuePluginRegistered) {
+    Chart.register(doughnutValuePlugin);
+    window.__nocDoughnutValuePluginRegistered = true;
+  }
+
+  function normalizeRecycleStatus(status = "") {
+    return String(status || "").trim().toUpperCase();
+  }
+
+  function isRecycleStatus(status = "") {
+    return ["CANCEL", "CANCELLED", "DELETED", "DELETE", "TRASH"].includes(normalizeRecycleStatus(status));
+  }
+
+  function formatRecycleTimestamp(item) {
+    const value = item.deletedAt || item.cancelledAt || item.updatedAt || item.completedAt || item.createdAt || item.respondedAt;
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function getRecycleBinItems(state) {
+    const items = [];
+
+    (state.alerts || []).forEach((item) => {
+      if (!isRecycleStatus(item.status)) return;
+      items.push({
+        recycleKey: `alert:${item.incidentId}`,
+        source: "alert",
+        typeLabel: "Alert",
+        id: item.incidentId,
+        title: item.node || item.alarm || item.incidentId,
+        status: item.status,
+        meta: item.cancelReason || item.detail || "งานถูกยกเลิก",
+        timestamp: formatRecycleTimestamp(item),
+        sortValue: new Date(item.deletedAt || item.cancelledAt || item.updatedAt || item.completedAt || item.createdAt || item.respondedAt || 0).getTime(),
+      });
+    });
+
+    Object.entries(state.corrective || {}).forEach(([bucket, list]) => {
+      (list || []).forEach((item) => {
+        if (!isRecycleStatus(item.status)) return;
+        items.push({
+          recycleKey: `corrective:${bucket}:${item.incidentId}`,
+          source: "corrective",
+          bucket,
+          typeLabel: `Corrective / ${item.workType || bucket}`,
+          id: item.incidentId,
+          title: item.node || item.alarm || item.incidentId,
+          status: item.status,
+          meta: item.cancelReason || item.latestUpdateMessage || item.detail || "งานถูกยกเลิก",
+          timestamp: formatRecycleTimestamp(item),
+          sortValue: new Date(item.deletedAt || item.cancelledAt || item.updatedAt || item.completedAt || item.createdAt || item.respondedAt || 0).getTime(),
+        });
+      });
+    });
+
+    (state.calendarEvents || []).forEach((item) => {
+      if (!isRecycleStatus(item.status)) return;
+      items.push({
+        recycleKey: `calendar:${item.id}`,
+        source: "calendar",
+        id: item.id,
+        typeLabel: "Calendar Job",
+        title: item.title || item.node || item.id,
+        status: item.status,
+        meta: item.cancelReason || item.description || "งานถูกยกเลิก",
+        timestamp: formatRecycleTimestamp(item),
+        sortValue: new Date(item.deletedAt || item.cancelledAt || item.updatedAt || item.completedAt || item.createdAt || item.respondedAt || 0).getTime(),
+      });
+    });
+
+    return items.sort((a, b) => {
+      const da = new Date(a.timestamp).getTime();
+      const db = new Date(b.timestamp).getTime();
+      if (Number.isNaN(da) || Number.isNaN(db)) return String(b.id).localeCompare(String(a.id));
+      return db - da;
+    });
+  }
+
+  function restoreRecycleItem(recycleKey) {
+    const current = Store.getState();
+    const [source, bucket, id] = String(recycleKey || "").split(":");
+
+    if (source === "alert") {
+      const incidentId = bucket;
+      const nextAlerts = (current.alerts || []).map((item) =>
+        item.incidentId === incidentId
+          ? {
+              ...item,
+              status: item.previousStatus || "ACTIVE",
+              previousStatus: undefined,
+              cancelReason: undefined,
+              cancelledAt: undefined,
+              deletedAt: undefined,
+            }
+          : item
+      );
+      LocalDB.saveState({ alerts: nextAlerts, corrective: current.corrective, calendarEvents: current.calendarEvents });
+      Store.dispatch((state) => ({ ...state, alerts: nextAlerts }));
+      return;
+    }
+
+    if (source === "corrective") {
+      const nextCorrective = { ...current.corrective };
+      nextCorrective[bucket] = (nextCorrective[bucket] || []).map((item) =>
+        item.incidentId === id
+          ? {
+              ...item,
+              status: item.previousStatus || (item.respondedAt ? "PROCESS" : "ASSIGN"),
+              previousStatus: undefined,
+              cancelReason: undefined,
+              cancelledAt: undefined,
+              deletedAt: undefined,
+            }
+          : item
+      );
+      LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective, calendarEvents: current.calendarEvents });
+      Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
+      return;
+    }
+
+    if (source === "calendar") {
+      const calendarId = bucket;
+      const nextCalendarEvents = (current.calendarEvents || []).map((item) =>
+        String(item.id) === String(calendarId)
+          ? {
+              ...item,
+              status: item.previousStatus || "SCHEDULED",
+              previousStatus: undefined,
+              cancelReason: undefined,
+              cancelledAt: undefined,
+              deletedAt: undefined,
+            }
+          : item
+      );
+      LocalDB.saveState({ alerts: current.alerts, corrective: current.corrective, calendarEvents: nextCalendarEvents });
+      Store.dispatch((state) => ({ ...state, calendarEvents: nextCalendarEvents }));
+    }
+  }
+
+  function clearRecycleBin() {
+    const current = Store.getState();
+    const nextAlerts = (current.alerts || []).filter((item) => !isRecycleStatus(item.status));
+    const nextCorrective = Object.fromEntries(
+      Object.entries(current.corrective || {}).map(([bucket, list]) => [bucket, (list || []).filter((item) => !isRecycleStatus(item.status))])
+    );
+    const nextCalendarEvents = (current.calendarEvents || []).filter((item) => !isRecycleStatus(item.status));
+
+    LocalDB.saveState({ alerts: nextAlerts, corrective: nextCorrective, calendarEvents: nextCalendarEvents });
+    Store.dispatch((state) => ({
+      ...state,
+      alerts: nextAlerts,
+      corrective: nextCorrective,
+      calendarEvents: nextCalendarEvents,
+    }));
+  }
+
+  function renderRecycleView(state) {
+    const recycleGrid = document.getElementById("recycle-grid");
+    const clearButton = document.getElementById("btn-clear-recycle");
+    if (!recycleGrid) return;
+
+    const items = getRecycleBinItems(state);
+    if (clearButton) {
+      clearButton.disabled = items.length === 0;
+      clearButton.classList.toggle("opacity-40", items.length === 0);
+      clearButton.classList.toggle("cursor-not-allowed", items.length === 0);
+    }
+
+    recycleGrid.className = "grid grid-cols-1 gap-4";
+    recycleGrid.innerHTML = items.length
+      ? items
+          .map(
+            (item) => `
+              <article class="glass-card recycle-card p-5 md:p-6">
+                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0 space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="recycle-badge">${item.typeLabel}</span>
+                      <span class="recycle-status">${item.status}</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 break-all">${item.id}</h3>
+                    <p class="text-sm text-slate-600">${item.title || "-"}</p>
+                    <p class="text-xs text-slate-400">${item.meta || "-"}</p>
+                    <p class="text-xs text-slate-400">วันที่: ${item.timestamp}</p>
+                  </div>
+                  <div class="flex items-center justify-end">
+                    <button type="button" class="btn-restore-recycle inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100" data-recycle-restore="${item.recycleKey}">
+                      <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                      <span>กู้คืน</span>
+                    </button>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join("")
+      : `
+        <div class="glass-card p-10 text-center text-slate-400">
+          ยังไม่มีงานในถังขยะ
+        </div>
+      `;
+
+    if (window.lucide?.createIcons) {
+      window.lucide.createIcons();
+    }
+  }
+
+  function inferZoneFromNode(node = "") {
+    const base = String(node || "NO_NODE");
+    const sum = [...base].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    return `Zone ${((sum % 4) + 1)}`;
+  }
+
+  function toMttrHours(incident) {
+    const down = incident.tickets?.[0]?.downTime || incident.createdAt;
+    const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+    const d1 = new Date(down);
+    const d2 = new Date(up);
+    if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return null;
+    return (d2 - d1) / 3600000;
+  }
+
+  function buildSummaryMonthlyRows(completed) {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const rows = monthNames.map((label, idx) => ({
+      month: label,
+      meet: 0,
+      fail: 0,
+      total: 0,
+      mttr: "0.00%",
+      uncontrolled: 0,
+    }));
+
+    completed.forEach((incident) => {
+      const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+      const upDate = new Date(up);
+      if (Number.isNaN(upDate.getTime())) return;
+      const monthIndex = upDate.getMonth();
+      const hrs = toMttrHours(incident);
+      if (!Number.isFinite(hrs)) return;
+      rows[monthIndex].total += 1;
+      if (hrs <= 3) rows[monthIndex].meet += 1;
+      else rows[monthIndex].fail += 1;
+
+      const delay = incident.nsFinish?.details?.delayBy || "";
+      const uncontrolledSet = ["Customer", "Building", "Natural disaster", "MEA/PEA"];
+      if (uncontrolledSet.includes(delay)) rows[monthIndex].uncontrolled += 1;
+    });
+
+    rows.forEach((row) => {
+      row.mttr = row.total ? `${((row.meet / row.total) * 100).toFixed(2)}%` : "0.00%";
+    });
+
+    return rows;
+  }
+
+  function buildCauseRows(completed) {
+    const bucket = {};
+    completed.forEach((incident) => {
+      const cause = incident.nsFinish?.details?.cause || incident.updates?.[0]?.cause || incident.alarm || "Unknown";
+      const hrs = toMttrHours(incident);
+      if (!Number.isFinite(hrs)) return;
+      if (!bucket[cause]) {
+        bucket[cause] = { cause, meet: 0, fail: 0, total: 0, mttr: "0.00%" };
+      }
+      bucket[cause].total += 1;
+      if (hrs <= 3) bucket[cause].meet += 1;
+      else bucket[cause].fail += 1;
+    });
+
+    const rows = Object.values(bucket).sort((a, b) => b.total - a.total);
+    rows.forEach((row) => {
+      row.mttr = row.total ? `${((row.meet / row.total) * 100).toFixed(2)}%` : "0.00%";
+    });
+    return rows;
+  }
+
+  function buildRegionWeeklyRows(completed) {
+    const zones = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"];
+    return zones.map((zone) => {
+      const week = [0, 0, 0, 0, 0].map(() => ({ meet: 0, fail: 0, total: 0 }));
+      completed.forEach((incident) => {
+        if (inferZoneFromNode(incident.node) !== zone) return;
+        const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+        const upDate = new Date(up);
+        if (Number.isNaN(upDate.getTime())) return;
+        const day = upDate.getDate();
+        const weekIndex = Math.min(4, Math.floor((day - 1) / 7));
+        const hrs = toMttrHours(incident);
+        if (!Number.isFinite(hrs)) return;
+        week[weekIndex].total += 1;
+        if (hrs <= 3) week[weekIndex].meet += 1;
+        else week[weekIndex].fail += 1;
+      });
+
+      const meet = week.reduce((acc, item) => acc + item.meet, 0);
+      const fail = week.reduce((acc, item) => acc + item.fail, 0);
+      const total = meet + fail;
+      return {
+        zone,
+        week,
+        meet,
+        fail,
+        total,
+        mttr: total ? `${((meet / total) * 100).toFixed(2)}%` : "0.00%",
+      };
+    });
+  }
+
+  function computeDashboardData(state) {
+    const alerts = state.alerts || [];
+    const corrective = [
+      ...(state.corrective.fiber || []),
+      ...(state.corrective.equipment || []),
+      ...(state.corrective.other || []),
+    ];
+
+    const stats = {
+      newJob: alerts.filter((x) => x.status === "ACTIVE").length,
+      inprocess: corrective.filter((x) => !["COMPLETE", "CANCELLED"].includes(x.status)).length,
+      assign: corrective.filter((x) => Boolean(x.respondedAt)).length,
+      finish: corrective.filter((x) => x.status === "COMPLETE").length,
+      cancel: alerts.filter((x) => x.status === "CANCEL").length + corrective.filter((x) => x.status === "CANCELLED").length,
+      mttr: 0,
+      overMttr: 0,
+    };
+
+    const completed = corrective.filter((x) => x.status === "COMPLETE");
+    completed.forEach((incident) => {
+      const down = incident.tickets?.[0]?.downTime || incident.createdAt;
+      const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+      const d1 = new Date(down);
+      const d2 = new Date(up);
+      if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return;
+      const hrs = (d2 - d1) / 3600000;
+      if (hrs <= 3) stats.mttr += 1;
+      else stats.overMttr += 1;
+    });
+
+    const statusChart = {
+      labels: ["New", "Process", "Assign", "Finish", "Cancel"],
+      values: [stats.newJob, stats.inprocess, stats.assign, stats.finish, stats.cancel],
+    };
+
+    const typeCount = {
+      Fiber: corrective.filter((x) => String(x.workType).toLowerCase() === "fiber").length,
+      Equipment: corrective.filter((x) => String(x.workType).toLowerCase() === "equipment").length,
+      Other: corrective.filter((x) => String(x.workType).toLowerCase() !== "fiber" && String(x.workType).toLowerCase() !== "equipment").length,
+    };
+
+    const zoneCount = { "Zone 1": 0, "Zone 2": 0, "Zone 3": 0, "Zone 4": 0 };
+    corrective.forEach((item) => {
+      const zone = inferZoneFromNode(item.node);
+      zoneCount[zone] = (zoneCount[zone] || 0) + 1;
+    });
+
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d);
+    }
+    const dayLabel = days.map((d) => d.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit" }));
+    const dayValue = days.map((d) => {
+      const key = d.toISOString().slice(0, 10);
+      let total = 0;
+      let meet = 0;
+      completed.forEach((incident) => {
+        const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+        if (!up || !String(up).startsWith(key)) return;
+        const down = incident.tickets?.[0]?.downTime || incident.createdAt;
+        const d1 = new Date(down);
+        const d2 = new Date(up);
+        if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return;
+        total += 1;
+        if ((d2 - d1) / 3600000 <= 3) meet += 1;
+      });
+      return total ? Number(((meet / total) * 100).toFixed(1)) : 0;
+    });
+
+    return {
+      stats,
+      statusChart,
+      typeCount,
+      zoneCount,
+      mttrTrend: { labels: dayLabel, values: dayValue },
+      corrective,
+      completed,
+    };
+  }
+
+  function renderDashboardMain(container, data) {
+    container.innerHTML = `
+      <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          ${[
+            ["New Job", data.stats.newJob, "งานเข้าใหม่", "tile-accent-blue"],
+            ["Inprocess", data.stats.inprocess, "กำลังดำเนินการ", "tile-accent-orange"],
+            ["Assign Job", data.stats.assign, "รอมอบหมาย", "tile-accent-purple"],
+            ["Finish", data.stats.finish, "ปิดงานแล้ว", "tile-accent-green"],
+            ["Job Cancel", data.stats.cancel, "งานถูกยกเลิก", "tile-accent-rose"],
+            ["MTTR", data.stats.mttr, "งานที่ Finish ไม่เกิน 3 ชม.", "tile-accent-green"],
+            ["Over MTTR", data.stats.overMttr, "งานที่ Finish เกิน 3 ชม.", "tile-accent-orange"],
+          ].map(([title, value, sub, accent]) => `
+            <div class="glass-card p-5 ${accent}">
+              <div class="text-xs font-bold uppercase text-slate-500">${title}</div>
+              <div class="text-4xl font-black text-slate-800 mt-1">${value}</div>
+              <div class="text-xs text-slate-400">${sub}</div>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">ปริมาณงานแยกตามสถานะ</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-chart-status"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">แนวโน้ม MTTR งานรายวัน</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-mttr"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">ประเภทงาน (Fiber / Equipment / Other)</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-type"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cess Zone (Zone 1-4)</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-zone"></canvas></div></div>
+        </div>
+      </div>
+    `;
+
+    if (!window.Chart) return;
+
+    destroyDashboardChart("status");
+    destroyDashboardChart("mttrTrend");
+    destroyDashboardChart("workType");
+    destroyDashboardChart("zone");
+
+    dashboardCharts.status = new Chart(document.getElementById("dash-chart-status"), {
+      type: "doughnut",
+      data: { labels: data.statusChart.labels, datasets: [{ data: data.statusChart.values, backgroundColor: ["#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e", "#ef4444"], borderWidth: 3, borderColor: "#ffffff", hoverOffset: 8, spacing: 2 }] },
+      options: buildBaseChartOptions({
+        cutout: "58%",
+        plugins: { legend: createLegend("bottom"), doughnutValuePlugin: { enabled: true } },
+      }),
+    });
+
+    dashboardCharts.mttrTrend = new Chart(document.getElementById("dash-chart-mttr"), {
+      type: "line",
+      data: { labels: data.mttrTrend.labels, datasets: [{ label: "MTTR <= 3hrs (%)", data: data.mttrTrend.values, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,.2)", fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 4 }] },
+      options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
+    });
+
+    dashboardCharts.workType = new Chart(document.getElementById("dash-chart-type"), {
+      type: "bar",
+      data: { labels: Object.keys(data.typeCount), datasets: [{ label: "Count", data: Object.values(data.typeCount), backgroundColor: "#8b5cf6", borderRadius: 8, maxBarThickness: 48 }] },
+      options: buildCartesianOptions(),
+    });
+
+    dashboardCharts.zone = new Chart(document.getElementById("dash-chart-zone"), {
+      type: "bar",
+      data: { labels: Object.keys(data.zoneCount), datasets: [{ label: "Count", data: Object.values(data.zoneCount), backgroundColor: "#ec4899", borderRadius: 8, maxBarThickness: 48 }] },
+      options: buildCartesianOptions(),
+    });
+  }
+
+  function renderDashboardSummary(container, data) {
+    const monthlyRows = buildSummaryMonthlyRows(data.completed);
+    const causeRows = buildCauseRows(data.completed);
+
+    const summaryBody = monthlyRows.map((row) => `
+      <tr>
+        <td class="px-3 py-2 font-medium">${row.month}</td>
+        <td class="px-3 py-2 text-center text-green-700">${row.meet}</td>
+        <td class="px-3 py-2 text-center text-amber-700">${row.fail}</td>
+        <td class="px-3 py-2 text-center">${row.total}</td>
+        <td class="px-3 py-2 text-center font-semibold">${row.mttr}</td>
+        <td class="px-3 py-2 text-center">${row.uncontrolled}</td>
+      </tr>
+    `).join("");
+
+    const causeBody = causeRows.map((row) => `
+      <tr>
+        <td class="px-3 py-2">${row.cause}</td>
+        <td class="px-3 py-2 text-center text-green-700">${row.meet}</td>
+        <td class="px-3 py-2 text-center text-amber-700">${row.fail}</td>
+        <td class="px-3 py-2 text-center">${row.total}</td>
+        <td class="px-3 py-2 text-center font-semibold">${row.mttr}</td>
+      </tr>
+    `).join("");
+
+    container.innerHTML = `
+      <div class="space-y-6">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="glass-card p-5 overflow-auto">
+            <h3 class="font-bold mb-3">Summary MTTR 3 Hrs. (Monthly)</h3>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-50">
+                  <th class="px-3 py-2 text-left">Month</th>
+                  <th class="px-3 py-2 text-center">Meet</th>
+                  <th class="px-3 py-2 text-center">Fail</th>
+                  <th class="px-3 py-2 text-center">Total</th>
+                  <th class="px-3 py-2 text-center">MTTR</th>
+                  <th class="px-3 py-2 text-center">Without Uncontrol</th>
+                </tr>
+              </thead>
+              <tbody>${summaryBody}</tbody>
+            </table>
+          </div>
+          <div class="glass-card p-5 overflow-auto">
+            <h3 class="font-bold mb-3">Cause of incident</h3>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-slate-50">
+                  <th class="px-3 py-2 text-left">Cause</th>
+                  <th class="px-3 py-2 text-center">Meet</th>
+                  <th class="px-3 py-2 text-center">Fail</th>
+                  <th class="px-3 py-2 text-center">Total</th>
+                  <th class="px-3 py-2 text-center">MTTR</th>
+                </tr>
+              </thead>
+              <tbody>${causeBody || '<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR 3 Hrs. (Monthly Trend)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-mttr"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cause Distribution</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-cause"></canvas></div></div>
+        </div>
+      </div>
+    `;
+
+    if (!window.Chart) return;
+    destroyDashboardChart("summaryMttr");
+    destroyDashboardChart("summaryCause");
+
+    dashboardCharts.summaryMttr = new Chart(document.getElementById("dash-summary-mttr"), {
+      type: "line",
+      data: {
+        labels: monthlyRows.map((row) => row.month),
+        datasets: [
+          { label: "Meet", data: monthlyRows.map((row) => row.meet), borderColor: "#16a34a", tension: 0.25 },
+          { label: "Fail", data: monthlyRows.map((row) => row.fail), borderColor: "#f59e0b", tension: 0.25 },
+          { label: "MTTR %", data: monthlyRows.map((row) => Number(row.mttr.replace("%", ""))), borderColor: "#2563eb", yAxisID: "y1", tension: 0.25 },
+        ],
+      },
+      options: buildCartesianOptions({
+        scales: {
+          y: { beginAtZero: true },
+          y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } },
+        },
+      }),
+    });
+
+    const topCauses = causeRows.slice(0, 8);
+    dashboardCharts.summaryCause = new Chart(document.getElementById("dash-summary-cause"), {
+      type: "bar",
+      data: {
+        labels: topCauses.map((row) => row.cause),
+        datasets: [
+          { label: "Meet", data: topCauses.map((row) => row.meet), backgroundColor: "#16a34a" },
+          { label: "Fail", data: topCauses.map((row) => row.fail), backgroundColor: "#f97316" },
+        ],
+      },
+      options: buildCartesianOptions({
+        indexAxis: "y",
+        scales: {
+          x: { beginAtZero: true, grace: "10%", ticks: { precision: 0, font: { size: getChartFontSize() } } },
+          y: { ticks: { font: { size: getChartFontSize() } }, grid: { display: false } },
+        },
+      }),
+    });
+  }
+
+  function renderDashboardRegion(container, data) {
+    const zoneRows = buildRegionWeeklyRows(data.completed);
+
+    const tableBody = zoneRows.map((row) => `
+      <tr>
+        <td class="px-3 py-2 font-medium">${row.zone}</td>
+        ${row.week.map((w) => `<td class="px-3 py-2 text-center">${w.meet}/${w.fail}</td>`).join("")}
+        <td class="px-3 py-2 text-center text-green-700">${row.meet}</td>
+        <td class="px-3 py-2 text-center text-amber-700">${row.fail}</td>
+        <td class="px-3 py-2 text-center">${row.total}</td>
+        <td class="px-3 py-2 text-center font-semibold">${row.mttr}</td>
+      </tr>
+    `).join("");
+
+    container.innerHTML = `
+      <div class="space-y-6">
+        <div class="glass-card p-5 overflow-auto">
+          <h3 class="font-bold mb-3">Region MTTR performance 3 Hrs. (Weekly by Zone)</h3>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50">
+                <th class="px-3 py-2 text-left">Zone</th>
+                <th class="px-3 py-2 text-center">W1 (Meet/Fail)</th>
+                <th class="px-3 py-2 text-center">W2</th>
+                <th class="px-3 py-2 text-center">W3</th>
+                <th class="px-3 py-2 text-center">W4</th>
+                <th class="px-3 py-2 text-center">W5</th>
+                <th class="px-3 py-2 text-center">Meet</th>
+                <th class="px-3 py-2 text-center">Fail</th>
+                <th class="px-3 py-2 text-center">Total</th>
+                <th class="px-3 py-2 text-center">MTTR</th>
+              </tr>
+            </thead>
+            <tbody>${tableBody}</tbody>
+          </table>
+        </div>
+        <div class="glass-card p-5 dashboard-chart-card">
+          <h4 class="font-bold mb-3">Performance by Zone</h4>
+          <div class="chart-shell chart-shell--wide"><canvas id="dash-region-weekly"></canvas></div>
+        </div>
+      </div>
+    `;
+
+    if (!window.Chart) return;
+    destroyDashboardChart("regionWeekly");
+
+    dashboardCharts.regionWeekly = new Chart(document.getElementById("dash-region-weekly"), {
+      type: "bar",
+      data: {
+        labels: zoneRows.map((row) => row.zone),
+        datasets: [
+          { label: "Meet", data: zoneRows.map((row) => row.meet), backgroundColor: "#16a34a" },
+          { label: "Fail", data: zoneRows.map((row) => row.fail), backgroundColor: "#f97316" },
+          { label: "MTTR %", data: zoneRows.map((row) => Number(row.mttr.replace("%", ""))), type: "line", borderColor: "#1d4ed8", yAxisID: "y1" },
+        ],
+      },
+      options: buildCartesianOptions({
+        scales: {
+          y: { beginAtZero: true },
+          y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } },
+        },
+      }),
+    });
+  }
+
+  function renderDashboardReport(container, data) {
+    container.innerHTML = `
+      <div class="space-y-6">
+        <div class="bg-red-700 text-white rounded-xl p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+          <div><div class="text-xs">All Case</div><div class="text-3xl font-bold">${data.completed.length}</div></div>
+          <div><div class="text-xs">Meet</div><div class="text-3xl font-bold">${data.stats.mttr}</div></div>
+          <div><div class="text-xs">Fail</div><div class="text-3xl font-bold">${data.stats.overMttr}</div></div>
+          <div><div class="text-xs">Total</div><div class="text-3xl font-bold">${data.stats.mttr + data.stats.overMttr}</div></div>
+          <div><div class="text-xs">MTTR</div><div class="text-3xl font-bold">${(data.stats.mttr + data.stats.overMttr) ? ((data.stats.mttr/(data.stats.mttr+data.stats.overMttr))*100).toFixed(2) : 0}%</div></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR 3 Hrs. 2026</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-report-main"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR 3 Hrs.</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-report-incident"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cause of Incident</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-report-cause"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Delayed by</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-report-delay"></canvas></div></div>
+        </div>
+      </div>
+    `;
+
+    if (!window.Chart) return;
+    destroyDashboardChart("reportMain");
+    destroyDashboardChart("reportIncident");
+    destroyDashboardChart("reportCause");
+    destroyDashboardChart("reportDelayed");
+
+    dashboardCharts.reportMain = new Chart(document.getElementById("dash-report-main"), {
+      type: "line",
+      data: {
+        labels: data.mttrTrend.labels,
+        datasets: [
+          { label: "Meet", data: data.mttrTrend.values, borderColor: "#2563eb", tension: .3 },
+          { label: "Target", data: data.mttrTrend.labels.map(() => 85), borderColor: "#f59e0b", borderDash: [6, 4], tension: 0 },
+        ],
+      },
+      options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
+    });
+
+    dashboardCharts.reportIncident = new Chart(document.getElementById("dash-report-incident"), {
+      type: "doughnut",
+      data: { labels: ["Meet", "Fail"], datasets: [{ data: [data.stats.mttr, data.stats.overMttr], backgroundColor: ["#65a30d", "#f59e0b"], borderWidth: 2, borderColor: "#ffffff", hoverOffset: 8 }] },
+      options: buildBaseChartOptions({ cutout: "62%", plugins: { legend: createLegend("top"), doughnutValuePlugin: { enabled: true } } }),
+    });
+
+    const causes = {};
+    data.completed.forEach((item) => {
+      const cause = item.nsFinish?.details?.cause || item.updates?.[0]?.cause || item.alarm || "Unknown";
+      causes[cause] = (causes[cause] || 0) + 1;
+    });
+    destroyDashboardChart("reportCause");
+    dashboardCharts.reportCause = new Chart(document.getElementById("dash-report-cause"), {
+      type: "bar",
+      data: { labels: Object.keys(causes), datasets: [{ label: "Count", data: Object.values(causes), backgroundColor: "#3b82f6", borderRadius: 8, maxBarThickness: 28 }] },
+      options: buildCartesianOptions({
+        indexAxis: "y",
+        scales: {
+          x: { beginAtZero: true, grace: "10%", ticks: { precision: 0, font: { size: getChartFontSize() } } },
+          y: { ticks: { font: { size: getChartFontSize() } }, grid: { display: false } },
+        },
+      }),
+    });
+
+    const delay = { "SYMC-NOC": 0, "SYMC-Region": 0, "Sub-Contractor": 0, Customer: 0, Building: 0, "Natural disaster": 0 };
+    data.completed.forEach((item) => {
+      const d = item.nsFinish?.details?.delayBy || "Sub-Contractor";
+      if (delay[d] === undefined) delay[d] = 0;
+      delay[d] += 1;
+    });
+    dashboardCharts.reportDelayed = new Chart(document.getElementById("dash-report-delay"), {
+      type: "doughnut",
+      data: { labels: Object.keys(delay), datasets: [{ data: Object.values(delay), backgroundColor: ["#3b82f6", "#f97316", "#a3a3a3", "#16a34a", "#facc15", "#06b6d4"], borderWidth: 2, borderColor: "#ffffff", hoverOffset: 8 }] },
+      options: buildBaseChartOptions({ cutout: "60%", plugins: { legend: createLegend("top"), doughnutValuePlugin: { enabled: true } } }),
+    });
+  }
+
+  function renderDashboardView(state) {
+    const container = document.getElementById("view-dashboard");
+    if (!container) return;
+
+    const data = computeDashboardData(state);
+    const subView = state.ui.dashboardSubView || "main";
+
+    if (subView === "summary") {
+      renderDashboardSummary(container, data);
+      return;
+    }
+
+    if (subView === "region") {
+      renderDashboardRegion(container, data);
+      return;
+    }
+
+    if (subView === "report") {
+      renderDashboardReport(container, data);
+      return;
+    }
+
+    renderDashboardMain(container, data);
+  }
+
+  function getAllCorrectiveIncidents(state) {
+    return [
+      ...(state.corrective.fiber || []),
+      ...(state.corrective.equipment || []),
+      ...(state.corrective.other || []),
+    ];
+  }
+
+  function getZoneByTeam(team) {
+    const zoneMap = {
+      TAS: "Zone 1, Zone 2",
+      BAN: "Zone 1",
+      JL: "Zone 2",
+      ATG: "Zone 3",
+      TP: "Zone 3",
+      NPY: "Zone 4",
+      "JJ&A": "Zone 4",
+    };
+
+    return zoneMap[team] || "-";
+  }
+
+  function computeSubcontractorStats(state) {
+    const allCorrective = getAllCorrectiveIncidents(state);
+    const allAlerts = state.alerts || [];
+
+    const newJob = allAlerts.filter((item) => item.status === "ACTIVE").length;
+    const inProcess = allCorrective.filter((item) => item.status === "PROCESS").length;
+    const assignJob = allCorrective.filter((item) => item.status === "ASSIGN").length;
+    const finish = allCorrective.filter((item) => item.status === "COMPLETE").length;
+    const jobCancel = allAlerts.filter((item) => item.status === "CANCEL").length + allCorrective.filter((item) => item.status === "CANCELLED").length;
+
+    const completed = allCorrective.filter((item) => item.status === "COMPLETE");
+
+    let mttr = 0;
+    let overMttr = 0;
+
+    completed.forEach((incident) => {
+      const down = incident.tickets?.[0]?.downTime || incident.createdAt;
+      const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+      const downDate = new Date(down);
+      const upDate = new Date(up);
+      if (Number.isNaN(downDate.getTime()) || Number.isNaN(upDate.getTime())) return;
+
+      const hours = (upDate - downDate) / (1000 * 60 * 60);
+      if (hours <= 3) mttr += 1;
+      else overMttr += 1;
+    });
+
+    return { newJob, inProcess, assignJob, finish, jobCancel, mttr, overMttr };
+  }
+
+  function buildSubcontractorSummary(state) {
+    const allCorrective = getAllCorrectiveIncidents(state);
+    const bucket = {};
+
+    allCorrective.forEach((incident) => {
+      const finishSubs = incident.nsFinish?.subcontractors || [];
+      const updateSubs = (incident.updates || []).flatMap((item) => item.subcontractors || []);
+      const teams = [...new Set([...finishSubs, ...updateSubs].filter(Boolean))];
+
+      teams.forEach((team) => {
+        if (!bucket[team]) {
+          bucket[team] = { name: team, totalJobs: 0, finish: 0, zone: getZoneByTeam(team) };
+        }
+        bucket[team].totalJobs += 1;
+        if (incident.status === "COMPLETE") bucket[team].finish += 1;
+      });
+    });
+
+    return Object.values(bucket).sort((a, b) => b.totalJobs - a.totalJobs);
+  }
+
+  function renderSubcontractorView(state) {
+    const stats = computeSubcontractorStats(state);
+    const summary = buildSubcontractorSummary(state);
+
+    const statsGrid = document.getElementById("sub-stats-grid");
+    if (statsGrid) {
+      const cards = [
+        { label: "New Job", value: stats.newJob, sub: "งานเข้าใหม่", accent: "tile-accent-blue" },
+        { label: "Inprocess", value: stats.inProcess, sub: "กำลังดำเนินการ", accent: "tile-accent-orange" },
+        { label: "Assign Job", value: stats.assignJob, sub: "รอมอบหมาย", accent: "tile-accent-purple" },
+        { label: "Finish", value: stats.finish, sub: "ปิดงานแล้ว", accent: "tile-accent-green" },
+        { label: "Job Cancel", value: stats.jobCancel, sub: "งานถูกยกเลิก", accent: "tile-accent-purple" },
+        { label: "MTTR", value: stats.mttr, sub: "งานที่ Finish ไม่เกิน 3 ชม.", accent: "tile-accent-green" },
+        { label: "Over MTTR", value: stats.overMttr, sub: "งานที่ Finish เกิน 3 ชม.", accent: "tile-accent-orange" },
+      ];
+
+      statsGrid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6";
+      statsGrid.innerHTML = cards
+        .map(
+          (card) => `
+            <div class="glass-card p-6 ${card.accent}">
+              <div class="text-xs font-bold uppercase text-slate-500">${card.label}</div>
+              <div class="text-4xl font-black text-slate-800 mt-2">${card.value}</div>
+              <div class="text-xs text-slate-400 mt-1">${card.sub}</div>
+            </div>
+          `
+        )
+        .join("");
+    }
+
+    const chartStatusWrap = document.getElementById("chartStatusSub")?.closest(".glass-card");
+    const chartWorkloadWrap = document.getElementById("chartWorkload")?.closest(".glass-card");
+    if (chartStatusWrap) {
+      chartStatusWrap.innerHTML = `<div class="p-8 text-center text-slate-400">Summary view is focused on KPI + Performance Table.</div>`;
+    }
+    if (chartWorkloadWrap) {
+      chartWorkloadWrap.innerHTML = `<div class="p-8 text-center text-slate-400">Zone / Team information is shown in the table below.</div>`;
+    }
+
+    const tableBody = document.getElementById("sub-table-body");
+    if (tableBody) {
+      tableBody.innerHTML = summary.length
+        ? summary
+            .map(
+              (item) => `
+                <tr>
+                  <td class="px-6 py-4 font-semibold text-slate-800">${item.name}</td>
+                  <td class="px-6 py-4 text-center">${item.totalJobs}</td>
+                  <td class="px-6 py-4 text-center text-green-600 font-bold">${item.finish}</td>
+                  <td class="px-6 py-4 text-center">${item.zone}</td>
+                </tr>
+              `
+            )
+            .join("")
+        : `<tr><td colspan="4" class="px-6 py-6 text-center text-slate-400">ยังไม่มีข้อมูลผู้รับเหมา</td></tr>`;
     }
   }
 
@@ -754,7 +1817,7 @@ function showView(view) {
 
     const calendarEvents = (current.calendarEvents || []).map((item) =>
       item.id === activeCalendarEventId
-        ? { ...item, status: "CANCELLED", cancelReporter: reporter, cancelReason: reason }
+        ? { ...item, previousStatus: item.status, status: "CANCELLED", cancelReporter: reporter, cancelReason: reason, cancelledAt: new Date().toISOString() }
         : item
     );
 
@@ -2262,6 +3325,18 @@ function showView(view) {
     openCorrectiveDetailModal(target.dataset.id);
   });
 
+
+  document.addEventListener("click", (event) => {
+    const restoreButton = event.target.closest("[data-recycle-restore]");
+    if (restoreButton) {
+      restoreRecycleItem(restoreButton.dataset.recycleRestore);
+      return;
+    }
+
+    if (event.target.id === "btn-clear-recycle") {
+      clearRecycleBin();
+    }
+  });
 
   // ===== INITIAL LOAD =====
   (async function init() {
