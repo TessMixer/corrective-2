@@ -48,6 +48,41 @@ function normalizeTickets(alert = {}) {
   return fallback ? [fallback] : [];
 }
 
+function mergeTicketLists(existingTickets = [], incomingTickets = []) {
+  const byKey = new Map();
+
+  existingTickets.forEach((ticket, index) => {
+    const key = ticket?.ticket ? ticket.ticket.toString().trim() : `__index_${index}`;
+    byKey.set(key, { ...(ticket || {}) });
+  });
+
+  incomingTickets.forEach((ticket, index) => {
+    const key = ticket?.ticket ? ticket.ticket.toString().trim() : `__incoming_${index}`;
+
+    if (!byKey.has(key)) {
+      byKey.set(key, { ...(ticket || {}) });
+      return;
+    }
+
+    const existing = byKey.get(key) || {};
+    const merged = { ...existing };
+
+    Object.entries(ticket || {}).forEach(([field, value]) => {
+      const currentValue = existing[field];
+      const hasCurrent = currentValue !== undefined && currentValue !== null && currentValue !== "";
+      const hasIncoming = value !== undefined && value !== null && value !== "";
+
+      if (!hasCurrent && hasIncoming) {
+        merged[field] = value;
+      }
+    });
+
+    byKey.set(key, merged);
+  });
+
+  return Array.from(byKey.values());
+}
+
 function mergeAlertsByIncidentAndNode(alerts = []) {
   const grouped = new Map();
 
@@ -69,19 +104,7 @@ function mergeAlertsByIncidentAndNode(alerts = []) {
       return;
     }
 
-    const existingTicketKeys = new Set(
-      (existing.tickets || [])
-        .map((item) => item?.ticket)
-        .filter(Boolean)
-        .map((value) => value.toString().trim())
-    );
-
-    const incomingTickets = normalizeTickets(alert).filter((item) => {
-      const key = item?.ticket ? item.ticket.toString().trim() : "";
-      return !key || !existingTicketKeys.has(key);
-    });
-
-    existing.tickets = [...(existing.tickets || []), ...incomingTickets];
+    existing.tickets = mergeTicketLists(existing.tickets || [], normalizeTickets(alert));
     existing.updatedAt = existing.updatedAt || alert.updatedAt || new Date().toISOString();
     if (!existing.createdAt || (alert.createdAt && alert.createdAt < existing.createdAt)) {
       existing.createdAt = alert.createdAt;
