@@ -359,17 +359,29 @@ function isEmptyLike(value) {
   return normalized === "" || normalized === "-" || normalized.toLowerCase() === "n/a";
 }
 
+function buildTicketKey(ticket = {}, fallbackIndex = 0) {
+  const ticketNo = (ticket.ticket || "").toString().trim();
+  const cid = (ticket.cid || "").toString().trim();
+  const port = (ticket.port || "").toString().trim();
+  const down = (ticket.downTime || ticket.downtime || "").toString().trim();
+
+  if (!ticketNo) {
+    return `__index_${fallbackIndex}`;
+  }
+
+  return `${ticketNo}::${cid}::${port}::${down}`;
+}
 
 function mergeTicketLists(existingTickets = [], incomingTickets = []) {
   const byKey = new Map();
 
   existingTickets.forEach((ticket, index) => {
-    const key = ticket?.ticket ? ticket.ticket.toString().trim() : `__index_${index}`;
+    const key = buildTicketKey(ticket, index);
     byKey.set(key, { ...(ticket || {}) });
   });
 
   incomingTickets.forEach((ticket, index) => {
-    const key = ticket?.ticket ? ticket.ticket.toString().trim() : `__incoming_${index}_${Date.now()}`;
+    const key = buildTicketKey(ticket, index);
 
     if (!byKey.has(key)) {
       byKey.set(key, { ...(ticket || {}) });
