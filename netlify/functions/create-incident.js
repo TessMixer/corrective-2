@@ -166,10 +166,12 @@ function normalizeTicket(payload = {}) {
   return Object.values(ticket).some(Boolean) ? ticket : null;
 }
 
-function normalizePayload(rawPayload = {}) {
+function normalizePayload(rawPayload = {}, context = {}) {
   const payload = unwrapPayloadItem(rawPayload);
 
-  const incident = pick(payload, "incident", "incidentId", "incidentNumber", "Incident Number", "Inf#", "id");
+  const incident =
+    pick(payload, "incident", "incidentId", "incidentNumber", "Incident Number", "Inf#", "id") ||
+    context.incident;
 
   if (!incident) {
     throw new Error("INCIDENT_REQUIRED");
@@ -181,13 +183,13 @@ function normalizePayload(rawPayload = {}) {
 
   return {
     incident,
-    node: pick(payload, "node", "Node", "Node Name") || "-",
-    alarm: pick(payload, "alarm", "Alarm") || "-",
-    detail: pick(payload, "detail", "Detail") || "",
-    nocBy: pick(payload, "nocBy", "NOC Alert") || "System",
-    severity: pick(payload, "severity") || "Medium",
-    status: pick(payload, "status") || "OPEN",
-    workType: pick(payload, "workType", "Work Type") || "-",
+    node: pick(payload, "node", "Node", "Node Name") || context.node || "-",
+    alarm: pick(payload, "alarm", "Alarm") || context.alarm || "-",
+    detail: pick(payload, "detail", "Detail") || context.detail || "",
+    nocBy: pick(payload, "nocBy", "NOC Alert") || context.nocBy || "System",
+    severity: pick(payload, "severity") || context.severity || "Medium",
+    status: pick(payload, "status") || context.status || "OPEN",
+    workType: pick(payload, "workType", "Work Type") || context.workType || "-",
     tickets,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -253,6 +255,35 @@ function normalizeBatchPayload(payload) {
   if (Array.isArray(payload?.items)) return payload.items;
   return [payload];
 }
+function normalizeBatchWithContext(items) {
+  const context = {};
+  const normalizedItems = [];
+  const itemErrors = [];
+
+  items.forEach((item, index) => {
+    try {
+      const normalized = normalizePayload(item, context);
+      normalizedItems.push(normalized);
+
+      context.incident = normalized.incident || context.incident;
+      context.node = normalized.node || context.node;
+      context.alarm = normalized.alarm || context.alarm;
+      context.detail = normalized.detail || context.detail;
+      context.nocBy = normalized.nocBy || context.nocBy;
+      context.severity = normalized.severity || context.severity;
+      context.status = normalized.status || context.status;
+      context.workType = normalized.workType || context.workType;
+    } catch (err) {
+      itemErrors.push({
+        index,
+        error: err.message || "NORMALIZE_FAILED",
+        item: unwrapPayloadItem(item),
+      });
+    }
+  });
+
+  return { normalizedItems, itemErrors };
+}
 
 exports.handler = async function handler(event) {
   if (event.httpMethod !== "POST") {
@@ -265,7 +296,18 @@ exports.handler = async function handler(event) {
   try {
     const payload = parseBody(event);
     const items = normalizeBatchPayload(payload);
-    const normalizedItems = items.map((item) => normalizePayload(item));
+    const { normalizedItems, itemErrors } = normalizeBatchWithContext(items);
+
+    if (!normalizedItems.length && itemErrors.length) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "NO_VALID_ITEMS",
+          itemErrors,
+        }),
+      };
+    }
+
     const adapter = getDbAdapter();
 
     const results = [];
@@ -281,6 +323,7 @@ exports.handler = async function handler(event) {
         mode: adapter.mode,
         count: results.length,
         results,
+        itemErrors,
       }),
     };
   } catch (err) {
