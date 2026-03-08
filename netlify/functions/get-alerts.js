@@ -24,16 +24,16 @@ function getDb() {
 
 function normalizeTicket(input = {}) {
   const ticket = {
-    ticket: input.ticket || input.symphonyTicket || null,
-    cid: input.cid || null,
-    port: input.port || null,
-    downTime: input.downTime || input.downtime || null,
-    actualDowntime: input.actualDowntime || input.actual || null,
-    clearTime: input.clearTime || input.cleartime || null,
-    total: input.total || null,
-    pending: input.pending || null,
-    originate: input.originate || null,
-    terminate: input.terminate || null,
+    ticket: input.ticket || input.symphonyTicket || input.SymphonyTicket || null,
+    cid: input.cid || input.symphonyCid || input.SymphonyCID || null,
+    port: input.port || input.interface || null,
+    downTime: input.downTime || input.downtime || input["Down Time"] || null,
+    actualDowntime: input.actualDowntime || input.actual || input["Actual Downtime"] || null,
+    clearTime: input.clearTime || input.cleartime || input["Clear Time"] || null,
+    total: input.total || input.Total || null,
+    pending: input.pending || input.Pending || null,
+    originate: input.originate || input.Originate || input.origin || input.origination || input.from || null,
+    terminate: input.terminate || input.Terminate || input.destination || input.destinate || input.to || null,
   };
 
   return Object.values(ticket).some(Boolean) ? ticket : null;

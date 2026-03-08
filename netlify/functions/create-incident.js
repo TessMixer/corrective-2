@@ -27,7 +27,7 @@ function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
       if (!node || node === "-") return null;
       const snap = await alertsRef.where("node", "==", node).limit(50).get();
       if (snap.empty) return null;
-
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
       const alarmText = (alarm || "").toString().trim();
       const detailText = (detail || "").toString().trim();
       const contextual = candidates.find((item) => {
@@ -41,6 +41,8 @@ function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
         const candidates = snap.docs
         .map((doc) => doc.data() || {})
         .filter((item) => item.incident)
+                .filter((item) => new Date(item.updatedAt || item.createdAt || 0).getTime() >= cutoff)
+        .filter((item) => new Date(item.updatedAt || item.createdAt || 0).getTime() >= cutoff)
         .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
       return (contextual || candidates[0])?.incident || null;
     },
@@ -82,7 +84,7 @@ function createClientAdapter(projectId, apiKey, appId) {
       const q = query(alertsRef, where("node", "==", node), limit(50));
       const snap = await getDocs(q);
       if (snap.empty) return null;
-
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
       const latest = snap.docs
         .map((doc) => doc.data() || {})
         .filter((item) => item.incident)
@@ -185,6 +187,24 @@ function pick(payload, ...keys) {
 
   return undefined;
 }
+
+function pickContains(payload, patterns = []) {
+  const entries = Object.entries(payload || {});
+  const normalizedPatterns = patterns.map((p) => sanitizeKey(p)).filter(Boolean);
+
+  for (const [key, value] of entries) {
+    const normalizedKey = sanitizeKey(key);
+    const matched = normalizedPatterns.some((pattern) => normalizedKey.includes(pattern));
+    if (!matched) continue;
+
+    if (value !== undefined && value !== null && value !== "") {
+      return typeof value === "string" ? value.trim() : value;
+    }
+  }
+
+  return undefined;
+}
+
 function unwrapPayloadItem(payload = {}) {
   if (payload && typeof payload === "object" && payload.json && typeof payload.json === "object") {
     return payload.json;
@@ -214,16 +234,24 @@ function removeUndefinedDeep(value) {
 
 function normalizeTicket(payload = {}, fallback = {}) {
   const ticket = {
-    ticket: pick(payload, "ticket", "symphonyTicket", "Symphony Ticket", "SymphonyTicket") || pick(fallback, "ticket", "symphonyTicket", "Symphony Ticket", "SymphonyTicket"),
-    cid: pick(payload, "cid", "symphonyCid", "Symphony CID", "SymphonyCID") || pick(fallback, "cid", "symphonyCid", "Symphony CID", "SymphonyCID"),
-    port: pick(payload, "port") || pick(fallback, "port"),
-    downTime: pick(payload, "downtime", "downTime", "Down Time") || pick(fallback, "downtime", "downTime", "Down Time"),
-    actualDowntime: pick(payload, "actual", "actualDowntime", "Actual Downtime") || pick(fallback, "actual", "actualDowntime", "Actual Downtime"),
-    clearTime: pick(payload, "cleartime", "clearTime", "Clear Time") || pick(fallback, "cleartime", "clearTime", "Clear Time"),
-    total: pick(payload, "total", "Total") || pick(fallback, "total", "Total"),
-    originate: pick(payload, "originate", "Originate", "origin", "originSite", "from", "origination", "originateSite") || pick(fallback, "originate", "Originate", "origin", "originSite", "from", "origination", "originateSite"),
-    terminate: pick(payload, "terminate", "Terminate", "destination", "destinate", "to", "terminateSite", "destinationSite") || pick(fallback, "terminate", "Terminate", "destination", "destinate", "to", "terminateSite", "destinationSite"),
-    pending: pick(payload, "pending", "Pending") || pick(fallback, "pending", "Pending"),
+    ticket:
+      pick(payload, "ticket", "symphonyTicket", "Symphony Ticket", "SymphonyTicket") ||
+      pickContains(payload, ["symphonyticket", "ticketno", "ticketnumber"]) ||
+      pick(fallback, "ticket", "symphonyTicket", "Symphony Ticket", "SymphonyTicket") ||
+      pickContains(fallback, ["symphonyticket", "ticketno", "ticketnumber"]),
+    cid:
+      pick(payload, "cid", "symphonyCid", "Symphony CID", "SymphonyCID") ||
+      pickContains(payload, ["symphonycid", "circuitid"]) ||
+      pick(fallback, "cid", "symphonyCid", "Symphony CID", "SymphonyCID") ||
+      pickContains(fallback, ["symphonycid", "circuitid"]),
+    port: pick(payload, "port") || pickContains(payload, ["interface", "gigabitethernet"]) || pick(fallback, "port") || pickContains(fallback, ["interface", "gigabitethernet"]),
+    downTime: pick(payload, "downtime", "downTime", "Down Time") || pickContains(payload, ["downtime", "down"]) || pick(fallback, "downtime", "downTime", "Down Time") || pickContains(fallback, ["downtime", "down"]),
+    actualDowntime: pick(payload, "actual", "actualDowntime", "Actual Downtime") || pickContains(payload, ["actualdowntime", "actual"] ) || pick(fallback, "actual", "actualDowntime", "Actual Downtime") || pickContains(fallback, ["actualdowntime", "actual"]),
+    clearTime: pick(payload, "cleartime", "clearTime", "Clear Time") || pickContains(payload, ["cleartime", "clear"]) || pick(fallback, "cleartime", "clearTime", "Clear Time") || pickContains(fallback, ["cleartime", "clear"]),
+    total: pick(payload, "total", "Total") || pickContains(payload, ["total"]) || pick(fallback, "total", "Total") || pickContains(fallback, ["total"]),
+    originate: pick(payload, "originate", "Originate", "origin", "originSite", "from", "origination", "originateSite") || pickContains(payload, ["originate", "origin", "from"]) || pick(fallback, "originate", "Originate", "origin", "originSite", "from", "origination", "originateSite") || pickContains(fallback, ["originate", "origin", "from"]),
+    terminate: pick(payload, "terminate", "Terminate", "destination", "destinate", "to", "terminateSite", "destinationSite") || pickContains(payload, ["terminate", "destination", "destinate", "to"]) || pick(fallback, "terminate", "Terminate", "destination", "destinate", "to", "terminateSite", "destinationSite") || pickContains(fallback, ["terminate", "destination", "destinate", "to"]),
+    pending: pick(payload, "pending", "Pending") || pickContains(payload, ["pending"]) || pick(fallback, "pending", "Pending") || pickContains(fallback, ["pending"]),
   };
 
   const cleanedTicket = removeUndefinedDeep(ticket);
