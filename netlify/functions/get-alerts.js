@@ -13,7 +13,11 @@ admin.initializeApp({
 const db = admin.firestore();
 
 exports.handler = async () => {
-  const snapshot = await db.collection("alerts").get();
+  const snapshot = await db
+  .collection("appState")
+  .doc("noc-store")
+  .collection("alerts")
+  .get();
 
   const alerts = snapshot.docs.map(doc => ({
     id: doc.id,
@@ -25,3 +29,4 @@ exports.handler = async () => {
     body: JSON.stringify({ alerts })
   };
 };
+
