@@ -57,8 +57,8 @@ const AlertUI = (function () {
                 <td class="text-center">${alert.tickets ? alert.tickets.length : 0}</td>
                 <td>
                   <div class="flex items-center justify-center gap-2">
-                    <button class="btn-response btn-action btn-action-primary" data-id="${alert.incident}">
-                    <button class="btn-action btn-action-danger" data-cancel="${alert.incident}">
+                    <button class="btn-response btn-action btn-action-primary" data-id="${alert.incident}">Response</button>
+                    <button class="btn-action btn-action-danger" data-cancel="${alert.incident}">Cancel</button>
                   </div>
                 </td>
               </tr>
@@ -77,6 +77,13 @@ const AlertUI = (function () {
         };
       });
 
+      wrapper.querySelectorAll(".btn-response").forEach((button) => {
+        button.onclick = () => {
+          const eta = prompt("ETA (minutes)", "30") || "30";
+          AlertService.responseAlert(button.dataset.id, eta, "Other");
+        };
+      });
+
       wrapper.querySelectorAll("[data-detail]").forEach((row) => {
         row.onclick = (event) => {
           if (event.target.closest("button")) {
@@ -87,7 +94,7 @@ const AlertUI = (function () {
           if (!alert) return;
 
           const incident = {
-            id: alert.incidentId,
+            id: alert.incident,
             node: alert.node,
             alarm: alert.alarm || "Network Alert",
             detail: alert.detail || "No details available",
@@ -97,7 +104,7 @@ const AlertUI = (function () {
             type: alert.type || "Network",
             status: alert.status === "PROCESS" ? "active" : "resolved",
             createdAt: alert.actionDate || new Date().toISOString(),
-            tickets: alert.tickets && alert.tickets.length > 0 ? alert.tickets : getSampleTickets(alert.incidentId),
+            tickets: alert.tickets && alert.tickets.length > 0 ? alert.tickets : getSampleTickets(alert.incident),
           };
 
           Store.dispatch((state) => ({
