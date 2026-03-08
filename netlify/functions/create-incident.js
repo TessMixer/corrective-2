@@ -243,21 +243,12 @@ async function upsertIncident(adapter, normalized) {
   const current = docState.data;
   const existingTickets = Array.isArray(current.tickets) ? current.tickets : [];
 
-  const existingTicketKeys = new Set(
-    existingTickets
-      .map((item) => item?.ticket)
-      .filter(Boolean)
-      .map((value) => value.toString().trim())
-  );
-
-  const incomingTickets = normalized.tickets.filter((item) => {
-    const key = item?.ticket ? item.ticket.toString().trim() : "";
-    return !key || !existingTicketKeys.has(key);
-  });
+  const mergedTickets = mergeTicketLists(existingTickets, normalized.tickets);
+  const ticketsAdded = mergedTickets.length - existingTickets.length;
   const nextPayload = removeUndefinedDeep({
     ...current,
     ...normalized,
-    tickets: [...existingTickets, ...incomingTickets],
+     tickets: mergedTickets,
     updatedAt: new Date().toISOString(),
     createdAt: current.createdAt || normalized.createdAt,
   });
@@ -265,10 +256,45 @@ async function upsertIncident(adapter, normalized) {
 
   return {
     id: docId,
-    status: docState.exists ? (incomingTickets.length ? "updated" : "skipped") : "created",
+    status: docState.exists ? (ticketsAdded > 0 ? "updated" : "merged") : "created",
     incident: normalized.incident,
     node: normalized.node,
   };
+}
+
+function mergeTicketLists(existingTickets = [], incomingTickets = []) {
+  const byKey = new Map();
+
+  existingTickets.forEach((ticket, index) => {
+    const key = ticket?.ticket ? ticket.ticket.toString().trim() : `__index_${index}`;
+    byKey.set(key, { ...(ticket || {}) });
+  });
+
+  incomingTickets.forEach((ticket, index) => {
+    const key = ticket?.ticket ? ticket.ticket.toString().trim() : `__incoming_${index}_${Date.now()}`;
+
+    if (!byKey.has(key)) {
+      byKey.set(key, { ...(ticket || {}) });
+      return;
+    }
+
+    const existing = byKey.get(key) || {};
+    const merged = { ...existing };
+
+    Object.entries(ticket || {}).forEach(([field, value]) => {
+      const currentValue = existing[field];
+      const hasCurrent = currentValue !== undefined && currentValue !== null && currentValue !== "";
+      const hasIncoming = value !== undefined && value !== null && value !== "";
+
+      if (!hasCurrent && hasIncoming) {
+        merged[field] = value;
+      }
+    });
+
+    byKey.set(key, merged);
+  });
+
+  return Array.from(byKey.values());
 }
 
 function normalizeBatchPayload(payload) {
