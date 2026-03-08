@@ -148,6 +148,25 @@ function unwrapPayloadItem(payload = {}) {
 
   return payload;
 }
+function removeUndefinedDeep(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => removeUndefinedDeep(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value).reduce((acc, [key, item]) => {
+      const cleaned = removeUndefinedDeep(item);
+      if (cleaned !== undefined) {
+        acc[key] = cleaned;
+      }
+      return acc;
+    }, {});
+  }
+
+  return value === undefined ? undefined : value;
+}
 
 function normalizeTicket(payload = {}) {
   const ticket = {
@@ -163,7 +182,8 @@ function normalizeTicket(payload = {}) {
     pending: pick(payload, "pending"),
   };
 
-  return Object.values(ticket).some(Boolean) ? ticket : null;
+  const cleanedTicket = removeUndefinedDeep(ticket);
+  return Object.values(cleanedTicket).some(Boolean) ? cleanedTicket : null;
 }
 
 function normalizePayload(rawPayload = {}, context = {}) {
@@ -234,13 +254,14 @@ async function upsertIncident(adapter, normalized) {
     const key = item?.ticket ? item.ticket.toString().trim() : "";
     return !key || !existingTicketKeys.has(key);
   });
-  await adapter.writeDoc(docRef, {
+  const nextPayload = removeUndefinedDeep({
     ...current,
     ...normalized,
     tickets: [...existingTickets, ...incomingTickets],
     updatedAt: new Date().toISOString(),
     createdAt: current.createdAt || normalized.createdAt,
   });
+  await adapter.writeDoc(docRef, nextPayload);
 
   return {
     id: docId,
