@@ -7,22 +7,35 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 exports.handler = async () => {
+  try {
 
-  const snapshot = await db
-    .collection("appState")
-    .doc("noc-store")
-    .collection("alerts")
-    .orderBy("createdAt", "desc")
-    .get();
+    const snapshot = await db
+      .collection("appState")
+      .doc("noc-store")
+      .collection("alerts")
+      .orderBy("createdAt", "desc")
+      .get();
 
-  const alerts = snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+    const alerts = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ alerts })
-  };
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        alerts
+      })
+    };
 
+  } catch (error) {
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: error.message
+      })
+    };
+
+  }
 };
