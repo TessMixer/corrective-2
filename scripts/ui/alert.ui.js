@@ -48,8 +48,8 @@ const AlertUI = (function () {
             ${alerts
               .map(
                 (alert) => `
-              <tr data-detail="${alert.incidentId}" class="cursor-pointer">
-                <td class="font-bold text-orange-600">${normalizeIncidentId(alert.incidentId)}</td>
+              <tr data-detail="${alert.incident}" class="cursor-pointer">
+                <td class="font-bold text-orange-600">${normalizeIncidentId(alert.incident)}</td>
                 <td>${alert.workType || "-"}</td>
                 <td>${alert.node || "-"}</td>
                 <td class="max-w-[380px] truncate" title="${alert.alarm || "-"}">${alert.alarm || "-"}</td>
@@ -57,8 +57,8 @@ const AlertUI = (function () {
                 <td class="text-center">${alert.tickets ? alert.tickets.length : 0}</td>
                 <td>
                   <div class="flex items-center justify-center gap-2">
-                    <button class="btn-response btn-action btn-action-primary" data-id="${alert.incidentId}">Response</button>
-                    <button class="btn-action btn-action-danger" data-cancel="${alert.incidentId}">Cancel</button>
+                    <button class="btn-response btn-action btn-action-primary" data-id="${alert.incident}">
+                    <button class="btn-action btn-action-danger" data-cancel="${alert.incident}">
                   </div>
                 </td>
               </tr>
@@ -83,7 +83,7 @@ const AlertUI = (function () {
             return;
           }
 
-          const alert = Store.getState().alerts.find((a) => a.incidentId === row.dataset.detail);
+          const alert = Store.getState().alerts.find((a) => a.incident === row.dataset.detail);
           if (!alert) return;
 
           const incident = {
@@ -187,4 +187,5 @@ const AlertUI = (function () {
   }
 
   return { render };
+
 })();
