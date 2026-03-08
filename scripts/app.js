@@ -13,6 +13,9 @@ function showView(view) {
     targetView.style.display = "block";
   }
 }
+function getIncidentKey(item) {
+  return item?.incident || item?.incidentId || item?.id || "";
+}
 
 function getIncidentKey(item) {
   return item?.incident || item?.incidentId || item?.id || "";

@@ -1,4 +1,7 @@
 // scripts/services/alert.service.js
+function getIncidentKey(alert) {
+  return alert?.incident || alert?.incidentId || alert?.id;
+}
 
 function getIncidentKey(alert) {
   return alert?.incident || alert?.incidentId || alert?.id;
