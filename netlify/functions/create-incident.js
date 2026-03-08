@@ -23,6 +23,18 @@ function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
     getDocRef(id) {
       return alertsRef.doc(id);
     },
+    async findIncidentByNode(node) {
+      if (!node || node === "-") return null;
+      const snap = await alertsRef.where("node", "==", node).limit(20).get();
+      if (snap.empty) return null;
+
+      const latest = snap.docs
+        .map((doc) => doc.data() || {})
+        .filter((item) => item.incident)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+
+      return latest?.incident || null;
+    },
     async readDoc(docRef) {
       const snap = await docRef.get();
       return {
@@ -38,7 +50,7 @@ function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
 
 function createClientAdapter(projectId, apiKey, appId) {
   const { initializeApp, getApps } = require("firebase/app");
-  const { getFirestore, collection, doc, getDoc, setDoc } = require("firebase/firestore");
+  const { getFirestore, collection, doc, getDoc, setDoc, query, where, limit, getDocs } = require("firebase/firestore");
 
   const app = getApps().length
     ? getApps()[0]
@@ -55,6 +67,19 @@ function createClientAdapter(projectId, apiKey, appId) {
     mode: "client",
     getDocRef(id) {
       return doc(alertsRef, id);
+    },
+    async findIncidentByNode(node) {
+      if (!node || node === "-") return null;
+      const q = query(alertsRef, where("node", "==", node), limit(20));
+      const snap = await getDocs(q);
+      if (snap.empty) return null;
+
+      const latest = snap.docs
+        .map((doc) => doc.data() || {})
+        .filter((item) => item.incident)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+
+      return latest?.incident || null;
     },
     async readDoc(docRef) {
       const snap = await getDoc(docRef);
@@ -193,16 +218,14 @@ function normalizePayload(rawPayload = {}, context = {}) {
     pick(payload, "incident", "incidentId", "incidentNumber", "Incident Number", "Inf#", "id") ||
     context.incident;
 
-  if (!incident) {
-    throw new Error("INCIDENT_REQUIRED");
-  }
+  const resolvedIncident = incident || null;
 
   const tickets = Array.isArray(payload.tickets)
     ? payload.tickets.map((item) => normalizeTicket(unwrapPayloadItem(item))).filter(Boolean)
     : [normalizeTicket(payload)].filter(Boolean);
 
   return {
-    incident,
+    incident: resolvedIncident,
     node: pick(payload, "node", "Node", "Node Name") || context.node || "-",
     alarm: pick(payload, "alarm", "Alarm") || context.alarm || "-",
     detail: pick(payload, "detail", "Detail") || context.detail || "",
@@ -230,6 +253,21 @@ function parseBody(event) {
     if (Object.keys(parsed).length) return parsed;
     throw new Error("INVALID_BODY");
   }
+}
+async function ensureIncident(adapter, normalized) {
+  if (normalized.incident) {
+    return normalized;
+  }
+
+  const fallbackIncident = await adapter.findIncidentByNode?.(normalized.node);
+  if (!fallbackIncident) {
+    throw new Error("INCIDENT_REQUIRED");
+  }
+
+  return {
+    ...normalized,
+    incident: fallbackIncident,
+  };
 }
 
 async function upsertIncident(adapter, normalized) {
@@ -320,7 +358,9 @@ function normalizeBatchWithContext(items) {
       const normalized = normalizePayload(item, context);
       normalizedItems.push(normalized);
 
-      context.incident = normalized.incident || context.incident;
+      if (normalized.incident) {
+        context.incident = normalized.incident;
+      }
       context.node = normalized.node || context.node;
       context.alarm = normalized.alarm || context.alarm;
       context.detail = normalized.detail || context.detail;
@@ -367,7 +407,8 @@ exports.handler = async function handler(event) {
 
     const results = [];
     for (const normalized of normalizedItems) {
-      const result = await upsertIncident(adapter, normalized);
+      const resolved = await ensureIncident(adapter, normalized);
+      const result = await upsertIncident(adapter, resolved);
       results.push(result);
     }
 
