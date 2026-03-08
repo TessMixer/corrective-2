@@ -35,6 +35,18 @@ function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
 
       return latest?.incident || null;
     },
+    async findIncidentByAlarmDetail(alarm, detail) {
+      if (!alarm || !detail) return null;
+      const snap = await alertsRef.where("alarm", "==", alarm).where("detail", "==", detail).limit(20).get();
+      if (snap.empty) return null;
+
+      const latest = snap.docs
+        .map((doc) => doc.data() || {})
+        .filter((item) => item.incident)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+
+      return latest?.incident || null;
+    },
     async readDoc(docRef) {
       const snap = await docRef.get();
       return {
@@ -71,6 +83,19 @@ function createClientAdapter(projectId, apiKey, appId) {
     async findIncidentByNode(node) {
       if (!node || node === "-") return null;
       const q = query(alertsRef, where("node", "==", node), limit(20));
+      const snap = await getDocs(q);
+      if (snap.empty) return null;
+
+      const latest = snap.docs
+        .map((doc) => doc.data() || {})
+        .filter((item) => item.incident)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+
+      return latest?.incident || null;
+    },
+    async findIncidentByAlarmDetail(alarm, detail) {
+      if (!alarm || !detail) return null;
+      const q = query(alertsRef, where("alarm", "==", alarm), where("detail", "==", detail), limit(20));
       const snap = await getDocs(q);
       if (snap.empty) return null;
 
@@ -193,18 +218,18 @@ function removeUndefinedDeep(value) {
   return value === undefined ? undefined : value;
 }
 
-function normalizeTicket(payload = {}) {
+function normalizeTicket(payload = {}, fallback = {}) {
   const ticket = {
-    ticket: pick(payload, "ticket", "symphonyTicket", "Symphony Ticket"),
-    cid: pick(payload, "cid", "symphonyCid", "Symphony CID"),
-    port: pick(payload, "port"),
-    downTime: pick(payload, "downtime", "downTime", "Down Time"),
-    actualDowntime: pick(payload, "actual", "actualDowntime", "Actual Downtime"),
-    clearTime: pick(payload, "cleartime", "clearTime", "Clear Time"),
-    total: pick(payload, "total"),
-    originate: pick(payload, "originate"),
-    terminate: pick(payload, "terminate"),
-    pending: pick(payload, "pending"),
+    ticket: pick(payload, "ticket", "symphonyTicket", "Symphony Ticket", "SymphonyTicket") || pick(fallback, "ticket", "symphonyTicket", "Symphony Ticket", "SymphonyTicket"),
+    cid: pick(payload, "cid", "symphonyCid", "Symphony CID", "SymphonyCID") || pick(fallback, "cid", "symphonyCid", "Symphony CID", "SymphonyCID"),
+    port: pick(payload, "port") || pick(fallback, "port"),
+    downTime: pick(payload, "downtime", "downTime", "Down Time") || pick(fallback, "downtime", "downTime", "Down Time"),
+    actualDowntime: pick(payload, "actual", "actualDowntime", "Actual Downtime") || pick(fallback, "actual", "actualDowntime", "Actual Downtime"),
+    clearTime: pick(payload, "cleartime", "clearTime", "Clear Time") || pick(fallback, "cleartime", "clearTime", "Clear Time"),
+    total: pick(payload, "total", "Total") || pick(fallback, "total", "Total"),
+    originate: pick(payload, "originate", "Originate", "origin", "originSite", "from") || pick(fallback, "originate", "Originate", "origin", "originSite", "from"),
+    terminate: pick(payload, "terminate", "Terminate", "destination", "destinate", "to") || pick(fallback, "terminate", "Terminate", "destination", "destinate", "to"),
+    pending: pick(payload, "pending", "Pending") || pick(fallback, "pending", "Pending"),
   };
 
   const cleanedTicket = removeUndefinedDeep(ticket);
@@ -221,8 +246,8 @@ function normalizePayload(rawPayload = {}, context = {}) {
   const resolvedIncident = incident || null;
 
   const tickets = Array.isArray(payload.tickets)
-    ? payload.tickets.map((item) => normalizeTicket(unwrapPayloadItem(item))).filter(Boolean)
-    : [normalizeTicket(payload)].filter(Boolean);
+    ? payload.tickets.map((item) => normalizeTicket(unwrapPayloadItem(item), payload)).filter(Boolean)
+    : [normalizeTicket(payload, payload)].filter(Boolean);
 
   return {
     incident: resolvedIncident,
@@ -259,7 +284,10 @@ async function ensureIncident(adapter, normalized) {
     return normalized;
   }
 
-  const fallbackIncident = await adapter.findIncidentByNode?.(normalized.node);
+  const fallbackByNode = await adapter.findIncidentByNode?.(normalized.node);
+  const fallbackByAlarmDetail = await adapter.findIncidentByAlarmDetail?.(normalized.alarm, normalized.detail);
+  const fallbackIncident = fallbackByNode || fallbackByAlarmDetail;
+
   if (!fallbackIncident) {
     throw new Error("INCIDENT_REQUIRED");
   }
