@@ -1,4 +1,3 @@
-
 // scripts/ui/alert.ui.js
 
 const AlertUI = (function () {
@@ -199,7 +198,7 @@ const AlertUI = (function () {
   return { render };
 
 })();
-=======
+
 // scripts/ui/alert.ui.js
 
 const AlertUI = (function () {

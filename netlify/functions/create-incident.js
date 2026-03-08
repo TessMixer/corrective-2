@@ -1,4 +1,3 @@
-
 const { initializeApp, getApps } = require("firebase/app");
 const { getFirestore, collection, addDoc } = require("firebase/firestore");
 
@@ -96,7 +95,7 @@ exports.handler = async function handler(event) {
     };
   }
 };
-=======
+
 const { initializeApp, getApps } = require("firebase/app");
 const { getFirestore, collection, addDoc } = require("firebase/firestore");
 
