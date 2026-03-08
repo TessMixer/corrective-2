@@ -29,4 +29,3 @@ exports.handler = async () => {
     body: JSON.stringify({ alerts })
   };
 };
-

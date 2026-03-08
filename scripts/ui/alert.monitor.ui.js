@@ -163,5 +163,4 @@ function bindEvents(container) {
 function refresh(container) {
   const newView = renderAlertMonitor();
   container.replaceWith(newView);
-
 }

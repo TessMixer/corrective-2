@@ -17,10 +17,6 @@ function getIncidentKey(item) {
   return item?.incident || item?.incidentId || item?.id || "";
 }
 
-function getIncidentKey(item) {
-  return item?.incident || item?.incidentId || item?.id || "";
-}
-
 (function bootstrapApp() {
   const firebaseReady = initFirebase();
   const createAlertModal = document.getElementById("modal-create-alert");

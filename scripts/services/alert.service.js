@@ -3,10 +3,6 @@ function getIncidentKey(alert) {
   return alert?.incident || alert?.incidentId || alert?.id;
 }
 
-function getIncidentKey(alert) {
-  return alert?.incident || alert?.incidentId || alert?.id;
-}
-
 window.AlertService = {
   async loadFromLocal() {
 
@@ -66,7 +62,6 @@ window.AlertService = {
 
   createAlert(alertData) {
     const incidentId = alertData.incident || alertData.incidentId || alertData.id;
-
     const newAlert = {
       incident: incidentId,
       incidentId,
