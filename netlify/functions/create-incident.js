@@ -23,29 +23,26 @@ function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
     getDocRef(id) {
       return alertsRef.doc(id);
     },
-    async findIncidentByNode(node) {
+    async findIncidentByNodeContext(node, alarm, detail) {
       if (!node || node === "-") return null;
-      const snap = await alertsRef.where("node", "==", node).limit(20).get();
+      const snap = await alertsRef.where("node", "==", node).limit(50).get();
       if (snap.empty) return null;
 
-      const latest = snap.docs
+      const alarmText = (alarm || "").toString().trim();
+      const detailText = (detail || "").toString().trim();
+      const contextual = candidates.find((item) => {
+        const sameAlarm = alarmText && String(item.alarm || "").trim() === alarmText;
+        const sameDetail = detailText && String(item.detail || "").trim() === detailText;
+        return sameAlarm || sameDetail;
+      });
+
+      if (!candidates.length) return null;
+
+        const candidates = snap.docs
         .map((doc) => doc.data() || {})
         .filter((item) => item.incident)
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
-
-      return latest?.incident || null;
-    },
-    async findIncidentByAlarmDetail(alarm, detail) {
-      if (!alarm || !detail) return null;
-      const snap = await alertsRef.where("alarm", "==", alarm).where("detail", "==", detail).limit(20).get();
-      if (snap.empty) return null;
-
-      const latest = snap.docs
-        .map((doc) => doc.data() || {})
-        .filter((item) => item.incident)
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
-
-      return latest?.incident || null;
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+      return (contextual || candidates[0])?.incident || null;
     },
     async readDoc(docRef) {
       const snap = await docRef.get();
@@ -80,31 +77,28 @@ function createClientAdapter(projectId, apiKey, appId) {
     getDocRef(id) {
       return doc(alertsRef, id);
     },
-    async findIncidentByNode(node) {
+    async findIncidentByNodeContext(node, alarm, detail) {
       if (!node || node === "-") return null;
-      const q = query(alertsRef, where("node", "==", node), limit(20));
+      const q = query(alertsRef, where("node", "==", node), limit(50));
       const snap = await getDocs(q);
       if (snap.empty) return null;
 
       const latest = snap.docs
         .map((doc) => doc.data() || {})
         .filter((item) => item.incident)
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
 
-      return latest?.incident || null;
-    },
-    async findIncidentByAlarmDetail(alarm, detail) {
-      if (!alarm || !detail) return null;
-      const q = query(alertsRef, where("alarm", "==", alarm), where("detail", "==", detail), limit(20));
-      const snap = await getDocs(q);
-      if (snap.empty) return null;
+      if (!candidates.length) return null;
 
-      const latest = snap.docs
-        .map((doc) => doc.data() || {})
-        .filter((item) => item.incident)
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+      const alarmText = (alarm || "").toString().trim();
+      const detailText = (detail || "").toString().trim();
+      const contextual = candidates.find((item) => {
+        const sameAlarm = alarmText && String(item.alarm || "").trim() === alarmText;
+        const sameDetail = detailText && String(item.detail || "").trim() === detailText;
+        return sameAlarm || sameDetail;
+      });
 
-      return latest?.incident || null;
+      return (contextual || candidates[0])?.incident || null;
     },
     async readDoc(docRef) {
       const snap = await getDoc(docRef);
@@ -227,8 +221,8 @@ function normalizeTicket(payload = {}, fallback = {}) {
     actualDowntime: pick(payload, "actual", "actualDowntime", "Actual Downtime") || pick(fallback, "actual", "actualDowntime", "Actual Downtime"),
     clearTime: pick(payload, "cleartime", "clearTime", "Clear Time") || pick(fallback, "cleartime", "clearTime", "Clear Time"),
     total: pick(payload, "total", "Total") || pick(fallback, "total", "Total"),
-    originate: pick(payload, "originate", "Originate", "origin", "originSite", "from") || pick(fallback, "originate", "Originate", "origin", "originSite", "from"),
-    terminate: pick(payload, "terminate", "Terminate", "destination", "destinate", "to") || pick(fallback, "terminate", "Terminate", "destination", "destinate", "to"),
+    originate: pick(payload, "originate", "Originate", "origin", "originSite", "from", "origination", "originateSite") || pick(fallback, "originate", "Originate", "origin", "originSite", "from", "origination", "originateSite"),
+    terminate: pick(payload, "terminate", "Terminate", "destination", "destinate", "to", "terminateSite", "destinationSite") || pick(fallback, "terminate", "Terminate", "destination", "destinate", "to", "terminateSite", "destinationSite"),
     pending: pick(payload, "pending", "Pending") || pick(fallback, "pending", "Pending"),
   };
 
@@ -284,9 +278,11 @@ async function ensureIncident(adapter, normalized) {
     return normalized;
   }
 
-  const fallbackByNode = await adapter.findIncidentByNode?.(normalized.node);
-  const fallbackByAlarmDetail = await adapter.findIncidentByAlarmDetail?.(normalized.alarm, normalized.detail);
-  const fallbackIncident = fallbackByNode || fallbackByAlarmDetail;
+  const fallbackIncident = await adapter.findIncidentByNodeContext?.(
+    normalized.node,
+    normalized.alarm,
+    normalized.detail
+  );
 
   if (!fallbackIncident) {
     throw new Error("INCIDENT_REQUIRED");
