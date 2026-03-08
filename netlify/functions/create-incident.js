@@ -57,6 +57,13 @@ function pick(payload, ...keys) {
 
   return undefined;
 }
+function unwrapPayloadItem(payload = {}) {
+  if (payload && typeof payload === "object" && payload.json && typeof payload.json === "object") {
+    return payload.json;
+  }
+
+  return payload;
+}
 
 function normalizeTicket(payload = {}) {
   const ticket = {
@@ -75,34 +82,28 @@ function normalizeTicket(payload = {}) {
   return Object.values(ticket).some(Boolean) ? ticket : null;
 }
 
-function normalizePayload(payload = {}) {
-  const incident = pick(
-    payload,
-    "incident",
-    "incidentId",
-    "incidentNumber",
-    "Incident Number",
-    "Inf#",
-    "id"
-  );
+function normalizePayload(rawPayload = {}) {
+  const payload = unwrapPayloadItem(rawPayload);
+
+  const incident = pick(payload, "incident", "incidentId", "incidentNumber", "Incident Number", "Inf#", "id");
 
   if (!incident) {
     throw new Error("INCIDENT_REQUIRED");
   }
 
   const tickets = Array.isArray(payload.tickets)
-    ? payload.tickets.map((item) => normalizeTicket(item)).filter(Boolean)
+    ? payload.tickets.map((item) => normalizeTicket(unwrapPayloadItem(item))).filter(Boolean)
     : [normalizeTicket(payload)].filter(Boolean);
 
   return {
     incident,
-    node: pick(payload, "node") || "-",
-    alarm: pick(payload, "alarm") || "-",
-    detail: pick(payload, "detail") || "",
+    node: pick(payload, "node", "Node", "Node Name") || "-",
+    alarm: pick(payload, "alarm", "Alarm") || "-",
+    detail: pick(payload, "detail", "Detail") || "",
     nocBy: pick(payload, "nocBy", "NOC Alert") || "System",
     severity: pick(payload, "severity") || "Medium",
     status: pick(payload, "status") || "OPEN",
-    workType: pick(payload, "workType") || "-",
+    workType: pick(payload, "workType", "Work Type") || "-",
     tickets,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -114,17 +115,13 @@ function parseBody(event) {
 
   if (!raw) return {};
 
-  if (typeof raw !== "string") {
-    return raw;
-  }
+  if (typeof raw !== "string") return raw;
 
   try {
     return JSON.parse(raw);
   } catch (_) {
     const parsed = Object.fromEntries(new URLSearchParams(raw));
-    if (Object.keys(parsed).length) {
-      return parsed;
-    }
+    if (Object.keys(parsed).length) return parsed;
     throw new Error("INVALID_BODY");
   }
 }
@@ -132,8 +129,6 @@ function parseBody(event) {
 async function upsertIncident(db, normalized) {
   const alertsRef = db.collection("appState").doc("noc-store").collection("alerts");
 
-  // Group by incident + node to prevent duplicated rows in Alert Monitor.
-  // If node is same, tickets are accumulated in the same incident record.
   const incidentKey = normalizeIdentifier(normalized.incident);
   const nodeKey = normalizeIdentifier(normalized.node || "-");
   const docId = `${incidentKey}__${nodeKey}`;
@@ -160,11 +155,22 @@ async function upsertIncident(db, normalized) {
       ...normalized,
       tickets: [...existingTickets, ...incomingTickets],
       updatedAt: new Date().toISOString(),
+      createdAt: current.createdAt || normalized.createdAt,
     },
     { merge: true }
   );
 
-  return { id: docId, status: docSnap.exists ? (incomingTickets.length ? "updated" : "skipped") : "created" };
+  return {
+    id: docId,
+    status: docSnap.exists ? (incomingTickets.length ? "updated" : "skipped") : "created",
+    incident: normalized.incident,
+  };
+}
+
+function normalizeBatchPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [payload];
 }
 
 exports.handler = async function handler(event) {
@@ -177,24 +183,31 @@ exports.handler = async function handler(event) {
 
   try {
     const payload = parseBody(event);
-    const normalized = normalizePayload(payload);
+    const items = normalizeBatchPayload(payload);
+    const normalizedItems = items.map((item) => normalizePayload(item));
     const db = getDb();
-    const result = await upsertIncident(db, normalized);
+
+    const results = [];
+    for (const normalized of normalizedItems) {
+      const result = await upsertIncident(db, normalized);
+      results.push(result);
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        status: result.status,
-        id: result.id,
-        incident: normalized.incident,
+        status: "ok",
+        count: results.length,
+        results,
       }),
     };
   } catch (err) {
+    const message = err.message || "CREATE_INCIDENT_FAILED";
+    const isClientError = ["INCIDENT_REQUIRED", "INVALID_BODY"].includes(message);
     return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: err.message || "CREATE_INCIDENT_FAILED",
-      }),
+      statusCode: isClientError ? 400 : 500,
+      body: JSON.stringify({ error: message }),
+
     };
   }
 };
