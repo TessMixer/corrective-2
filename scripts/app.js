@@ -13,6 +13,9 @@ function showView(view) {
     targetView.style.display = "block";
   }
 }
+function getIncidentKey(item) {
+  return item?.incident || item?.incidentId || item?.id || "";
+}
 
 (function bootstrapApp() {
   const firebaseReady = initFirebase();
@@ -118,12 +121,15 @@ function showView(view) {
     const zoom = clampZoom(value);
     const effectiveZoom = window.innerWidth <= 1024 ? 100 : zoom;
     const appShell = document.getElementById("app-shell");
+
     if (appShell) {
+      const ratio = 100 / effectiveZoom;
       appShell.style.zoom = `${effectiveZoom}%`;
-      appShell.style.transform = "";
-      appShell.style.width = "";
-      appShell.style.height = "";
+      appShell.style.width = `${ratio * 100}%`;
+      appShell.style.height = `${ratio * 100}%`;
+      appShell.style.transformOrigin = "top left";
     }
+
     localStorage.setItem(ZOOM_KEY, String(zoom));
     localStorage.setItem(ZOOM_VERSION_KEY, ZOOM_VERSION);
     updateZoomLabel(effectiveZoom);
@@ -1416,7 +1422,7 @@ function showView(view) {
 
     responseIncidentId = event.target.dataset.id || null;
     if (responseWorkType) {
-      const alert = Store.getState().alerts.find((item) => item.incidentId === responseIncidentId);
+      const alert = Store.getState().alerts.find((item) => getIncidentKey(item) === responseIncidentId);
       responseWorkType.value = alert?.workType || "";
     }
     document.querySelectorAll('input[name="eta"]').forEach((el) => { el.checked = false; });
@@ -1638,7 +1644,7 @@ function showView(view) {
     const incidents = getOnProcessIncidents();
 
     select.innerHTML = incidents.length
-      ? incidents.map((item) => `<option value="${item.incidentId}">${item.incidentId} - ${item.node || "-"}</option>`).join("")
+      ? incidents.map((item) => { const incidentKey = getIncidentKey(item); return `<option value="${incidentKey}">${incidentKey} - ${item.node || "-"}</option>`; }).join("")
       : '<option value="">ไม่มีงาน PROCESS</option>';
 
     const now = new Date();
@@ -1672,7 +1678,7 @@ function showView(view) {
         return;
       }
 
-      const source = incidents.find((item) => item.incidentId === incidentId);
+      const source = incidents.find((item) => getIncidentKey(item) === incidentId);
       const title = document.getElementById("calendar-title").value.trim() || source?.alarm || "Scheduled corrective";
       const nextEvent = {
         id: eventToEdit?.id || `cal-${Date.now()}`,
@@ -1830,7 +1836,7 @@ function showView(view) {
     if (!incident) return null;
 
     return {
-      id: incident.incidentId,
+      id: getIncidentKey(incident),
       node: incident.node || "-",
       alarm: incident.alarm || "Network Alert",
       detail: incident.detail || incident.latestUpdateMessage || "-",
