@@ -91,6 +91,7 @@ function renderTable(alerts) {
       <tr>
         <th>Incident</th>
         <th>Node</th>
+        <th>Alarm</th>
         <th>Severity</th>
         <th>Status</th>
         <th>Created</th>
@@ -100,19 +101,30 @@ function renderTable(alerts) {
     <tbody>
       ${alerts.map(a => `
         <tr>
-          <td>${a.incident}</td>
+          <td>${a.incident || '-'}</td>
+
           <td>${a.node || '-'}</td>
+
+          <td>${a.alarm || '-'}</td>
+
           <td>
-            <span class="priority ${a.severity?.toLowerCase()}">
+            <span class="priority ${(a.severity || '').toLowerCase()}">
               ${a.severity || '-'}
             </span>
           </td>
+
           <td>
-            <span class="status ${a.status?.toLowerCase()}">
-              ${a.status}
+            <span class="status ${(a.status || '').toLowerCase()}">
+              ${a.status || '-'}
             </span>
           </td>
-          <td>${new Date(a.createdAt).toLocaleString()}</td>
+
+          <td>
+            ${a.createdAt 
+              ? new Date(a.createdAt).toLocaleString() 
+              : '-'}
+          </td>
+
           <td>
             <button data-id="${a.incident}" class="complete-btn">✓</button>
             <button data-id="${a.incident}" class="cancel-btn">✕</button>
@@ -151,4 +163,5 @@ function bindEvents(container) {
 function refresh(container) {
   const newView = renderAlertMonitor();
   container.replaceWith(newView);
+
 }
