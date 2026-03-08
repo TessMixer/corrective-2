@@ -29,6 +29,11 @@ const AlertUI = (function () {
     return alert.incident || alert.incidentId || alert.id || "";
   }
 
+  function isHiddenAlertStatus(status) {
+    const normalized = String(status || "").trim().toUpperCase();
+    return ["CANCEL", "CANCELLED", "DELETED", "DELETE", "TRASH"].includes(normalized);
+  }
+
   function renderTable(alerts) {
     const wrapper = document.createElement("div");
     wrapper.className = "ops-panel overflow-hidden";
@@ -126,7 +131,7 @@ const AlertUI = (function () {
     const container = document.createElement("div");
     container.className = "space-y-5";
 
-    const alerts = state.alerts || [];
+    const alerts = (state.alerts || []).filter((alert) => !isHiddenAlertStatus(alert.status));
 
     if (!alerts.length) {
       container.innerHTML = `

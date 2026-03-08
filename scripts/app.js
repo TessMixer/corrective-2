@@ -424,11 +424,11 @@ function getIncidentKey(item) {
     (state.alerts || []).forEach((item) => {
       if (!isRecycleStatus(item.status)) return;
       items.push({
-        recycleKey: `alert:${item.incidentId}`,
+        recycleKey: `alert:${getIncidentKey(item)}`,
         source: "alert",
         typeLabel: "Alert",
-        id: item.incidentId,
-        title: item.node || item.alarm || item.incidentId,
+        id: getIncidentKey(item),
+        title: item.node || item.alarm || getIncidentKey(item),
         status: item.status,
         meta: item.cancelReason || item.detail || "งานถูกยกเลิก",
         timestamp: formatRecycleTimestamp(item),
@@ -444,8 +444,8 @@ function getIncidentKey(item) {
           source: "corrective",
           bucket,
           typeLabel: `Corrective / ${item.workType || bucket}`,
-          id: item.incidentId,
-          title: item.node || item.alarm || item.incidentId,
+          id: getIncidentKey(item),
+          title: item.node || item.alarm || getIncidentKey(item),
           status: item.status,
           meta: item.cancelReason || item.latestUpdateMessage || item.detail || "งานถูกยกเลิก",
           timestamp: formatRecycleTimestamp(item),
