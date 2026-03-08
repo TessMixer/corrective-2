@@ -1,76 +1,106 @@
 const admin = require("firebase-admin");
 
+function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
+  const privateKey = rawPrivateKey.includes("\n")
+    ? rawPrivateKey.replace(/\\n/g, "\n")
+    : rawPrivateKey;
+
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
+  }
+
+  const db = admin.firestore();
+  const alertsRef = db.collection("appState").doc("noc-store").collection("alerts");
+
+  return {
+    mode: "admin",
+    getDocRef(id) {
+      return alertsRef.doc(id);
+    },
+    async readDoc(docRef) {
+      const snap = await docRef.get();
+      return {
+        exists: snap.exists,
+        data: snap.exists ? snap.data() || {} : {},
+      };
+    },
+    async writeDoc(docRef, payload) {
+      await docRef.set(payload, { merge: true });
+    },
+  };
+}
+
+function createClientAdapter(projectId, apiKey, appId) {
+  const { initializeApp, getApps } = require("firebase/app");
+  const { getFirestore, collection, doc, getDoc, setDoc } = require("firebase/firestore");
+
+  const app = getApps().length
+    ? getApps()[0]
+    : initializeApp({
+        projectId,
+        apiKey,
+        appId,
+      });
+
+  const db = getFirestore(app);
+  const alertsRef = collection(db, "appState", "noc-store", "alerts");
+
+  return {
+    mode: "client",
+    getDocRef(id) {
+      return doc(alertsRef, id);
+    },
+    async readDoc(docRef) {
+      const snap = await getDoc(docRef);
+      return {
+        exists: snap.exists(),
+        data: snap.exists() ? snap.data() || {} : {},
+      };
+    },
+    async writeDoc(docRef, payload) {
+      await setDoc(docRef, payload, { merge: true });
+    },
+  };
+}
 function getDbAdapter() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (projectId && clientEmail && rawPrivateKey) {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey: rawPrivateKey.replace(/\\n/g, "\n"),
-        }),
-      });
-    }
-
-    const db = admin.firestore();
-    const alertsRef = db.collection("appState").doc("noc-store").collection("alerts");
-
-    return {
-      mode: "admin",
-      getDocRef(id) {
-        return alertsRef.doc(id);
-      },
-      async readDoc(docRef) {
-        const snap = await docRef.get();
-        return {
-          exists: snap.exists,
-          data: snap.exists ? snap.data() || {} : {},
-        };
-      },
-      async writeDoc(docRef, payload) {
-        await docRef.set(payload, { merge: true });
-      },
-    };
-  }
-
   const apiKey = process.env.FIREBASE_API_KEY;
   const appId = process.env.FIREBASE_APP_ID;
 
-  if (projectId && apiKey && appId) {
-    const { initializeApp, getApps } = require("firebase/app");
-    const { getFirestore, collection, doc, getDoc, setDoc } = require("firebase/firestore");
+  const canUseAdmin = Boolean(projectId && clientEmail && rawPrivateKey);
+  const canUseClient = Boolean(projectId && apiKey && appId);
 
-    const app = getApps().length
-      ? getApps()[0]
-      : initializeApp({
-          projectId,
-          apiKey,
-          appId,
-        });
+  let adminInitError;
 
-    const db = getFirestore(app);
-    const alertsRef = collection(db, "appState", "noc-store", "alerts");
+  if (canUseAdmin) {
+    try {
+      return createAdminAdapter(projectId, clientEmail, rawPrivateKey);
+    } catch (err) {
+      adminInitError = err;
+    }
+  }
 
-    return {
-      mode: "client",
-      getDocRef(id) {
-        return doc(alertsRef, id);
-      },
-      async readDoc(docRef) {
-        const snap = await getDoc(docRef);
-        return {
-          exists: snap.exists(),
-          data: snap.exists() ? snap.data() || {} : {},
-        };
-      },
-      async writeDoc(docRef, payload) {
-        await setDoc(docRef, payload, { merge: true });
-      },
-    };
+  if (canUseClient) {
+    try {
+      return createClientAdapter(projectId, apiKey, appId);
+    } catch (err) {
+      const detail = err?.message || "CLIENT_ADAPTER_INIT_FAILED";
+      const adminDetail = adminInitError?.message || null;
+      throw new Error(`FIREBASE_ADAPTER_INIT_FAILED: ${detail}${adminDetail ? ` | admin: ${adminDetail}` : ""}`);
+    }
+  }
+
+  if (adminInitError) {
+    throw new Error(`FIREBASE_ADMIN_INIT_FAILED: ${adminInitError.message || "UNKNOWN"}`);
   }
 
   throw new Error("FIREBASE_CONFIG_MISSING");
@@ -265,6 +295,17 @@ exports.handler = async function handler(event) {
             ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"],
             ["FIREBASE_PROJECT_ID", "FIREBASE_API_KEY", "FIREBASE_APP_ID"],
           ],
+        }),
+      };
+    }
+
+    if (message.startsWith("FIREBASE_ADMIN_INIT_FAILED") || message.startsWith("FIREBASE_ADAPTER_INIT_FAILED")) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          error: "FIREBASE_INIT_FAILED",
+          detail: message,
+          hint: "Check FIREBASE_PRIVATE_KEY formatting or remove invalid admin credentials to use API_KEY/APP_ID fallback.",
         }),
       };
     }
