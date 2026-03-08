@@ -538,8 +538,28 @@ function getIncidentKey(item) {
     }
   }
 
-  function clearRecycleBin() {
+  async function purgeAlertsFromCloud(items = []) {
+    const payloadItems = items
+      .filter((item) => item?.source === "alert")
+      .map((item) => ({ incident: item.id, node: item.node || "-" }))
+      .filter((item) => item.incident);
+
+    if (!payloadItems.length) return;
+
+    try {
+      await fetch("/.netlify/functions/purge-alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: payloadItems }),
+      });
+    } catch (error) {
+      console.warn("Failed to purge alerts from cloud:", error);
+    }
+  }
+
+  async function clearRecycleBin() {
     const current = Store.getState();
+    const recycleItems = getRecycleBinItems(current);
     const nextAlerts = (current.alerts || []).filter((item) => !isRecycleStatus(item.status));
     const nextCorrective = Object.fromEntries(
       Object.entries(current.corrective || {}).map(([bucket, list]) => [bucket, (list || []).filter((item) => !isRecycleStatus(item.status))])
@@ -553,6 +573,8 @@ function getIncidentKey(item) {
       corrective: nextCorrective,
       calendarEvents: nextCalendarEvents,
     }));
+    await purgeAlertsFromCloud(recycleItems);
+    await AlertService.loadFromLocal();
   }
 
   function renderRecycleView(state) {
@@ -3319,13 +3341,29 @@ function getIncidentKey(item) {
 
   // ===== INITIAL LOAD =====
   (async function init() {
-        try {
+      try {
       await firebaseReady;
     } catch (error) {
       console.warn("Firebase init failed, fallback to local data only:", error);
     }
 
     await AlertService.loadFromLocal();
+
+    const refreshAlerts = async () => {
+      try {
+        await AlertService.loadFromLocal();
+      } catch (error) {
+        console.warn("Auto refresh alerts failed:", error);
+      }
+    };
+
+    setInterval(refreshAlerts, 30000);
+    window.addEventListener("focus", refreshAlerts);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        refreshAlerts();
+      }
+    });
     // await AlertService.loadFromEmail();
   })();
 })();

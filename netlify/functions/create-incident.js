@@ -262,6 +262,14 @@ async function upsertIncident(adapter, normalized) {
   };
 }
 
+function isEmptyLike(value) {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "string") return false;
+  const normalized = value.trim();
+  return normalized === "" || normalized === "-" || normalized.toLowerCase() === "n/a";
+}
+
+
 function mergeTicketLists(existingTickets = [], incomingTickets = []) {
   const byKey = new Map();
 
@@ -283,8 +291,8 @@ function mergeTicketLists(existingTickets = [], incomingTickets = []) {
 
     Object.entries(ticket || {}).forEach(([field, value]) => {
       const currentValue = existing[field];
-      const hasCurrent = currentValue !== undefined && currentValue !== null && currentValue !== "";
-      const hasIncoming = value !== undefined && value !== null && value !== "";
+      const hasCurrent = !isEmptyLike(currentValue);
+      const hasIncoming = !isEmptyLike(value);
 
       if (!hasCurrent && hasIncoming) {
         merged[field] = value;

@@ -44,8 +44,14 @@ function normalizeTickets(alert = {}) {
     return alert.tickets.map((item) => normalizeTicket(item)).filter(Boolean);
   }
 
-  const fallback = normalizeTicket(alert);
+    const fallback = normalizeTicket(alert);
   return fallback ? [fallback] : [];
+}
+function isEmptyLike(value) {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "string") return false;
+  const normalized = value.trim();
+  return normalized === "" || normalized === "-" || normalized.toLowerCase() === "n/a";
 }
 
 function mergeTicketLists(existingTickets = [], incomingTickets = []) {
@@ -69,8 +75,8 @@ function mergeTicketLists(existingTickets = [], incomingTickets = []) {
 
     Object.entries(ticket || {}).forEach(([field, value]) => {
       const currentValue = existing[field];
-      const hasCurrent = currentValue !== undefined && currentValue !== null && currentValue !== "";
-      const hasIncoming = value !== undefined && value !== null && value !== "";
+      const hasCurrent = !isEmptyLike(currentValue);
+      const hasIncoming = !isEmptyLike(value);
 
       if (!hasCurrent && hasIncoming) {
         merged[field] = value;

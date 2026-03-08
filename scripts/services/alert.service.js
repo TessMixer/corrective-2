@@ -5,20 +5,20 @@ function getIncidentKey(alert) {
 
 window.AlertService = {
   async loadFromLocal() {
-
-    const res = await fetch(
-      "https://corrective.netlify.app/.netlify/functions/get-alerts"
-    );
+    const res = await fetch("/.netlify/functions/get-alerts", { cache: "no-store" });
 
     const data = await res.json();
 
-    const alerts = data.alerts || [];
+    if (!res.ok) {
+      throw new Error(data?.error || "LOAD_ALERTS_FAILED");
+    }
+
+    const alerts = Array.isArray(data.alerts) ? data.alerts : [];
 
     Store.dispatch((state) => ({
       ...state,
-      alerts
+      alerts,
     }));
-
   },
 
   async loadFromEmail() {
