@@ -5,7 +5,7 @@ function getIncidentKey(incident) {
 const CorrectiveUI = {
   render(state) {
     const tab = state.ui.activeCorrectiveTab;
-    const incidents = (state.corrective[tab] || []).filter((incident) => incident.status !== "COMPLETE");
+    const incidents = (state.corrective[tab] || []).filter((incident) => !["COMPLETE", "CANCEL", "CANCELLED"].includes(incident.status));
 
     const container = document.createElement("div");
     container.className = "space-y-4";
@@ -62,7 +62,7 @@ const CorrectiveUI = {
           <div class="flex gap-2 flex-wrap">
             <button class="btn-action btn-action-primary btn-corrective-update" data-id="${incidentKey}">Update</button>
             <button class="btn-action btn-action-success btn-corrective-finish" data-id="${incidentKey}">NS Finish</button>
-            <button class="btn-action btn-action-danger">Cancel</button>
+            <button class="btn-action btn-action-danger btn-corrective-cancel" data-id="${incidentKey}">Cancel</button>
           </div>
           <div class="flex gap-2"><button class="btn-action btn-action-primary btn-corrective-edit-type" data-id="${incidentKey}">Edit Work Type</button><button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incidentKey}">View Detail</button></div>
         </div>

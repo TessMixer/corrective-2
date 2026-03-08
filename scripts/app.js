@@ -99,71 +99,13 @@ function getIncidentKey(item) {
       }
     });
 
-  // ===== APP ZOOM CONTROLS =====
-  const ZOOM_KEY = "ops_app_zoom";
-   const ZOOM_VERSION_KEY = "ops_app_zoom_version";
-  const ZOOM_VERSION = "v6";
-  const ZOOM_MIN = 85;
-  const ZOOM_MAX = 115;
-  const ZOOM_STEP = 5;
-  const ZOOM_DEFAULT = 100;
-
-  function clampZoom(value) {
-    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
-  }
-
-  function updateZoomLabel(value) {
-    const label = document.getElementById("app-zoom-label");
-    if (label) label.textContent = `${value}%`;
-  }
-
-  function applyAppZoom(value) {
-    const zoom = clampZoom(value);
-    const effectiveZoom = window.innerWidth <= 1024 ? 100 : zoom;
-    const appShell = document.getElementById("app-shell");
-
-    if (appShell) {
-      const ratio = 100 / effectiveZoom;
-      appShell.style.zoom = `${effectiveZoom}%`;
-      appShell.style.width = `${ratio * 100}%`;
-      appShell.style.height = `${ratio * 100}%`;
-      appShell.style.transformOrigin = "top left";
-    }
-
-    localStorage.setItem(ZOOM_KEY, String(zoom));
-    localStorage.setItem(ZOOM_VERSION_KEY, ZOOM_VERSION);
-    updateZoomLabel(effectiveZoom);
-
-    return zoom;
-  }
-  if (localStorage.getItem(ZOOM_VERSION_KEY) !== ZOOM_VERSION) {
-    localStorage.removeItem(ZOOM_KEY);
-  }
-
-  const storedZoom = Number(localStorage.getItem(ZOOM_KEY));
-  const initialZoom = Number.isFinite(storedZoom) ? storedZoom : ZOOM_DEFAULT;
-  let currentZoom = applyAppZoom(initialZoom);
-
-  const btnZoomIn = document.getElementById("btn-app-zoom-in");
-  const btnZoomOut = document.getElementById("btn-app-zoom-out");
-  const btnZoomReset = document.getElementById("btn-app-zoom-reset");
-
-  if (btnZoomIn) {
-    btnZoomIn.addEventListener("click", () => {
-      currentZoom = applyAppZoom(currentZoom + ZOOM_STEP);
-    });
-  }
-
-  if (btnZoomOut) {
-    btnZoomOut.addEventListener("click", () => {
-      currentZoom = applyAppZoom(currentZoom - ZOOM_STEP);
-    });
-  }
-
-  if (btnZoomReset) {
-    btnZoomReset.addEventListener("click", () => {
-      currentZoom = applyAppZoom(ZOOM_DEFAULT);
-    });
+  // ===== APP LAYOUT (NO ZOOM CONTROLS) =====
+  const appShell = document.getElementById("app-shell");
+  if (appShell) {
+    appShell.style.zoom = "";
+    appShell.style.width = "";
+    appShell.style.height = "";
+    appShell.style.transformOrigin = "";
   }
 
   // ===== CREATE ALERT BUTTONS =====
@@ -542,7 +484,7 @@ function getIncidentKey(item) {
     if (source === "alert") {
       const incidentId = bucket;
       const nextAlerts = (current.alerts || []).map((item) =>
-        item.incidentId === incidentId
+        getIncidentKey(item) === incidentId
           ? {
               ...item,
               status: item.previousStatus || "ACTIVE",
@@ -561,7 +503,7 @@ function getIncidentKey(item) {
     if (source === "corrective") {
       const nextCorrective = { ...current.corrective };
       nextCorrective[bucket] = (nextCorrective[bucket] || []).map((item) =>
-        item.incidentId === id
+          getIncidentKey(item) === id
           ? {
               ...item,
               status: item.previousStatus || (item.respondedAt ? "PROCESS" : "ASSIGN"),
@@ -1924,7 +1866,7 @@ function getIncidentKey(item) {
 
       let movedIncident = null;
       ["fiber", "equipment", "other"].forEach((tab) => {
-        const idx = nextCorrective[tab].findIndex((item) => item.incidentId === editingWorkTypeIncidentId);
+        const idx = nextCorrective[tab].findIndex((item) => getIncidentKey(item) === editingWorkTypeIncidentId);
         if (idx !== -1) {
           movedIncident = { ...nextCorrective[tab][idx], workType: selectedType };
           nextCorrective[tab].splice(idx, 1);
@@ -1957,7 +1899,7 @@ function getIncidentKey(item) {
     const tabs = ["fiber", "equipment", "other"];
 
     for (const tab of tabs) {
-      const incident = (state.corrective[tab] || []).find((item) => item.incidentId === incidentId);
+      const incident = (state.corrective[tab] || []).find((item) => getIncidentKey(item) === incidentId);
       if (incident) return { incident, tab };
     }
 
@@ -2551,7 +2493,7 @@ function getIncidentKey(item) {
 
       const nextCorrective = { ...current.corrective };
       nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
-        item.incidentId === incidentId
+        getIncidentKey(item) === incidentId
           ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message }
           : item
       );
@@ -2685,7 +2627,7 @@ function getIncidentKey(item) {
 
       const nextCorrective = { ...current.corrective };
       nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
-        item.incidentId === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
+        getIncidentKey(item) === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
       );
 
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
@@ -2824,9 +2766,9 @@ function getIncidentKey(item) {
       };
 
       const nextCorrective = {
-        fiber: (current.corrective.fiber || []).map((item) => item.incidentId === updateIncidentId ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message } : item),
-        equipment: (current.corrective.equipment || []).map((item) => item.incidentId === updateIncidentId ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message } : item),
-        other: (current.corrective.other || []).map((item) => item.incidentId === updateIncidentId ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message } : item),
+        fiber: (current.corrective.fiber || []).map((item) => getIncidentKey(item) === updateIncidentId ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message } : item),
+        equipment: (current.corrective.equipment || []).map((item) => getIncidentKey(item) === updateIncidentId ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message } : item),
+        other: (current.corrective.other || []).map((item) => getIncidentKey(item) === updateIncidentId ? { ...item, updates: [...(item.updates || []), updatePayload], latestUpdateMessage: updatePayload.message } : item),
       };
 
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
@@ -3301,7 +3243,7 @@ function getIncidentKey(item) {
 
       const nextCorrective = { ...current.corrective };
       nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
-        item.incidentId === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
+        getIncidentKey(item) === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
       );
 
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
@@ -3331,7 +3273,38 @@ function getIncidentKey(item) {
     openCorrectiveDetailModal(target.dataset.id);
   });
 
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest(".btn-corrective-cancel");
+    if (!target) return;
 
+    const incidentId = target.dataset.id;
+    if (!incidentId) return;
+
+    const current = Store.getState();
+    const cancelAt = new Date().toISOString();
+    const reason = "Cancelled from corrective queue";
+
+    const nextCorrective = {
+      fiber: (current.corrective.fiber || []).map((item) =>
+        getIncidentKey(item) === incidentId
+          ? { ...item, previousStatus: item.status, status: "CANCELLED", cancelReason: reason, cancelledAt: cancelAt }
+          : item
+      ),
+      equipment: (current.corrective.equipment || []).map((item) =>
+        getIncidentKey(item) === incidentId
+          ? { ...item, previousStatus: item.status, status: "CANCELLED", cancelReason: reason, cancelledAt: cancelAt }
+          : item
+      ),
+      other: (current.corrective.other || []).map((item) =>
+        getIncidentKey(item) === incidentId
+          ? { ...item, previousStatus: item.status, status: "CANCELLED", cancelReason: reason, cancelledAt: cancelAt }
+          : item
+      ),
+    };
+
+    LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective, calendarEvents: current.calendarEvents });
+    Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
+  });
   document.addEventListener("click", (event) => {
     const restoreButton = event.target.closest("[data-recycle-restore]");
     if (restoreButton) {
