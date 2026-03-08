@@ -1,114 +1,170 @@
 const admin = require("firebase-admin");
 
-function ensureAdmin() {
-  if (admin.apps.length) {
-    return admin.app();
-  }
-
+function getDb() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (!projectId || !clientEmail || !privateKey) {
+  if (!projectId || !clientEmail || !rawPrivateKey) {
     throw new Error("FIREBASE_CONFIG_MISSING");
   }
 
-  return admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey: rawPrivateKey.replace(/\\n/g, "\n"),
+      }),
+    });
+  }
+
+  return admin.firestore();
+}
+
+function sanitizeKey(key = "") {
+  return key.toString().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+function normalizeIdentifier(value = "") {
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_-]/g, "");
+}
+
+function buildLookup(payload) {
+  const lookup = new Map();
+
+  Object.entries(payload || {}).forEach(([key, value]) => {
+    lookup.set(sanitizeKey(key), value);
   });
+
+  return lookup;
 }
 
 function pick(payload, ...keys) {
+  const lookup = buildLookup(payload);
+
   for (const key of keys) {
-    const value = payload?.[key];
-    if (value !== undefined && value !== null && String(value).trim() !== "") {
-      return value;
+    const value = lookup.get(sanitizeKey(key));
+
+    if (value !== undefined && value !== null && value !== "") {
+      return typeof value === "string" ? value.trim() : value;
     }
   }
 
   return undefined;
 }
 
-function extractIncident(payload = {}) {
-  const direct = pick(payload, "incident", "incidentId", "id", "incidentNumber", "jobId", "job");
-  if (direct) {
-    return String(direct).trim();
-  }
-
-  const subject = String(pick(payload, "subject", "title", "emailSubject") || "");
-  const match = subject.match(/\(?(I\d{4}-\d{6})\)?/i);
-  if (match?.[1]) {
-    return match[1].toUpperCase();
-  }
-
-  return undefined;
-}
-
-function normalizeText(value, fallback = "") {
-  if (value === undefined || value === null) return fallback;
-  const text = String(value).trim();
-  return text || fallback;
-}
-
-function buildTicket(raw = {}) {
+function normalizeTicket(payload = {}) {
   const ticket = {
-    ticket: normalizeText(pick(raw, "ticket", "symphonyTicket", "Symphony Ticket", "symphony_ticket")),
-    cid: normalizeText(pick(raw, "cid", "symphonyCid", "Symphony CID", "symphony_cid")),
-    port: normalizeText(pick(raw, "port", "nodePort", "Node Port")),
-    downTime: normalizeText(pick(raw, "downtime", "downTime", "Down Time")),
-    actualDowntime: normalizeText(pick(raw, "actual", "actualDowntime", "Actual Downtime")),
-    clearTime: normalizeText(pick(raw, "cleartime", "clearTime", "Clear Time")),
-    originate: normalizeText(pick(raw, "originate", "Originate")),
-    terminate: normalizeText(pick(raw, "terminate", "Terminate")),
-    pending: normalizeText(pick(raw, "pending", "Pending")),
-    total: normalizeText(pick(raw, "total", "Total")),
+    ticket: pick(payload, "ticket", "symphonyTicket", "Symphony Ticket"),
+    cid: pick(payload, "cid", "symphonyCid", "Symphony CID"),
+    port: pick(payload, "port"),
+    downTime: pick(payload, "downtime", "downTime", "Down Time"),
+    actualDowntime: pick(payload, "actual", "actualDowntime", "Actual Downtime"),
+    clearTime: pick(payload, "cleartime", "clearTime", "Clear Time"),
+    total: pick(payload, "total"),
+    originate: pick(payload, "originate"),
+    terminate: pick(payload, "terminate"),
+    pending: pick(payload, "pending"),
   };
 
   return Object.values(ticket).some(Boolean) ? ticket : null;
 }
 
-function normalizeTickets(payload = {}) {
-  const candidateLists = [payload.tickets, payload.items, payload.rows];
-
-  const fromArray = candidateLists.find((value) => Array.isArray(value));
-  const list = fromArray || [payload];
-
-  const parsed = list
-    .map((item) => buildTicket(item))
-    .filter(Boolean);
-
-  const seen = new Set();
-  return parsed.filter((ticket) => {
-    const key = ticket.ticket || `${ticket.cid}:${ticket.port}:${ticket.downTime}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
 function normalizePayload(payload = {}) {
-  const incident = extractIncident(payload);
+  const incident = pick(
+    payload,
+    "incident",
+    "incidentId",
+    "incidentNumber",
+    "Incident Number",
+    "Inf#",
+    "id"
+  );
+
   if (!incident) {
     throw new Error("INCIDENT_REQUIRED");
   }
 
+  const tickets = Array.isArray(payload.tickets)
+    ? payload.tickets.map((item) => normalizeTicket(item)).filter(Boolean)
+    : [normalizeTicket(payload)].filter(Boolean);
+
   return {
     incident,
-    incidentId: incident,
-    node: normalizeText(pick(payload, "node", "Node"), "-"),
-    alarm: normalizeText(pick(payload, "alarm", "Alarm"), "-"),
-    detail: normalizeText(pick(payload, "detail", "Detail")),
+    node: pick(payload, "node") || "-",
+    alarm: pick(payload, "alarm") || "-",
+    detail: pick(payload, "detail") || "",
+    nocBy: pick(payload, "nocBy", "NOC Alert") || "System",
+    severity: pick(payload, "severity") || "Medium",
+    status: pick(payload, "status") || "OPEN",
+    workType: pick(payload, "workType") || "-",
+    tickets,
     createdAt: new Date().toISOString(),
-    nocBy: normalizeText(pick(payload, "nocBy", "nocAlert", "NOC Alert", "noc"), "System"),
-    severity: normalizeText(pick(payload, "severity"), "Medium"),
-    status: normalizeText(pick(payload, "status"), "OPEN"),
-    workType: normalizeText(pick(payload, "workType"), "-"),
-    tickets: normalizeTickets(payload),
+    updatedAt: new Date().toISOString(),
   };
+}
+
+function parseBody(event) {
+  const raw = event.body;
+
+  if (!raw) return {};
+
+  if (typeof raw !== "string") {
+    return raw;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    const parsed = Object.fromEntries(new URLSearchParams(raw));
+    if (Object.keys(parsed).length) {
+      return parsed;
+    }
+    throw new Error("INVALID_BODY");
+  }
+}
+
+async function upsertIncident(db, normalized) {
+  const alertsRef = db.collection("appState").doc("noc-store").collection("alerts");
+
+  // Group by incident + node to prevent duplicated rows in Alert Monitor.
+  // If node is same, tickets are accumulated in the same incident record.
+  const incidentKey = normalizeIdentifier(normalized.incident);
+  const nodeKey = normalizeIdentifier(normalized.node || "-");
+  const docId = `${incidentKey}__${nodeKey}`;
+  const docRef = alertsRef.doc(docId);
+  const docSnap = await docRef.get();
+  const current = docSnap.exists ? docSnap.data() || {} : {};
+  const existingTickets = Array.isArray(current.tickets) ? current.tickets : [];
+
+  const existingTicketKeys = new Set(
+    existingTickets
+      .map((item) => item?.ticket)
+      .filter(Boolean)
+      .map((value) => value.toString().trim())
+  );
+
+  const incomingTickets = normalized.tickets.filter((item) => {
+    const key = item?.ticket ? item.ticket.toString().trim() : "";
+    return !key || !existingTicketKeys.has(key);
+  });
+
+  await docRef.set(
+    {
+      ...current,
+      ...normalized,
+      tickets: [...existingTickets, ...incomingTickets],
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true }
+  );
+
+  return { id: docId, status: docSnap.exists ? (incomingTickets.length ? "updated" : "skipped") : "created" };
 }
 
 exports.handler = async function handler(event) {
@@ -120,19 +176,16 @@ exports.handler = async function handler(event) {
   }
 
   try {
-    const data = JSON.parse(event.body || "{}");
-    const normalized = normalizePayload(data);
-
-    ensureAdmin();
-    const db = admin.firestore();
-
-    const docRef = await db.collection("appState").doc("noc-store").collection("alerts").add(normalized);
+    const payload = parseBody(event);
+    const normalized = normalizePayload(payload);
+    const db = getDb();
+    const result = await upsertIncident(db, normalized);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        status: "created",
-        id: docRef.id,
+        status: result.status,
+        id: result.id,
         incident: normalized.incident,
       }),
     };
