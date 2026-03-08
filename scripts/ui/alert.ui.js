@@ -26,6 +26,10 @@ const AlertUI = (function () {
     });
   }
 
+  function getAlertId(alert) {
+    return alert.incident || alert.incidentId || alert.id || "";
+  }
+
   function renderTable(alerts) {
     const wrapper = document.createElement("div");
     wrapper.className = "ops-panel overflow-hidden";
@@ -47,9 +51,12 @@ const AlertUI = (function () {
           <tbody>
             ${alerts
               .map(
-                (alert) => `
-              <tr data-detail="${alert.incident}" class="cursor-pointer">
-                <td class="font-bold text-orange-600">${normalizeIncidentId(alert.incident)}</td>
+                (alert) => {
+                  const alertId = getAlertId(alert);
+
+                  return `
+              <tr data-detail="${alertId}" class="cursor-pointer">
+                <td class="font-bold text-orange-600">${normalizeIncidentId(alertId)}</td>
                 <td>${alert.workType || "-"}</td>
                 <td>${alert.node || "-"}</td>
                 <td class="max-w-[380px] truncate" title="${alert.alarm || "-"}">${alert.alarm || "-"}</td>
@@ -57,12 +64,13 @@ const AlertUI = (function () {
                 <td class="text-center">${alert.tickets ? alert.tickets.length : 0}</td>
                 <td>
                   <div class="flex items-center justify-center gap-2">
-                    <button class="btn-response btn-action btn-action-primary" data-id="${alert.incident}">
-                    <button class="btn-action btn-action-danger" data-cancel="${alert.incident}">
+                    <button class="btn-response btn-action btn-action-primary" data-id="${alertId}">Response</button>
+                    <button class="btn-action btn-action-danger" data-cancel="${alertId}">Cancel</button>
                   </div>
                 </td>
               </tr>
-            `
+            `;
+                }
               )
               .join("")}
           </tbody>
@@ -77,17 +85,18 @@ const AlertUI = (function () {
         };
       });
 
+
       wrapper.querySelectorAll("[data-detail]").forEach((row) => {
         row.onclick = (event) => {
           if (event.target.closest("button")) {
             return;
           }
 
-          const alert = Store.getState().alerts.find((a) => a.incident === row.dataset.detail);
+          const alert = Store.getState().alerts.find((a) => getAlertId(a) === row.dataset.detail);
           if (!alert) return;
 
           const incident = {
-            id: alert.incidentId,
+            id: getAlertId(alert),
             node: alert.node,
             alarm: alert.alarm || "Network Alert",
             detail: alert.detail || "No details available",
@@ -97,7 +106,7 @@ const AlertUI = (function () {
             type: alert.type || "Network",
             status: alert.status === "PROCESS" ? "active" : "resolved",
             createdAt: alert.actionDate || new Date().toISOString(),
-            tickets: alert.tickets && alert.tickets.length > 0 ? alert.tickets : getSampleTickets(alert.incidentId),
+            tickets: alert.tickets && alert.tickets.length > 0 ? alert.tickets : getSampleTickets(getAlertId(alert)),
           };
 
           Store.dispatch((state) => ({
