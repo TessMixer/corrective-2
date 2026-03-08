@@ -1,25 +1,79 @@
 const admin = require("firebase-admin");
 
-function getDb() {
+function getDbAdapter() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (!projectId || !clientEmail || !rawPrivateKey) {
-    throw new Error("FIREBASE_CONFIG_MISSING");
+  if (projectId && clientEmail && rawPrivateKey) {
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey: rawPrivateKey.replace(/\\n/g, "\n"),
+        }),
+      });
+    }
+
+    const db = admin.firestore();
+    const alertsRef = db.collection("appState").doc("noc-store").collection("alerts");
+
+    return {
+      mode: "admin",
+      getDocRef(id) {
+        return alertsRef.doc(id);
+      },
+      async readDoc(docRef) {
+        const snap = await docRef.get();
+        return {
+          exists: snap.exists,
+          data: snap.exists ? snap.data() || {} : {},
+        };
+      },
+      async writeDoc(docRef, payload) {
+        await docRef.set(payload, { merge: true });
+      },
+    };
   }
 
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey: rawPrivateKey.replace(/\\n/g, "\n"),
-      }),
-    });
+  const apiKey = process.env.FIREBASE_API_KEY;
+  const appId = process.env.FIREBASE_APP_ID;
+
+  if (projectId && apiKey && appId) {
+    const { initializeApp, getApps } = require("firebase/app");
+    const { getFirestore, collection, doc, getDoc, setDoc } = require("firebase/firestore");
+
+    const app = getApps().length
+      ? getApps()[0]
+      : initializeApp({
+          projectId,
+          apiKey,
+          appId,
+        });
+
+    const db = getFirestore(app);
+    const alertsRef = collection(db, "appState", "noc-store", "alerts");
+
+    return {
+      mode: "client",
+      getDocRef(id) {
+        return doc(alertsRef, id);
+      },
+      async readDoc(docRef) {
+        const snap = await getDoc(docRef);
+        return {
+          exists: snap.exists(),
+          data: snap.exists() ? snap.data() || {} : {},
+        };
+      },
+      async writeDoc(docRef, payload) {
+        await setDoc(docRef, payload, { merge: true });
+      },
+    };
   }
 
-  return admin.firestore();
+  throw new Error("FIREBASE_CONFIG_MISSING");
 }
 
 function sanitizeKey(key = "") {
@@ -126,15 +180,15 @@ function parseBody(event) {
   }
 }
 
-async function upsertIncident(db, normalized) {
-  const alertsRef = db.collection("appState").doc("noc-store").collection("alerts");
+async function upsertIncident(adapter, normalized) {
 
   const incidentKey = normalizeIdentifier(normalized.incident);
   const nodeKey = normalizeIdentifier(normalized.node || "-");
   const docId = `${incidentKey}__${nodeKey}`;
-  const docRef = alertsRef.doc(docId);
-  const docSnap = await docRef.get();
-  const current = docSnap.exists ? docSnap.data() || {} : {};
+  const docRef = adapter.getDocRef(docId);
+
+  const docState = await adapter.readDoc(docRef);
+  const current = docState.data;
   const existingTickets = Array.isArray(current.tickets) ? current.tickets : [];
 
   const existingTicketKeys = new Set(
@@ -148,22 +202,19 @@ async function upsertIncident(db, normalized) {
     const key = item?.ticket ? item.ticket.toString().trim() : "";
     return !key || !existingTicketKeys.has(key);
   });
-
-  await docRef.set(
-    {
-      ...current,
-      ...normalized,
-      tickets: [...existingTickets, ...incomingTickets],
-      updatedAt: new Date().toISOString(),
-      createdAt: current.createdAt || normalized.createdAt,
-    },
-    { merge: true }
-  );
+  await adapter.writeDoc(docRef, {
+    ...current,
+    ...normalized,
+    tickets: [...existingTickets, ...incomingTickets],
+    updatedAt: new Date().toISOString(),
+    createdAt: current.createdAt || normalized.createdAt,
+  });
 
   return {
     id: docId,
-    status: docSnap.exists ? (incomingTickets.length ? "updated" : "skipped") : "created",
+    status: docState.exists ? (incomingTickets.length ? "updated" : "skipped") : "created",
     incident: normalized.incident,
+    node: normalized.node,
   };
 }
 
@@ -185,11 +236,11 @@ exports.handler = async function handler(event) {
     const payload = parseBody(event);
     const items = normalizeBatchPayload(payload);
     const normalizedItems = items.map((item) => normalizePayload(item));
-    const db = getDb();
+    const adapter = getDbAdapter();
 
     const results = [];
     for (const normalized of normalizedItems) {
-      const result = await upsertIncident(db, normalized);
+      const result = await upsertIncident(adapter, normalized);
       results.push(result);
     }
 
@@ -197,6 +248,7 @@ exports.handler = async function handler(event) {
       statusCode: 200,
       body: JSON.stringify({
         status: "ok",
+        mode: adapter.mode,
         count: results.length,
         results,
       }),
@@ -204,6 +256,19 @@ exports.handler = async function handler(event) {
   } catch (err) {
     const message = err.message || "CREATE_INCIDENT_FAILED";
     const isClientError = ["INCIDENT_REQUIRED", "INVALID_BODY"].includes(message);
+        if (message === "FIREBASE_CONFIG_MISSING") {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          error: "FIREBASE_CONFIG_MISSING",
+          requiredAnyOf: [
+            ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"],
+            ["FIREBASE_PROJECT_ID", "FIREBASE_API_KEY", "FIREBASE_APP_ID"],
+          ],
+        }),
+      };
+    }
+
     return {
       statusCode: isClientError ? 400 : 500,
       body: JSON.stringify({ error: message }),
