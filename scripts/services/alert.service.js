@@ -1,4 +1,11 @@
 // scripts/services/alert.service.js
+function getIncidentKey(alert) {
+  return alert?.incident || alert?.incidentId || alert?.id;
+}
+
+function getIncidentKey(alert) {
+  return alert?.incident || alert?.incidentId || alert?.id;
+}
 
 window.AlertService = {
   async loadFromLocal() {
@@ -33,7 +40,7 @@ window.AlertService = {
 
   completeAlert(incidentId) {
     const updated = Store.getState().alerts.map((alert) =>
-      alert.incidentId === incidentId ? { ...alert, status: "COMPLETE" } : alert
+      getIncidentKey(alert) === incidentId ? { ...alert, status: "COMPLETE" } : alert
     );
 
     LocalDB.saveAlerts(updated);
@@ -46,7 +53,7 @@ window.AlertService = {
 
   cancelAlert(incidentId) {
     const updated = Store.getState().alerts.map((alert) =>
-      alert.incidentId === incidentId ? { ...alert, previousStatus: alert.status, status: "CANCEL", cancelledAt: new Date().toISOString() } : alert
+      getIncidentKey(alert) === incidentId ? { ...alert, previousStatus: alert.status, status: "CANCEL", cancelledAt: new Date().toISOString() } : alert
     );
 
     LocalDB.saveAlerts(updated);
@@ -58,8 +65,11 @@ window.AlertService = {
   },
 
   createAlert(alertData) {
+    const incidentId = alertData.incident || alertData.incidentId || alertData.id;
+
     const newAlert = {
-      incidentId: alertData.incidentId,
+      incident: incidentId,
+      incidentId,
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
       ...alertData,
@@ -76,7 +86,7 @@ window.AlertService = {
 
   responseAlert(incidentId, eta, workType) {
     const state = Store.getState();
-    const alert = state.alerts.find((item) => item.incidentId === incidentId);
+    const alert = state.alerts.find((item) => getIncidentKey(item) === incidentId);
 
     if (!alert) return;
     const selectedType = workType || alert.workType || "Other";
@@ -85,7 +95,7 @@ window.AlertService = {
     if (selectedType === "Fiber") type = "fiber";
     if (selectedType === "Equipment") type = "equipment";
 
-    const updatedAlerts = state.alerts.filter((item) => item.incidentId !== incidentId);
+    const updatedAlerts = state.alerts.filter((item) => getIncidentKey(item) !== incidentId);
     const updatedCorrective = {
       ...state.corrective,
       [type]: [...(state.corrective[type] || []), { ...alert, workType: selectedType, eta, status: "PROCESS", respondedAt: new Date().toISOString() }],
