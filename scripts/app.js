@@ -209,6 +209,10 @@ function getIncidentKey(item) {
       view.classList.add("hidden");
       view.style.display = "none";
     });
+    if (state.ui.currentView !== "dashboard") {
+      destroyAllDashboardCharts();
+    }
+
     if (state.ui.currentView === "dashboard") {
       renderDashboardView(state);
     }
@@ -303,6 +307,11 @@ function getIncidentKey(item) {
       dashboardCharts[key] = null;
     }
   }
+
+  function destroyAllDashboardCharts() {
+    Object.keys(dashboardCharts).forEach((key) => destroyDashboardChart(key));
+  }
+
   function createChartInstance(canvasId, config) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !window.Chart) return null;
@@ -3220,12 +3229,12 @@ function getIncidentKey(item) {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
               <select class="finish-multi-line-method bg-white border border-slate-300 rounded-lg px-3 py-2">
                 <option value="">เลือกวิธีการ</option>
-                <option ${saved.method === "ลากคร่อม" ? "selected" : ""}>ลากคร่อม</option>
-                <option ${saved.method === "ร่นลูป" ? "selected" : ""}>ร่นลูป</option>
-                <option ${saved.method === "ตัดต่อใหม่" ? "selected" : ""}>ตัดต่อใหม่</option>
-                <option ${saved.method === "โยก Core" ? "selected" : ""}>โยก Core</option>
-                <option ${saved.method === "ฝาก Core" ? "selected" : ""}>ฝาก Core</option>
-                <option ${saved.method === "ค่าเร่งด่วน" ? "selected" : ""}>ค่าเร่งด่วน</option>
+                <option value="ลากคร่อม" ${saved.method === "ลากคร่อม" ? "selected" : ""}>ลากคร่อม</option>
+                <option value="ร่นลูป" ${saved.method === "ร่นลูป" ? "selected" : ""}>ร่นลูป</option>
+                <option value="ตัดต่อใหม่" ${saved.method === "ตัดต่อใหม่" ? "selected" : ""}>ตัดต่อใหม่</option>
+                <option value="โยก Core" ${saved.method === "โยก Core" ? "selected" : ""}>โยก Core</option>
+                <option value="ฝาก Core" ${saved.method === "ฝาก Core" ? "selected" : ""}>ฝาก Core</option>
+                <option value="ค่าเร่งด่วน" ${saved.method === "ค่าเร่งด่วน" ? "selected" : ""}>ค่าเร่งด่วน</option>
               </select>
               <input class="finish-multi-line-distance bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระยะ (เมตร)" value="${saved.distance || ""}">
               <input class="finish-multi-line-cutpoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ตัดต่อ (จุด)" value="${saved.cutPoint || ""}">
