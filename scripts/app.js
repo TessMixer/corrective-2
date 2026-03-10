@@ -3006,7 +3006,7 @@ function getIncidentKey(item) {
                 <button id="btn-generate-repair" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold">🪄 สร้างคำอธิบายอัตโนมัติ</button>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-start">
+              <div id="finish-method-row" class="grid grid-cols-1 md:grid-cols-5 gap-2 items-start">
                 <label class="text-sm text-slate-700">วิธีการ:</label>
 
                 <select id="finish-method"
@@ -3062,7 +3062,10 @@ function getIncidentKey(item) {
                 <label class="text-sm text-slate-700">ตัวเลือก:</label>
                 <select id="finish-connector-choice" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2"><option>ใช้หัวต่อ</option><option>ไม่ใช้หัวต่อ</option></select>
               </div>
-
+              <div id="finish-multi-repair-wrap" class="hidden border rounded-xl p-4 bg-cyan-50 border-cyan-300 space-y-3">
+                <div class="font-bold text-cyan-900">🧩 รายละเอียดการแก้ไขแต่ละเส้น</div>
+                <div id="finish-multi-repair-rows" class="space-y-3"></div>
+              </div>
               <textarea id="solution" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 h-24" placeholder="คำอธิบายจะสร้างอัตโนมัติ หรือใส่ข้อมูลเอง"></textarea>
               <div>
                 <label class="text-slate-700">ปรับ/ไม่ปรับ:</label>
@@ -3124,10 +3127,14 @@ function getIncidentKey(item) {
     });
 
     document.getElementById("finish-ofc-type").addEventListener("change", () => {
+      const modalEl = document.getElementById("modal-corrective-finish");
       if (document.getElementById("finish-ofc-type").value !== "หลายเส้น") {
         renderOfcSummaryBox(document.getElementById("finish-multi-ofc-summary"), {});
         document.getElementById("finish-multi-ofc-summary-wrap").classList.add("hidden");
       }
+      const details = normalizeMultiOfcData(JSON.parse(modalEl?.dataset?.latestMultiOfc || "{}"));
+      renderFinishMultiRepairRows(details, []);
+      toggleSolutionFields();
     });
   }
 
@@ -3136,14 +3143,16 @@ function getIncidentKey(item) {
     const isYoke = method === "โยก Core";
     const isUrgentOnly = method === "ค่าเร่งด่วน";
     const useDistance = method === "ลากคร่อม" || method === "ร่นลูป";
+    const isMultiOfcFinish = document.getElementById("finish-ofc-type")?.value === "หลายเส้น";
+    document.getElementById("finish-method-row").classList.toggle("hidden", isMultiOfcFinish);
+    document.getElementById("finish-distance-row").classList.toggle("hidden", isMultiOfcFinish || !useDistance);
+    document.getElementById("finish-cut-core-row").classList.toggle("hidden", isMultiOfcFinish || isUrgentOnly);
+    document.getElementById("finish-method-yoke").classList.toggle("hidden", isMultiOfcFinish || !isYoke);
+    document.getElementById("finish-method-yoke-detail").classList.toggle("hidden", isMultiOfcFinish || !isYoke);
+    document.getElementById("finish-urgent-row").classList.toggle("hidden", isMultiOfcFinish || isUrgentOnly);
 
-    document.getElementById("finish-distance-row").classList.toggle("hidden", !useDistance);
-    document.getElementById("finish-cut-core-row").classList.toggle("hidden", isUrgentOnly);
-    document.getElementById("finish-method-yoke").classList.toggle("hidden", !isYoke);
-    document.getElementById("finish-method-yoke-detail").classList.toggle("hidden", !isYoke);
-    document.getElementById("finish-urgent-row").classList.toggle("hidden", isUrgentOnly);
 
-    if (isUrgentOnly && !document.getElementById("solution").value.trim()) {
+    if (!isMultiOfcFinish && isUrgentOnly && !document.getElementById("solution").value.trim()) {
       document.getElementById("solution").value = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
     }
   }
@@ -3178,8 +3187,123 @@ function getIncidentKey(item) {
     card.querySelector("button").onclick = () => card.remove();
     container.appendChild(card);
   }
+  function renderFinishMultiRepairRows(multiOfcDetails = {}, savedRows = []) {
+    const wrap = document.getElementById("finish-multi-repair-wrap");
+    const container = document.getElementById("finish-multi-repair-rows");
+    if (!wrap || !container) return;
+
+    const entries = Object.entries(normalizeMultiOfcData(multiOfcDetails));
+    if (!entries.length || document.getElementById("finish-ofc-type").value !== "หลายเส้น") {
+      wrap.classList.add("hidden");
+      container.innerHTML = "";
+      return;
+    }
+
+    const savedByType = new Map((savedRows || []).map((item) => [item.ofcType, item]));
+
+    container.innerHTML = entries.map(([ofcType, qty], index) => {
+      const saved = savedByType.get(ofcType) || {};
+      const isDepositCore = saved.method === "ฝาก Core";
+      const lineOptions = entries
+        .map(([type], idx) => ({ value: `เส้นที่ ${idx + 1}: ${type}`, label: `เส้นที่ ${idx + 1}: ${type}` }))
+        .filter((opt) => !opt.value.startsWith(`เส้นที่ ${index + 1}:`));
+      return `
+        <div class="bg-white border border-cyan-200 rounded-lg p-3 space-y-2">
+          <div class="font-semibold text-slate-800">เส้นที่ ${index + 1}: ${ofcType} (${qty} เส้น)</div>
+          <div class="finish-multi-line-normal-fields ${isDepositCore ? "hidden" : ""}">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <select class="finish-multi-line-method bg-white border border-slate-300 rounded-lg px-3 py-2">
+                <option value="">เลือกวิธีการ</option>
+                <option ${saved.method === "ลากคร่อม" ? "selected" : ""}>ลากคร่อม</option>
+                <option ${saved.method === "ร่นลูป" ? "selected" : ""}>ร่นลูป</option>
+                <option ${saved.method === "ตัดต่อใหม่" ? "selected" : ""}>ตัดต่อใหม่</option>
+                <option ${saved.method === "โยก Core" ? "selected" : ""}>โยก Core</option>
+                <option ${saved.method === "ฝาก Core" ? "selected" : ""}>ฝาก Core</option>
+                <option ${saved.method === "ค่าเร่งด่วน" ? "selected" : ""}>ค่าเร่งด่วน</option>
+              </select>
+              <input class="finish-multi-line-distance bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระยะ (เมตร)" value="${saved.distance || ""}">
+              <input class="finish-multi-line-cutpoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ตัดต่อ (จุด)" value="${saved.cutPoint || ""}">
+              <input class="finish-multi-line-corepoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="จุดละ (Core)" value="${saved.corePoint || ""}">
+              <input class="finish-multi-line-head bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หัวต่อ" value="${saved.headJoint || ""}">
+              <select class="finish-multi-line-connector bg-white border border-slate-300 rounded-lg px-3 py-2">
+                <option ${saved.connectorChoice === "ใช้หัวต่อ" ? "selected" : ""}>ใช้หัวต่อ</option>
+                <option ${saved.connectorChoice === "ไม่ใช้หัวต่อ" || !saved.connectorChoice ? "selected" : ""}>ไม่ใช้หัวต่อ</option>
+              </select>
+            </div>
+
+
+          </div>
+
+          <div class="finish-multi-line-deposit-fields ${isDepositCore ? "" : "hidden"}">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
+              <label class="text-sm text-slate-700">เส้นที่ฝาก:</label>
+              <select class="finish-multi-line-deposit-line bg-white border border-slate-300 rounded-lg px-3 py-2 md:col-span-1">
+                <option value="">เลือกเส้น</option>
+                ${lineOptions.map((opt) => `<option ${saved.depositLine === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
+              </select>
+              <label class="text-sm text-slate-700">Core:</label>
+              <input class="finish-multi-line-deposit-core-from bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 1-12" value="${saved.depositCoreFrom || ""}">
+              <label class="text-sm text-slate-700">กับ Core:</label>
+              <input class="finish-multi-line-deposit-core-to bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 132-144" value="${saved.depositCoreTo || ""}">
+            </div>
+          </div>
+          <input class="finish-multi-line-note w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หมายเหตุเพิ่มเติม" value="${saved.note || ""}">
+          <input type="hidden" class="finish-multi-line-ofc" value="${ofcType}">
+          <input type="hidden" class="finish-multi-line-qty" value="${qty}">
+        </div>
+      `;
+    }).join("");
+    container.querySelectorAll(".finish-multi-line-method").forEach((selectEl) => {
+      const syncDepositFields = () => {
+        const card = selectEl.closest(".bg-white.border");
+        if (!card) return;
+        const isDepositCore = selectEl.value === "ฝาก Core";
+        card.querySelector(".finish-multi-line-normal-fields")?.classList.toggle("hidden", isDepositCore);
+        card.querySelector(".finish-multi-line-deposit-fields")?.classList.toggle("hidden", !isDepositCore);
+      };
+
+      selectEl.addEventListener("change", syncDepositFields);
+      syncDepositFields();
+
+    });
+
+    wrap.classList.remove("hidden");
+  }
+
+  function collectFinishMultiRepairDetails() {
+    return Array.from(document.querySelectorAll("#finish-multi-repair-rows > div")).map((row) => ({
+      ofcType: row.querySelector(".finish-multi-line-ofc")?.value || "",
+      quantity: row.querySelector(".finish-multi-line-qty")?.value || "",
+      method: row.querySelector(".finish-multi-line-method")?.value || "",
+      distance: row.querySelector(".finish-multi-line-distance")?.value || "",
+      cutPoint: row.querySelector(".finish-multi-line-cutpoint")?.value || "",
+      corePoint: row.querySelector(".finish-multi-line-corepoint")?.value || "",
+      headJoint: row.querySelector(".finish-multi-line-head")?.value || "",
+      connectorChoice: row.querySelector(".finish-multi-line-connector")?.value || "",
+      depositLine: row.querySelector(".finish-multi-line-deposit-line")?.value || "",
+      depositCoreFrom: row.querySelector(".finish-multi-line-deposit-core-from")?.value || "",
+      depositCoreTo: row.querySelector(".finish-multi-line-deposit-core-to")?.value || "",
+      note: row.querySelector(".finish-multi-line-note")?.value || "",
+    })).filter((item) => item.ofcType);
+  }
 
   function buildSolution() {
+    const multiRepairDetails = collectFinishMultiRepairDetails();
+    if (document.getElementById("finish-ofc-type").value === "หลายเส้น" && multiRepairDetails.length) {
+      const lines = multiRepairDetails.map((item, index) => {
+        const connector = item.connectorChoice === "ใช้หัวต่อ" ? ` ใช้หัวต่อ ${item.headJoint || "-"} หัว` : " ไม่ใช้หัวต่อ";
+        const methodText = item.method || "-";
+        const detailText = item.method === "ตัดต่อใหม่"
+          ? `ตัดต่อ ${item.cutPoint || "-"} จุด จุดละ ${item.corePoint || "-"} Core${connector}`
+          : item.method === "ฝาก Core"
+            ? `ฝากที่ ${item.depositLine || "-"} | Core ${item.depositCoreFrom || "-"} ต่อ Core ${item.depositCoreTo || "-"}`
+            : `${methodText}${item.distance ? ` ${item.distance} เมตร` : ""}${connector}`;
+        return `${index + 1}) ${item.ofcType} (${item.quantity} เส้น): ${detailText}${item.note ? ` | ${item.note}` : ""}`;
+      });
+      document.getElementById("solution").value = `รายละเอียดการแก้ไขแต่ละเส้น\n${lines.join("\n")}`;
+      return;
+    }
+
     const method = document.getElementById("finish-method").value || "";
     const distance = document.getElementById("finish-method-distance").value || "-";
     const cutPoint = document.getElementById("finish-cutpoint").value || "-";
@@ -3254,7 +3378,10 @@ function getIncidentKey(item) {
 
     document.getElementById("finish-ofc-type").value = latestUpdate.ofcType || "";
     const latestMultiOfc = normalizeMultiOfcData(latestUpdate.multiOfcDetails || {});
+    modal.dataset.latestMultiOfc = JSON.stringify(latestMultiOfc);
+    const savedMultiRepair = incident.nsFinish?.details?.multiRepairDetails || [];
     renderOfcSummaryBox(document.getElementById("finish-multi-ofc-summary"), latestMultiOfc);
+    renderFinishMultiRepairRows(latestMultiOfc, savedMultiRepair);
     document.getElementById("finish-multi-ofc-summary-wrap").classList.toggle(
       "hidden",
       !(document.getElementById("finish-ofc-type").value === "หลายเส้น" && summarizeMultiOfcData(latestMultiOfc).length)
@@ -3347,6 +3474,7 @@ function getIncidentKey(item) {
           headJoint: document.getElementById("finish-head-joint").value,
           connectorChoice: document.getElementById("finish-connector-choice").value,
           repairText: document.getElementById("solution").value,
+          multiRepairDetails: collectFinishMultiRepairDetails(),
           patchStatus: document.getElementById("finish-patch-status").value,
         },
       };

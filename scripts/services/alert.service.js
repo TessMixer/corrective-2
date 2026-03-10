@@ -53,15 +53,31 @@ function buildCorrectiveCard(incidentAlerts = [], selectedType, eta, existingCar
 
 window.AlertService = {
   async loadFromLocal() {
-    const res = await fetch("/.netlify/functions/get-alerts", { cache: "no-store" });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data?.error || "LOAD_ALERTS_FAILED");
+    let res;
+    try {
+      res = await fetch("/.netlify/functions/get-alerts", { cache: "no-store" });
+    } catch (error) {
+      console.warn("Load alerts API unreachable, falling back to local state:", error);
+      return;
     }
 
-      const alerts = (Array.isArray(data.alerts) ? data.alerts : []).filter((alert) => {
+    const raw = await res.text();
+    let data = {};
+    if (raw) {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        console.warn("Load alerts returned non-JSON payload, skipping remote sync.");
+        return;
+      }
+    }
+
+    if (!res.ok) {
+      console.warn("Load alerts API failed:", data?.error || res.status);
+      return;
+    }
+
+    const alerts = (Array.isArray(data.alerts) ? data.alerts : []).filter((alert) => {
       const status = String(alert?.status || "").trim().toUpperCase();
       const stage = String(alert?.workflowStage || "").trim().toUpperCase();
       return status !== "PROCESS" && stage !== "CORRECTIVE";
