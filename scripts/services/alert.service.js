@@ -3,6 +3,54 @@ function getIncidentKey(alert) {
   return alert?.incident || alert?.incidentId || alert?.id;
 }
 
+function getTicketIdentity(ticket = {}, fallbackIndex = 0) {
+  return [
+    ticket.ticket || ticket.symphonyTicket || `index-${fallbackIndex}`,
+    ticket.cid || "",
+    ticket.port || "",
+    ticket.downTime || "",
+  ]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .join("::");
+}
+
+function mergeTickets(alerts = []) {
+  const byIdentity = new Map();
+
+  alerts.forEach((alert) => {
+    (alert.tickets || []).forEach((ticket, index) => {
+      const key = getTicketIdentity(ticket, index);
+      if (!byIdentity.has(key)) {
+        byIdentity.set(key, { ...ticket });
+      }
+    });
+  });
+
+  return Array.from(byIdentity.values());
+}
+
+function buildCorrectiveCard(incidentAlerts = [], selectedType, eta, existingCard = null) {
+  const seed = incidentAlerts[0] || existingCard || {};
+  const uniqueNodes = [...new Set(incidentAlerts.map((alert) => alert.node).filter(Boolean))];
+  const uniqueAlarms = [...new Set(incidentAlerts.map((alert) => alert.alarm).filter(Boolean))];
+
+  return {
+    ...seed,
+    incident: getIncidentKey(seed),
+    incidentId: getIncidentKey(seed),
+    node: uniqueNodes.join(", ") || seed.node || "-",
+    alarm: uniqueAlarms.join(" | ") || seed.alarm || "-",
+    tickets: mergeTickets(incidentAlerts.length ? incidentAlerts : [existingCard || {}]),
+    workType: selectedType || seed.workType || "Other",
+    eta: eta || seed.eta || "-",
+    status: "PROCESS",
+    respondedAt: seed.respondedAt || new Date().toISOString(),
+    rootCause: seed.rootCause || "",
+    solution: seed.solution || "",
+    remark: seed.remark || "",
+  };
+}
+
 window.AlertService = {
   async loadFromLocal() {
     const res = await fetch("/.netlify/functions/get-alerts", { cache: "no-store" });
@@ -79,9 +127,10 @@ window.AlertService = {
     }));
   },
 
-  responseAlert(incidentId, eta, workType) {
+  async responseAlert(incidentId, eta, workType) {
     const state = Store.getState();
-    const alert = state.alerts.find((item) => getIncidentKey(item) === incidentId);
+    const incidentAlerts = state.alerts.filter((item) => getIncidentKey(item) === incidentId);
+    const alert = incidentAlerts[0];
 
     if (!alert) return;
     const selectedType = workType || alert.workType || "Other";
@@ -89,13 +138,32 @@ window.AlertService = {
     let type = "other";
     if (selectedType === "Fiber") type = "fiber";
     if (selectedType === "Equipment") type = "equipment";
+    const allCorrective = Object.values(state.corrective || {}).flat();
+    const existingCard = allCorrective.find((item) => getIncidentKey(item) === incidentId);
+    const correctiveCard = buildCorrectiveCard(incidentAlerts, selectedType, eta, existingCard);
 
     const updatedAlerts = state.alerts.filter((item) => getIncidentKey(item) !== incidentId);
     const updatedCorrective = {
-      ...state.corrective,
-      [type]: [...(state.corrective[type] || []), { ...alert, workType: selectedType, eta, status: "PROCESS", respondedAt: new Date().toISOString() }],
+      fiber: (state.corrective.fiber || []).filter((item) => getIncidentKey(item) !== incidentId),
+      equipment: (state.corrective.equipment || []).filter((item) => getIncidentKey(item) !== incidentId),
+      other: (state.corrective.other || []).filter((item) => getIncidentKey(item) !== incidentId),
     };
+    updatedCorrective[type] = [...(updatedCorrective[type] || []), correctiveCard];
 
+    try {
+      const response = await fetch("/.netlify/functions/respond-incident", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ incident_number: incidentId, work_type: selectedType, eta }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || "RESPOND_INCIDENT_FAILED");
+      }
+    } catch (error) {
+      console.warn("Respond API failed, applying local fallback:", error);
+    }
     LocalDB.saveState({
       alerts: updatedAlerts,
       corrective: updatedCorrective,
