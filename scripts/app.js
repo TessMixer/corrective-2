@@ -1945,6 +1945,30 @@ function getIncidentKey(item) {
 
     return { who, what, where, how };
   }
+  function normalizeAttachmentItem(attachment) {
+    if (!attachment) return null;
+    if (typeof attachment === "string") {
+      return { name: attachment, type: "", url: "" };
+    }
+    return {
+      name: attachment.name || "ไฟล์แนบ",
+      type: attachment.type || "",
+      url: attachment.url || "",
+    };
+  }
+
+  function renderTimelineAttachments(attachments = []) {
+    const normalized = attachments.map(normalizeAttachmentItem).filter(Boolean);
+    if (!normalized.length) return "";
+
+    const imageItems = normalized.filter((item) => item.url && (item.type.startsWith("image/") || item.url.startsWith("data:image/")));
+    const fileNames = normalized.map((item) => item.name).join(", ");
+
+    return `
+      <div class="text-xs text-slate-600 mt-2">ไฟล์แนบ: ${fileNames}</div>
+      ${imageItems.length ? `<div class="mt-2 flex flex-wrap gap-2">${imageItems.map((item) => `<img src="${item.url}" alt="${item.name}" class="w-28 h-28 object-cover rounded border border-slate-200" />`).join("")}</div>` : ""}
+    `;
+  }
 
   function openCorrectiveDetailModal(incidentId) {
     const found = getCorrectiveIncidentById(incidentId);
@@ -1960,11 +1984,13 @@ function getIncidentKey(item) {
         title: "NS Update",
         at: item.at,
         detail: item.message || "-",
+        attachments: item.attachments || [],
       })),
       finish.times ? {
         title: "NS Finish",
         at: finish.times.upTime || incident.completedAt,
         detail: finish.details?.repairText || "-",
+        attachments: finish.attachments || [],
       } : null,
     ].filter(Boolean);
 
@@ -1990,10 +2016,10 @@ function getIncidentKey(item) {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div class="ops-panel p-4"><div class="text-xs text-slate-500">Type</div><div class="font-semibold">${tab}</div></div>
           <div class="ops-panel p-4"><div class="text-xs text-slate-500">Node</div><div class="font-semibold">${incident.node || "-"}</div></div>
-          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Who (ใคร)</div><div class="font-semibold">${summary.who}</div></div>
-          <div class="ops-panel p-4"><div class="text-xs text-slate-500">What (ทำอะไร)</div><div class="font-semibold">${summary.what}</div></div>
-          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Where (ที่ไหน)</div><div class="font-semibold">${summary.where}</div></div>
-          <div class="ops-panel p-4"><div class="text-xs text-slate-500">How (อย่างไร)</div><div class="font-semibold">${summary.how}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Sub Contractor</div><div class="font-semibold">${summary.who}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">Update Timeline</div><div class="font-semibold">${summary.what}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">บริเวณจุดเกิดเหตุ</div><div class="font-semibold">${summary.where}</div></div>
+          <div class="ops-panel p-4"><div class="text-xs text-slate-500">แก้ไขอย่างไร</div><div class="font-semibold">${summary.how}</div></div>
         </div>
 
         <div class="ops-panel p-4">
@@ -2004,6 +2030,7 @@ function getIncidentKey(item) {
                 <div class="text-sm font-semibold text-slate-700">${item.title}</div>
                 <div class="text-xs text-slate-500">${formatTimelineDate(item.at)}</div>
                 <div class="text-sm mt-1">${item.detail}</div>
+                ${renderTimelineAttachments(item.attachments)}
               </div>
             `).join("") : '<div class="text-slate-400">ยังไม่มี timeline</div>'}
           </div>
@@ -2331,6 +2358,27 @@ function getIncidentKey(item) {
       const attachFiles = Array.from(fileInput.files || []);
       const names = [...cameraFiles, ...attachFiles].map((file) => file.name);
       preview.textContent = names.length ? `ไฟล์ที่เลือก: ${names.join(", ")}` : "ยังไม่ได้เลือกไฟล์";
+    }
+    function fileToDataURL(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result || "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function buildAttachmentPayload() {
+      const selectedFiles = [
+        ...Array.from(document.getElementById("upd-camera-input").files || []),
+        ...Array.from(document.getElementById("upd-file-input").files || []),
+      ];
+
+      return Promise.all(selectedFiles.map(async (file) => ({
+        name: file.name,
+        type: file.type || "",
+        url: await fileToDataURL(file),
+      })));
     }
 
     document.getElementById("btn-capture-photo").onclick = () => cameraInput.click();
@@ -2744,29 +2792,34 @@ function getIncidentKey(item) {
       const etrMin = document.getElementById("upd-etr-min").value.trim();
       const subcontractors = Array.from(document.querySelectorAll(".upd-sub:checked")).map((el) => el.value);
 
-      const summaryParts = [`Update#${updateNo}: ตรวจสอบพบ OFC ${ofcType}`];
-      if (site && distanceM) {
-        const numericDistance = Number(distanceM);
-        if (Number.isFinite(numericDistance)) {
-          const km = (numericDistance / 1000).toFixed(3);
-          summaryParts.push(`มีปัญหาห่างจาก Site ${site} ${km} km`);
+      const isStarted = (document.getElementById("upd-clock-status").textContent || "").trim() === "STARTED";
+      let headline = `Update#${updateNo}: ขณะนี้เจ้าหน้าที่สามารถเข้าพื้นที่แก้ไขได้แล้ว กำลังเร่งดำเนินการแก้ไข.`;
+      if (!isStarted || !modal.dataset.startClockAt) {
+        const summaryParts = [`Update#${updateNo}: ตรวจสอบพบ OFC ${ofcType}`];
+        if (site && distanceM) {
+          const numericDistance = Number(distanceM);
+          if (Number.isFinite(numericDistance)) {
+            const km = (numericDistance / 1000).toFixed(3);
+            summaryParts.push(`มีปัญหาห่างจาก Site ${site} ${km} km`);
+          } else {
+            summaryParts.push(`มีปัญหาห่างจาก Site ${site}`);
+          }
+        } else if (site) {
+          summaryParts.push(`มีปัญหาที่ Site ${site}`);
         } else {
-          summaryParts.push(`มีปัญหาห่างจาก Site ${site}`);
+          summaryParts.push("มีปัญหา");
         }
-      } else if (site) {
-        summaryParts.push(`มีปัญหาที่ Site ${site}`);
-      } else {
-        summaryParts.push("มีปัญหา");
+
+        if (area) {
+          summaryParts.push(`บริเวณ ${area}`);
+        }
+        if (cause) {
+          summaryParts.push(`สาเหตุ ${cause}`);
+        }
+        headline = `${summaryParts.join(" ")}. กำลังเร่งดำเนินการแก้ไข.`;
       }
 
-      if (area) {
-        summaryParts.push(`บริเวณ ${area}`);
-      }
-      if (cause) {
-        summaryParts.push(`สาเหตุ ${cause}`);
-      }
-
-      const lines = [`${summaryParts.join(" ")}. กำลังเร่งดำเนินการแก้ไข.`];
+      const lines = [headline];
       if (multiOfcSummary.length) {
         lines.push(`OFC : ${multiOfcSummary.join(", ")}`);
       }
@@ -2790,8 +2843,9 @@ function getIncidentKey(item) {
       document.getElementById("upd-message").value = lines.join("\n");
     };
 
-    document.getElementById("btn-save-corrective-update").onclick = () => {
+    document.getElementById("btn-save-corrective-update").onclick = async () => {
       const current = Store.getState();
+      const attachmentPayload = await buildAttachmentPayload();
       const updatePayload = {
         at: new Date().toISOString(),
         ofcType: document.getElementById("upd-ofc-type").value,
@@ -2812,10 +2866,7 @@ function getIncidentKey(item) {
         etrHour: document.getElementById("upd-etr-hour").value,
         etrMin: document.getElementById("upd-etr-min").value,
         message: document.getElementById("upd-message").value,
-        attachments: [
-          ...Array.from(document.getElementById("upd-camera-input").files || []).map((file) => file.name),
-          ...Array.from(document.getElementById("upd-file-input").files || []).map((file) => file.name),
-        ],
+        attachments: attachmentPayload,
       };
 
       const nextCorrective = {
