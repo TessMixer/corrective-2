@@ -3205,8 +3205,14 @@ function getIncidentKey(item) {
       const saved = savedByType.get(ofcType) || {};
       const isDepositCore = saved.method === "ฝาก Core";
       const lineOptions = entries
-        .map(([type], idx) => ({ value: `เส้นที่ ${idx + 1}: ${type}`, label: `เส้นที่ ${idx + 1}: ${type}` }))
-        .filter((opt) => !opt.value.startsWith(`เส้นที่ ${index + 1}:`));
+        .map(([type], idx) => ({ lineNo: idx + 1, type, value: `เส้นที่ ${idx + 1}: ${type}`, label: `เส้นที่ ${idx + 1}: ${type}` }))
+        .filter((opt) => opt.lineNo !== (index + 1));
+
+      const savedMatch = String(saved.depositLine || "").match(/^เส้นที่\s*(\d+)\s*:\s*(.+)$/);
+      const savedLineNo = savedMatch ? Number(savedMatch[1]) : (lineOptions[0]?.lineNo || "");
+      const savedType = savedMatch ? savedMatch[2] : (lineOptions.find((opt) => opt.lineNo === Number(savedLineNo))?.type || lineOptions[0]?.type || "");
+      const uniqueTypes = [...new Set(lineOptions.map((opt) => opt.type))];
+
       return `
         <div class="bg-white border border-cyan-200 rounded-lg p-3 space-y-2">
           <div class="font-semibold text-slate-800">เส้นที่ ${index + 1}: ${ofcType} (${qty} เส้น)</div>
@@ -3235,12 +3241,20 @@ function getIncidentKey(item) {
           </div>
 
           <div class="finish-multi-line-deposit-fields ${isDepositCore ? "" : "hidden"}">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
+            <div class="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
               <label class="text-sm text-slate-700">เส้นที่ฝาก:</label>
-              <select class="finish-multi-line-deposit-line bg-white border border-slate-300 rounded-lg px-3 py-2 md:col-span-1">
-                <option value="">เลือกเส้น</option>
-                ${lineOptions.map((opt) => `<option ${saved.depositLine === opt.value ? "selected" : ""}>${opt.label}</option>`).join("")}
-              </select>
+              <div class="flex items-center gap-2 md:col-span-3">
+                <span class="text-sm text-slate-700">เส้นที่</span>
+                <select class="finish-multi-line-deposit-line-no bg-white border border-slate-300 rounded-lg px-3 py-2">
+                  ${lineOptions.map((opt) => `<option value="${opt.lineNo}" ${Number(savedLineNo) === opt.lineNo ? "selected" : ""}>${opt.lineNo}</option>`).join("")}
+                </select>
+                <span class="text-sm text-slate-700">:</span>
+                <select class="finish-multi-line-deposit-line-type bg-white border border-slate-300 rounded-lg px-3 py-2">
+                  <option value="">Select OFC Type</option>
+                  ${uniqueTypes.map((type) => `<option ${savedType === type ? "selected" : ""}>${type}</option>`).join("")}
+                </select>
+              </div>
+
               <label class="text-sm text-slate-700">Core:</label>
               <input class="finish-multi-line-deposit-core-from bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 1-12" value="${saved.depositCoreFrom || ""}">
               <label class="text-sm text-slate-700">กับ Core:</label>
@@ -3261,10 +3275,22 @@ function getIncidentKey(item) {
         card.querySelector(".finish-multi-line-normal-fields")?.classList.toggle("hidden", isDepositCore);
         card.querySelector(".finish-multi-line-deposit-fields")?.classList.toggle("hidden", !isDepositCore);
       };
-
       selectEl.addEventListener("change", syncDepositFields);
       syncDepositFields();
+    });
 
+    container.querySelectorAll(".finish-multi-line-deposit-line-no").forEach((lineNoSelect) => {
+      lineNoSelect.addEventListener("change", () => {
+        const card = lineNoSelect.closest(".bg-white.border");
+        if (!card) return;
+        const typeSelect = card.querySelector(".finish-multi-line-deposit-line-type");
+        const lineNo = Number(lineNoSelect.value || 0);
+        const mappedType = entries[lineNo - 1]?.[0] || "";
+        if (!typeSelect) return;
+        if (mappedType && Array.from(typeSelect.options).some((opt) => opt.value === mappedType)) {
+          typeSelect.value = mappedType;
+        }
+      });
     });
 
     wrap.classList.remove("hidden");
@@ -3280,7 +3306,12 @@ function getIncidentKey(item) {
       corePoint: row.querySelector(".finish-multi-line-corepoint")?.value || "",
       headJoint: row.querySelector(".finish-multi-line-head")?.value || "",
       connectorChoice: row.querySelector(".finish-multi-line-connector")?.value || "",
-      depositLine: row.querySelector(".finish-multi-line-deposit-line")?.value || "",
+      depositLine: ((() => {
+        const lineNo = row.querySelector(".finish-multi-line-deposit-line-no")?.value || "";
+        const lineType = row.querySelector(".finish-multi-line-deposit-line-type")?.value || "";
+        return lineNo && lineType ? `เส้นที่ ${lineNo}: ${lineType}` : "";
+      })()),
+
       depositCoreFrom: row.querySelector(".finish-multi-line-deposit-core-from")?.value || "",
       depositCoreTo: row.querySelector(".finish-multi-line-deposit-core-to")?.value || "",
       note: row.querySelector(".finish-multi-line-note")?.value || "",
