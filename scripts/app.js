@@ -2103,7 +2103,7 @@ function getIncidentKey(item) {
                   <label class="text-sm text-slate-600">สาเหตุ:</label>
                   <select id="upd-cause" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2">
                     <option value="">เลือกสาเหตุ</option>
-                    <option>Animal gnawing</option><option>รถเกี่ยวสาย</option><option>ไฟไหม้</option><option>อุบัติเหตุทางถนน</option><option>OFC ปกติ</option>
+                    <option>Animal gnawing</option><option>High loss/Crack</option><option>Cut by Unknown agency</option><option>Cut trees</option><option>Cut by MEA/PEA agency</option><option>Car accident</option><option>Electrical Surge</option><option>Electrical pole was broken by accident</option><option>Electrical pole was broken by Natural Disaster</option><option>Electric Authority remove pole</option><option>Road Construction</option><option>BTS Construction</option><option>Fire damanged</option><option>Natural Disaster</option><option>Equipment at Node</option><option>Equipment at customer</option><option>Bullet</option>
                   </select>
                 </div>
               </div>
@@ -2169,6 +2169,18 @@ function getIncidentKey(item) {
                 <span>Clock Status: <b id="upd-clock-status" class="text-green-600">STARTED</b></span>
                 <button id="upd-start" class="px-2 py-1 bg-green-200 rounded">Start</button>
                 <button id="upd-stop" class="px-2 py-1 bg-red-400 text-white rounded">Stop</button>
+              </div>
+              <div>
+                <label class="text-sm text-slate-600">เหตุผลกรณีกด Stop:</label>
+                <select id="upd-stop-reason" class="w-full bg-slate-100 rounded-lg px-3 py-2 mt-1">
+                  <option value="">-- เลือกเหตุผล --</option>
+                  <option>เนื่องจากรอเจ้าหน้าที่การไฟฟ้าให้เข้าดำเนินการแก้ไข</option>
+                  <option>เนื่องจากเพลิงยังลุกไหม้อยู่</option>
+                  <option>เนื่องจากรอเจ้าหน้าที่ปักเสาไฟฟ้าใหม่</option>
+                  <option>เนื่องจากรอเจ้าหน้าที่อนุญาตให้เข้าพื้นที่</option>
+                  <option>ตรวจสอบพบ OFC มีปัญหาในพื้นที่ลูกค้า</option>
+                  <option>ตรวจสอบพบ OFC มีปัญหาในพื้นอาคาร</option>
+                </select>
               </div>
 
               <div>
@@ -2299,9 +2311,15 @@ function getIncidentKey(item) {
     };
 
     document.getElementById("upd-stop").onclick = () => {
+      const stopReason = document.getElementById("upd-stop-reason").value.trim();
+      if (!stopReason) {
+        alert("กรุณาเลือกเหตุผลกรณีกด Stop");
+        return;
+      }
       document.getElementById("upd-clock-status").textContent = "STOPPED";
       document.getElementById("upd-clock-status").className = "text-red-600";
       modal.dataset.stopClockAt = new Date().toISOString();
+      modal.dataset.stopReason = stopReason;
     };
 
     const cameraInput = document.getElementById("upd-camera-input");
@@ -2696,6 +2714,7 @@ function getIncidentKey(item) {
     document.getElementById("upd-area").value = "";
     document.getElementById("upd-latlng").value = "";
     document.getElementById("upd-workcase").value = "-- เลือกกรณี --";
+    document.getElementById("upd-stop-reason").value = "";
     document.getElementById("upd-etr-hour").value = "";
     document.getElementById("upd-etr-min").value = "";
     document.getElementById("upd-message").value = "";
@@ -2705,6 +2724,7 @@ function getIncidentKey(item) {
     document.getElementById("upd-attachments-preview").textContent = "ยังไม่ได้เลือกไฟล์";
     modal.dataset.startClockAt = "";
     modal.dataset.stopClockAt = "";
+    modal.dataset.stopReason = "";
     modal.dataset.multiOfcDetails = "{}";
     renderOfcSummaryBox(document.getElementById("upd-multi-ofc-summary"), {});
     document.getElementById("upd-multi-ofc-summary-wrap").classList.add("hidden");
@@ -2756,7 +2776,17 @@ function getIncidentKey(item) {
       if (subcontractors.length) {
         lines.push(`Sub Contractor : ${subcontractors.join(", ")}`);
       }
-
+      if (modal.dataset.stopClockAt) {
+        const stopClockText = new Date(modal.dataset.stopClockAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", hour12: false });
+        lines.push(`Stop clock : ${stopClockText}`);
+        if (modal.dataset.stopReason) {
+          lines.push(`เหตุผล Stop : ${modal.dataset.stopReason}`);
+        }
+      }
+      if (modal.dataset.startClockAt) {
+        const startClockText = new Date(modal.dataset.startClockAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", hour12: false });
+        lines.push(`Start Clock : ${startClockText}`);
+      }
       document.getElementById("upd-message").value = lines.join("\n");
     };
 
@@ -2777,6 +2807,7 @@ function getIncidentKey(item) {
         clockStatus: document.getElementById("upd-clock-status").textContent,
         startClockAt: modal.dataset.startClockAt || "",
         stopClockAt: modal.dataset.stopClockAt || "",
+        stopReason: modal.dataset.stopReason || document.getElementById("upd-stop-reason").value || "",
         workCase: document.getElementById("upd-workcase").value,
         etrHour: document.getElementById("upd-etr-hour").value,
         etrMin: document.getElementById("upd-etr-min").value,
@@ -2895,7 +2926,7 @@ function getIncidentKey(item) {
                 </div>
                 <div><label class="text-sm text-slate-700">ระยะห่างจาก Site (เมตร):</label><input id="finish-distance" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2" placeholder="เช่น 90"></div>
                 <div><label class="text-sm text-slate-700">ชื่อ Site:</label><input id="finish-site" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2" placeholder="เช่น BTS Tower"></div>
-                <div><label class="text-sm text-slate-700">สาเหตุ:</label><select id="finish-cause" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><option value="">เลือกสาเหตุ</option><option>Animal gnawing</option><option>รถเกี่ยวสาย</option><option>ไฟไหม้</option><option>อุบัติเหตุทางถนน</option><option>OFC ปกติ</option></select></div>
+                <div><label class="text-sm text-slate-700">สาเหตุ:</label><select id="finish-cause" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><option value="">เลือกสาเหตุ</option><option>Animal gnawing</option><option>High loss/Crack</option><option>Cut by Unknown agency</option><option>Cut trees</option><option>Cut by MEA/PEA agency</option><option>Car accident</option><option>Electrical Surge</option><option>Electrical pole was broken by accident</option><option>Electrical pole was broken by Natural Disaster</option><option>Electric Authority remove pole</option><option>Road Construction</option><option>BTS Construction</option><option>Fire damanged</option><option>Natural Disaster</option><option>Equipment at Node</option><option>Equipment at customer</option><option>Bullet</option></select></div>
                 <div>
                   <label class="text-sm text-slate-700">บริเวณ:</label>
                   <div class="mt-1 flex gap-2">
