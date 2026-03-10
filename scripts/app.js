@@ -303,6 +303,16 @@ function getIncidentKey(item) {
       dashboardCharts[key] = null;
     }
   }
+  function createChartInstance(canvasId, config) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !window.Chart) return null;
+    try {
+      return new Chart(canvas, config);
+    } catch (error) {
+      console.warn(`Chart render skipped for ${canvasId}:`, error);
+      return null;
+    }
+  }
 
   function getChartFontSize() {
     if (window.innerWidth <= 640) return 10;
@@ -849,7 +859,7 @@ function getIncidentKey(item) {
     destroyDashboardChart("workType");
     destroyDashboardChart("zone");
 
-    dashboardCharts.status = new Chart(document.getElementById("dash-chart-status"), {
+    dashboardCharts.status = createChartInstance("dash-chart-status", {
       type: "doughnut",
       data: { labels: data.statusChart.labels, datasets: [{ data: data.statusChart.values, backgroundColor: ["#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e", "#ef4444"], borderWidth: 3, borderColor: "#ffffff", hoverOffset: 8, spacing: 2 }] },
       options: buildBaseChartOptions({
@@ -858,19 +868,19 @@ function getIncidentKey(item) {
       }),
     });
 
-    dashboardCharts.mttrTrend = new Chart(document.getElementById("dash-chart-mttr"), {
+    dashboardCharts.mttrTrend = createChartInstance("dash-chart-mttr", {
       type: "line",
       data: { labels: data.mttrTrend.labels, datasets: [{ label: "MTTR <= 3hrs (%)", data: data.mttrTrend.values, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,.2)", fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 4 }] },
       options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
     });
 
-    dashboardCharts.workType = new Chart(document.getElementById("dash-chart-type"), {
+    dashboardCharts.workType = createChartInstance("dash-chart-type", {
       type: "bar",
       data: { labels: Object.keys(data.typeCount), datasets: [{ label: "Count", data: Object.values(data.typeCount), backgroundColor: "#8b5cf6", borderRadius: 8, maxBarThickness: 48 }] },
       options: buildCartesianOptions(),
     });
 
-    dashboardCharts.zone = new Chart(document.getElementById("dash-chart-zone"), {
+    dashboardCharts.zone = createChartInstance("dash-chart-zone", {
       type: "bar",
       data: { labels: Object.keys(data.zoneCount), datasets: [{ label: "Count", data: Object.values(data.zoneCount), backgroundColor: "#ec4899", borderRadius: 8, maxBarThickness: 48 }] },
       options: buildCartesianOptions(),
@@ -949,7 +959,7 @@ function getIncidentKey(item) {
     destroyDashboardChart("summaryMttr");
     destroyDashboardChart("summaryCause");
 
-    dashboardCharts.summaryMttr = new Chart(document.getElementById("dash-summary-mttr"), {
+    dashboardCharts.summaryMttr = createChartInstance("dash-summary-mttr", {
       type: "line",
       data: {
         labels: monthlyRows.map((row) => row.month),
@@ -968,7 +978,7 @@ function getIncidentKey(item) {
     });
 
     const topCauses = causeRows.slice(0, 8);
-    dashboardCharts.summaryCause = new Chart(document.getElementById("dash-summary-cause"), {
+    dashboardCharts.summaryCause = createChartInstance("dash-summary-cause", {
       type: "bar",
       data: {
         labels: topCauses.map((row) => row.cause),
@@ -1033,7 +1043,7 @@ function getIncidentKey(item) {
     if (!window.Chart) return;
     destroyDashboardChart("regionWeekly");
 
-    dashboardCharts.regionWeekly = new Chart(document.getElementById("dash-region-weekly"), {
+    dashboardCharts.regionWeekly = createChartInstance("dash-region-weekly", {
       type: "bar",
       data: {
         labels: zoneRows.map((row) => row.zone),
@@ -1078,7 +1088,7 @@ function getIncidentKey(item) {
     destroyDashboardChart("reportCause");
     destroyDashboardChart("reportDelayed");
 
-    dashboardCharts.reportMain = new Chart(document.getElementById("dash-report-main"), {
+    dashboardCharts.reportMain = createChartInstance("dash-report-main", {
       type: "line",
       data: {
         labels: data.mttrTrend.labels,
@@ -1090,7 +1100,7 @@ function getIncidentKey(item) {
       options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
     });
 
-    dashboardCharts.reportIncident = new Chart(document.getElementById("dash-report-incident"), {
+    dashboardCharts.reportIncident = createChartInstance("dash-report-incident", {
       type: "doughnut",
       data: { labels: ["Meet", "Fail"], datasets: [{ data: [data.stats.mttr, data.stats.overMttr], backgroundColor: ["#65a30d", "#f59e0b"], borderWidth: 2, borderColor: "#ffffff", hoverOffset: 8 }] },
       options: buildBaseChartOptions({ cutout: "62%", plugins: { legend: createLegend("top"), doughnutValuePlugin: { enabled: true } } }),
@@ -1102,7 +1112,7 @@ function getIncidentKey(item) {
       causes[cause] = (causes[cause] || 0) + 1;
     });
     destroyDashboardChart("reportCause");
-    dashboardCharts.reportCause = new Chart(document.getElementById("dash-report-cause"), {
+    dashboardCharts.reportCause = createChartInstance("dash-report-cause", {
       type: "bar",
       data: { labels: Object.keys(causes), datasets: [{ label: "Count", data: Object.values(causes), backgroundColor: "#3b82f6", borderRadius: 8, maxBarThickness: 28 }] },
       options: buildCartesianOptions({
@@ -1120,7 +1130,7 @@ function getIncidentKey(item) {
       if (delay[d] === undefined) delay[d] = 0;
       delay[d] += 1;
     });
-    dashboardCharts.reportDelayed = new Chart(document.getElementById("dash-report-delay"), {
+    dashboardCharts.reportDelayed = createChartInstance("dash-report-delay", {
       type: "doughnut",
       data: { labels: Object.keys(delay), datasets: [{ data: Object.values(delay), backgroundColor: ["#3b82f6", "#f97316", "#a3a3a3", "#16a34a", "#facc15", "#06b6d4"], borderWidth: 2, borderColor: "#ffffff", hoverOffset: 8 }] },
       options: buildBaseChartOptions({ cutout: "60%", plugins: { legend: createLegend("top"), doughnutValuePlugin: { enabled: true } } }),
@@ -1936,6 +1946,23 @@ function getIncidentKey(item) {
     const pad = (n) => String(n).padStart(2, "0");
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
+  function fileToDataURL(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || "");
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function buildAttachmentPayload(cameraFiles = [], attachFiles = []) {
+    const selectedFiles = [...Array.from(cameraFiles || []), ...Array.from(attachFiles || [])];
+    return Promise.all(selectedFiles.map(async (file) => ({
+      name: file.name,
+      type: file.type || "",
+      url: await fileToDataURL(file),
+    })));
+  }
 
   function buildWhatWhereHowText(update = {}, finish = {}) {
     const who = (update.subcontractors || finish.subcontractors || []).join(", ") || "-";
@@ -2358,27 +2385,6 @@ function getIncidentKey(item) {
       const attachFiles = Array.from(fileInput.files || []);
       const names = [...cameraFiles, ...attachFiles].map((file) => file.name);
       preview.textContent = names.length ? `ไฟล์ที่เลือก: ${names.join(", ")}` : "ยังไม่ได้เลือกไฟล์";
-    }
-    function fileToDataURL(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result || "");
-        reader.onerror = () => resolve("");
-        reader.readAsDataURL(file);
-      });
-    }
-
-    async function buildAttachmentPayload() {
-      const selectedFiles = [
-        ...Array.from(document.getElementById("upd-camera-input").files || []),
-        ...Array.from(document.getElementById("upd-file-input").files || []),
-      ];
-
-      return Promise.all(selectedFiles.map(async (file) => ({
-        name: file.name,
-        type: file.type || "",
-        url: await fileToDataURL(file),
-      })));
     }
 
     document.getElementById("btn-capture-photo").onclick = () => cameraInput.click();
@@ -2845,7 +2851,7 @@ function getIncidentKey(item) {
 
     document.getElementById("btn-save-corrective-update").onclick = async () => {
       const current = Store.getState();
-      const attachmentPayload = await buildAttachmentPayload();
+      const attachmentPayload = await buildAttachmentPayload(document.getElementById("upd-camera-input").files, document.getElementById("upd-file-input").files);
       const updatePayload = {
         at: new Date().toISOString(),
         ofcType: document.getElementById("upd-ofc-type").value,
