@@ -61,7 +61,11 @@ window.AlertService = {
       throw new Error(data?.error || "LOAD_ALERTS_FAILED");
     }
 
-    const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+      const alerts = (Array.isArray(data.alerts) ? data.alerts : []).filter((alert) => {
+      const status = String(alert?.status || "").trim().toUpperCase();
+      const stage = String(alert?.workflowStage || "").trim().toUpperCase();
+      return status !== "PROCESS" && stage !== "CORRECTIVE";
+    });
 
     Store.dispatch((state) => ({
       ...state,

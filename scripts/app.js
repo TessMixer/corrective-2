@@ -3346,6 +3346,13 @@ function getIncidentKey(item) {
     } catch (error) {
       console.warn("Firebase init failed, fallback to local data only:", error);
     }
+    const persistedState = await LocalDB.syncFromCloud();
+    Store.dispatch((state) => ({
+      ...state,
+      alerts: persistedState.alerts || [],
+      corrective: persistedState.corrective || { fiber: [], equipment: [], other: [] },
+      calendarEvents: persistedState.calendarEvents || [],
+    }));
 
     await AlertService.loadFromLocal();
 
