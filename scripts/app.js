@@ -2103,6 +2103,39 @@ function getIncidentKey(item) {
     });
     return normalized;
   }
+  window.ofcMultipleLinesData = window.ofcMultipleLinesData || {};
+  window.selectedOfcLines = window.selectedOfcLines || [];
+  window.isUsingMultipleLines = window.isUsingMultipleLines || false;
+
+  function parseCoreCountFromType(ofcType = "") {
+    const match = String(ofcType).match(/(\d+)\s*Core/i);
+    return match ? Number(match[1]) : "";
+  }
+
+  function buildSelectedLineList(multiOfcDetails = {}) {
+    const lines = [];
+    Object.entries(normalizeMultiOfcData(multiOfcDetails)).forEach(([type, qty]) => {
+      for (let i = 0; i < qty; i += 1) {
+        lines.push({
+          lineNo: lines.length + 1,
+          type,
+          coreCount: parseCoreCountFromType(type),
+          method: "",
+          distance: "",
+          cutPoints: "",
+          corePerPoint: "",
+          connectors: "",
+          useConnectors: "ไม่ใช้หัวต่อ",
+          depositToLine: "",
+          depositCore: "",
+          depositTargetCore: "",
+          note: "",
+        });
+      }
+    });
+    return lines;
+  }
+
 
   function summarizeMultiOfcData(rawData) {
     const normalized = normalizeMultiOfcData(rawData);
@@ -3196,55 +3229,79 @@ function getIncidentKey(item) {
     card.querySelector("button").onclick = () => card.remove();
     container.appendChild(card);
   }
-  function renderFinishMultiRepairRows(multiOfcDetails = {}, savedRows = []) {
-    const wrap = document.getElementById("finish-multi-repair-wrap");
+  function populateDepositLineOptions(cardEl, currentLineNo) {
+    if (!cardEl) return;
+    const lineNoSelect = cardEl.querySelector(".finish-multi-line-deposit-line-no");
+    const lineTypeSelect = cardEl.querySelector(".finish-multi-line-deposit-line-type");
+    if (!lineNoSelect || !lineTypeSelect) return;
+
+    const candidates = (window.selectedOfcLines || []).filter((line) => Number(line.lineNo) !== Number(currentLineNo));
+    lineNoSelect.innerHTML = ['<option value="">เลือกเส้น</option>', ...candidates.map((line) => `<option value="${line.lineNo}">${line.lineNo}</option>`)].join("");
+    lineTypeSelect.innerHTML = '<option value="">เลือกประเภท</option>';
+
+    const syncTypeOptions = () => {
+      const selectedLineNo = Number(lineNoSelect.value || 0);
+      const targetLine = candidates.find((line) => Number(line.lineNo) === selectedLineNo);
+      lineTypeSelect.innerHTML = '<option value="">เลือกประเภท</option>';
+      if (targetLine) {
+        lineTypeSelect.innerHTML += `<option value="${targetLine.type}">${targetLine.type}</option>`;
+        lineTypeSelect.value = targetLine.type;
+      }
+    };
+
+    lineNoSelect.addEventListener("change", syncTypeOptions);
+    syncTypeOptions();
+  }
+
+
+  function createMultiLineSolutionInputs(multiOfcDetails = {}, savedRows = []) {
     const container = document.getElementById("finish-multi-repair-rows");
-    if (!wrap || !container) return;
+    if (!container) return;
 
-    const entries = Object.entries(normalizeMultiOfcData(multiOfcDetails));
-    if (!entries.length || document.getElementById("finish-ofc-type").value !== "หลายเส้น") {
-      wrap.classList.add("hidden");
-      container.innerHTML = "";
-      return;
-    }
 
-    const savedByType = new Map((savedRows || []).map((item) => [item.ofcType, item]));
+    const savedByLineNo = new Map((savedRows || []).map((item) => [Number(item.lineNo || 0), item]));
+    window.selectedOfcLines = buildSelectedLineList(multiOfcDetails).map((line) => {
+      const saved = savedByLineNo.get(line.lineNo) || {};
+      return {
+        ...line,
+        method: saved.method || "",
+        distance: saved.distance || "",
+        cutPoints: saved.cutPoints || saved.cutPoint || "",
+        corePerPoint: saved.corePerPoint || saved.corePoint || "",
+        connectors: saved.connectors || saved.headJoint || "",
+        useConnectors: saved.useConnectors || saved.connectorChoice || "ไม่ใช้หัวต่อ",
+        depositToLine: saved.depositToLine || saved.depositLine || "",
+        depositCore: saved.depositCore || saved.depositCoreFrom || "",
+        depositTargetCore: saved.depositTargetCore || saved.depositCoreTo || "",
+        note: saved.note || "",
+      };
+    });
+    container.innerHTML = (window.selectedOfcLines || []).map((line) => {
+      const isDepositCore = line.method === "ฝาก Core";
 
-    container.innerHTML = entries.map(([ofcType, qty], index) => {
-      const saved = savedByType.get(ofcType) || {};
-      const isDepositCore = saved.method === "ฝาก Core";
-      const lineOptions = entries
-        .map(([type], idx) => ({ lineNo: idx + 1, type, value: `เส้นที่ ${idx + 1}: ${type}`, label: `เส้นที่ ${idx + 1}: ${type}` }))
-        .filter((opt) => opt.lineNo !== (index + 1));
-
-      const savedMatch = String(saved.depositLine || "").match(/^เส้นที่\s*(\d+)\s*:\s*(.+)$/);
-      const savedLineNo = savedMatch ? Number(savedMatch[1]) : (lineOptions[0]?.lineNo || "");
-      const savedType = savedMatch ? savedMatch[2] : (lineOptions.find((opt) => opt.lineNo === Number(savedLineNo))?.type || lineOptions[0]?.type || "");
-      const uniqueTypes = [...new Set(lineOptions.map((opt) => opt.type))];
 
       return `
-        <div class="bg-white border border-cyan-200 rounded-lg p-3 space-y-2">
-          <div class="font-semibold text-slate-800">เส้นที่ ${index + 1}: ${ofcType} (${qty} เส้น)</div>
-          <div class="finish-multi-line-normal-fields ${isDepositCore ? "hidden" : ""}">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <select class="finish-multi-line-method bg-white border border-slate-300 rounded-lg px-3 py-2">
-                <option value="">เลือกวิธีการ</option>
-                <option value="ลากคร่อม" ${saved.method === "ลากคร่อม" ? "selected" : ""}>ลากคร่อม</option>
-                <option value="ร่นลูป" ${saved.method === "ร่นลูป" ? "selected" : ""}>ร่นลูป</option>
-                <option value="ตัดต่อใหม่" ${saved.method === "ตัดต่อใหม่" ? "selected" : ""}>ตัดต่อใหม่</option>
-                <option value="โยก Core" ${saved.method === "โยก Core" ? "selected" : ""}>โยก Core</option>
-                <option value="ฝาก Core" ${saved.method === "ฝาก Core" ? "selected" : ""}>ฝาก Core</option>
-                <option value="ค่าเร่งด่วน" ${saved.method === "ค่าเร่งด่วน" ? "selected" : ""}>ค่าเร่งด่วน</option>
-              </select>
-              <input class="finish-multi-line-distance bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระยะ (เมตร)" value="${saved.distance || ""}">
-              <input class="finish-multi-line-cutpoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ตัดต่อ (จุด)" value="${saved.cutPoint || ""}">
-              <input class="finish-multi-line-corepoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="จุดละ (Core)" value="${saved.corePoint || ""}">
-              <input class="finish-multi-line-head bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หัวต่อ" value="${saved.headJoint || ""}">
-              <select class="finish-multi-line-connector bg-white border border-slate-300 rounded-lg px-3 py-2">
-                <option ${saved.connectorChoice === "ใช้หัวต่อ" ? "selected" : ""}>ใช้หัวต่อ</option>
-                <option ${saved.connectorChoice === "ไม่ใช้หัวต่อ" || !saved.connectorChoice ? "selected" : ""}>ไม่ใช้หัวต่อ</option>
-              </select>
-            </div>
+        <div class="bg-white border border-cyan-200 rounded-lg p-3 space-y-2" data-line-no="${line.lineNo}">
+          <div class="font-semibold text-slate-800">เส้นที่ ${line.lineNo}: ${line.type}</div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <select class="finish-multi-line-method bg-white border border-slate-300 rounded-lg px-3 py-2">
+              <option value="">เลือกวิธีการ</option>
+              <option value="ลากคร่อม" ${line.method === "ลากคร่อม" ? "selected" : ""}>ลากคร่อม</option>
+              <option value="ร่นลูป" ${line.method === "ร่นลูป" ? "selected" : ""}>ร่นลูป</option>
+              <option value="โยก Core" ${line.method === "โยก Core" ? "selected" : ""}>โยก Core</option>
+              <option value="ตัดต่อใหม่" ${line.method === "ตัดต่อใหม่" ? "selected" : ""}>ตัดต่อใหม่</option>
+              <option value="ฝาก Core" ${line.method === "ฝาก Core" ? "selected" : ""}>ฝาก Core</option>
+            </select>
+            <input class="finish-multi-line-distance bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระยะ (เมตร)" value="${line.distance || ""}">
+            <input class="finish-multi-line-cutpoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ตัดต่อ (จุด)" value="${line.cutPoints || ""}">
+            <input class="finish-multi-line-corepoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="จุดละ (Core)" value="${line.corePerPoint || ""}">
+            <input class="finish-multi-line-head bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หัวต่อ" value="${line.connectors || ""}">
+            <select class="finish-multi-line-connector bg-white border border-slate-300 rounded-lg px-3 py-2">
+              <option value="ใช้หัวต่อ" ${line.useConnectors === "ใช้หัวต่อ" ? "selected" : ""}>ใช้หัวต่อ</option>
+              <option value="ไม่ใช้หัวต่อ" ${line.useConnectors !== "ใช้หัวต่อ" ? "selected" : ""}>ไม่ใช้หัวต่อ</option>
+            </select>
+
 
 
           </div>
@@ -3254,93 +3311,156 @@ function getIncidentKey(item) {
               <label class="text-sm text-slate-700">เส้นที่ฝาก:</label>
               <div class="flex items-center gap-2 md:col-span-3">
                 <span class="text-sm text-slate-700">เส้นที่</span>
-                <select class="finish-multi-line-deposit-line-no bg-white border border-slate-300 rounded-lg px-3 py-2">
-                  ${lineOptions.map((opt) => `<option value="${opt.lineNo}" ${Number(savedLineNo) === opt.lineNo ? "selected" : ""}>${opt.lineNo}</option>`).join("")}
-                </select>
+                <select class="finish-multi-line-deposit-line-no bg-white border border-slate-300 rounded-lg px-3 py-2"></select>
                 <span class="text-sm text-slate-700">:</span>
-                <select class="finish-multi-line-deposit-line-type bg-white border border-slate-300 rounded-lg px-3 py-2">
-                  <option value="">Select OFC Type</option>
-                  ${uniqueTypes.map((type) => `<option ${savedType === type ? "selected" : ""}>${type}</option>`).join("")}
-                </select>
+                <select class="finish-multi-line-deposit-line-type bg-white border border-slate-300 rounded-lg px-3 py-2"></select>
               </div>
 
               <label class="text-sm text-slate-700">Core:</label>
-              <input class="finish-multi-line-deposit-core-from bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 1-12" value="${saved.depositCoreFrom || ""}">
+              <input class="finish-multi-line-deposit-core-from bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 1-12" value="${line.depositCore || ""}">
               <label class="text-sm text-slate-700">กับ Core:</label>
-              <input class="finish-multi-line-deposit-core-to bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 132-144" value="${saved.depositCoreTo || ""}">
+              <input class="finish-multi-line-deposit-core-to bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 132-144" value="${line.depositTargetCore || ""}">
             </div>
           </div>
-          <input class="finish-multi-line-note w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หมายเหตุเพิ่มเติม" value="${saved.note || ""}">
-          <input type="hidden" class="finish-multi-line-ofc" value="${ofcType}">
-          <input type="hidden" class="finish-multi-line-qty" value="${qty}">
+
+          <input class="finish-multi-line-note w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หมายเหตุเพิ่มเติม" value="${line.note || ""}">
+
         </div>
       `;
     }).join("");
-    container.querySelectorAll(".finish-multi-line-method").forEach((selectEl) => {
-      const syncDepositFields = () => {
-        const card = selectEl.closest(".bg-white.border");
-        if (!card) return;
-        const isDepositCore = selectEl.value === "ฝาก Core";
-        card.querySelector(".finish-multi-line-normal-fields")?.classList.toggle("hidden", isDepositCore);
+
+    const updateLineValue = (lineNo, key, value) => {
+      const target = (window.selectedOfcLines || []).find((line) => Number(line.lineNo) === Number(lineNo));
+      if (!target) return;
+      target[key] = String(value || "").trim();
+    };
+
+    container.querySelectorAll("#finish-multi-repair-rows > div").forEach((card) => {
+      const lineNo = Number(card.dataset.lineNo || 0);
+      const methodEl = card.querySelector(".finish-multi-line-method");
+      const distanceEl = card.querySelector(".finish-multi-line-distance");
+      const cutPointEl = card.querySelector(".finish-multi-line-cutpoint");
+      const corePointEl = card.querySelector(".finish-multi-line-corepoint");
+      const headEl = card.querySelector(".finish-multi-line-head");
+      const connectorEl = card.querySelector(".finish-multi-line-connector");
+      const depositLineNoEl = card.querySelector(".finish-multi-line-deposit-line-no");
+      const depositCoreFromEl = card.querySelector(".finish-multi-line-deposit-core-from");
+      const depositCoreToEl = card.querySelector(".finish-multi-line-deposit-core-to");
+      const noteEl = card.querySelector(".finish-multi-line-note");
+
+      populateDepositLineOptions(card, lineNo);
+      const savedTarget = (window.selectedOfcLines || []).find((line) => line.lineNo === lineNo)?.depositToLine || "";
+      const savedNoMatch = String(savedTarget).match(/^เส้นที่\s*(\d+)/);
+      if (savedNoMatch && depositLineNoEl) {
+        depositLineNoEl.value = savedNoMatch[1];
+        depositLineNoEl.dispatchEvent(new Event("change"));
+      }
+
+      const toggleDepositFields = () => {
+        const isDepositCore = methodEl?.value === "ฝาก Core";
+
         card.querySelector(".finish-multi-line-deposit-fields")?.classList.toggle("hidden", !isDepositCore);
       };
-      selectEl.addEventListener("change", syncDepositFields);
-      syncDepositFields();
-    });
 
-    container.querySelectorAll(".finish-multi-line-deposit-line-no").forEach((lineNoSelect) => {
-      lineNoSelect.addEventListener("change", () => {
-        const card = lineNoSelect.closest(".bg-white.border");
-        if (!card) return;
-        const typeSelect = card.querySelector(".finish-multi-line-deposit-line-type");
-        const lineNo = Number(lineNoSelect.value || 0);
-        const mappedType = entries[lineNo - 1]?.[0] || "";
-        if (!typeSelect) return;
-        if (mappedType && Array.from(typeSelect.options).some((opt) => opt.value === mappedType)) {
-          typeSelect.value = mappedType;
-        }
+      methodEl?.addEventListener("change", () => {
+        updateLineValue(lineNo, "method", methodEl.value);
+        toggleDepositFields();
+
       });
+
+      distanceEl?.addEventListener("input", () => updateLineValue(lineNo, "distance", distanceEl.value));
+      cutPointEl?.addEventListener("input", () => updateLineValue(lineNo, "cutPoints", cutPointEl.value));
+      corePointEl?.addEventListener("input", () => updateLineValue(lineNo, "corePerPoint", corePointEl.value));
+      headEl?.addEventListener("input", () => updateLineValue(lineNo, "connectors", headEl.value));
+      connectorEl?.addEventListener("change", () => updateLineValue(lineNo, "useConnectors", connectorEl.value));
+      noteEl?.addEventListener("input", () => updateLineValue(lineNo, "note", noteEl.value));
+      depositLineNoEl?.addEventListener("change", () => {
+        const targetLine = (window.selectedOfcLines || []).find((line) => Number(line.lineNo) === Number(depositLineNoEl.value || 0));
+        updateLineValue(lineNo, "depositToLine", targetLine ? `เส้นที่ ${targetLine.lineNo}: ${targetLine.type}` : "");
+      });
+      depositCoreFromEl?.addEventListener("input", () => updateLineValue(lineNo, "depositCore", depositCoreFromEl.value));
+      depositCoreToEl?.addEventListener("input", () => updateLineValue(lineNo, "depositTargetCore", depositCoreToEl.value));
+
+      toggleDepositFields();
+
     });
+  }
+
+  function renderFinishMultiRepairRows(multiOfcDetails = {}, savedRows = []) {
+    const wrap = document.getElementById("finish-multi-repair-wrap");
+    const container = document.getElementById("finish-multi-repair-rows");
+    if (!wrap || !container) return;
+    window.ofcMultipleLinesData = normalizeMultiOfcData(multiOfcDetails);
+    window.isUsingMultipleLines = document.getElementById("finish-ofc-type")?.value === "หลายเส้น";
+
+    if (!Object.keys(window.ofcMultipleLinesData).length || !window.isUsingMultipleLines) {
+      wrap.classList.add("hidden");
+      container.innerHTML = "";
+      window.selectedOfcLines = [];
+      return;
+    }
+
+    createMultiLineSolutionInputs(window.ofcMultipleLinesData, savedRows);
 
     wrap.classList.remove("hidden");
   }
 
   function collectFinishMultiRepairDetails() {
-    return Array.from(document.querySelectorAll("#finish-multi-repair-rows > div")).map((row) => ({
-      ofcType: row.querySelector(".finish-multi-line-ofc")?.value || "",
-      quantity: row.querySelector(".finish-multi-line-qty")?.value || "",
-      method: row.querySelector(".finish-multi-line-method")?.value || "",
-      distance: row.querySelector(".finish-multi-line-distance")?.value || "",
-      cutPoint: row.querySelector(".finish-multi-line-cutpoint")?.value || "",
-      corePoint: row.querySelector(".finish-multi-line-corepoint")?.value || "",
-      headJoint: row.querySelector(".finish-multi-line-head")?.value || "",
-      connectorChoice: row.querySelector(".finish-multi-line-connector")?.value || "",
-      depositLine: ((() => {
-        const lineNo = row.querySelector(".finish-multi-line-deposit-line-no")?.value || "";
-        const lineType = row.querySelector(".finish-multi-line-deposit-line-type")?.value || "";
-        return lineNo && lineType ? `เส้นที่ ${lineNo}: ${lineType}` : "";
-      })()),
+    return (window.selectedOfcLines || []).map((line) => ({
+      lineNo: line.lineNo,
+      ofcType: line.type,
+      quantity: 1,
+      coreCount: line.coreCount,
+      method: line.method || "",
+      distance: line.distance || "",
+      cutPoint: line.cutPoints || "",
+      corePoint: line.corePerPoint || "",
+      headJoint: line.connectors || "",
+      connectorChoice: line.useConnectors || "ไม่ใช้หัวต่อ",
+      depositLine: line.depositToLine || "",
+      depositCoreFrom: line.depositCore || "",
+      depositCoreTo: line.depositTargetCore || "",
+      note: line.note || "",
 
-      depositCoreFrom: row.querySelector(".finish-multi-line-deposit-core-from")?.value || "",
-      depositCoreTo: row.querySelector(".finish-multi-line-deposit-core-to")?.value || "",
-      note: row.querySelector(".finish-multi-line-note")?.value || "",
     })).filter((item) => item.ofcType);
+  }
+  function buildMultiLineSolution(lines = window.selectedOfcLines || []) {
+    const clean = (value) => String(value || "").trim();
+
+    const details = lines.map((line) => {
+      const method = clean(line.method);
+      const parts = [];
+      if (method === "ฝาก Core") {
+        const toLine = clean(line.depositToLine) || "-";
+        const coreFrom = clean(line.depositCore) || "-";
+        const coreTo = clean(line.depositTargetCore) || "-";
+        parts.push(`ฝาก Core ${coreFrom} กับ ${toLine} Core ${coreTo}`);
+      } else if (method === "ตัดต่อใหม่") {
+        parts.push(`ตัดต่อใหม่ ${clean(line.cutPoints) || "-"} จุด จุดละ ${clean(line.corePerPoint) || line.coreCount || "-"} Core`);
+      } else if (method) {
+        parts.push(method);
+        if (clean(line.distance)) {
+          parts.push(`${clean(line.distance)} เมตร`);
+        }
+      }
+
+      const shouldUseConnector = clean(line.useConnectors) === "ใช้หัวต่อ";
+      if (shouldUseConnector && clean(line.connectors)) {
+        parts.push(`ใช้หัวต่อ ${clean(line.connectors)} หัว`);
+      }
+
+      const uniqueParts = [...new Set(parts.map((part) => clean(part)).filter(Boolean))];
+      const note = clean(line.note);
+      return `เส้นที่ ${line.lineNo}: ${line.type} ${uniqueParts.join(" ")}${note ? ` (${note})` : ""}`.trim();
+    }).filter(Boolean);
+
+    return details.join("\n").trim();
   }
 
   function buildSolution() {
     const multiRepairDetails = collectFinishMultiRepairDetails();
     if (document.getElementById("finish-ofc-type").value === "หลายเส้น" && multiRepairDetails.length) {
-      const lines = multiRepairDetails.map((item, index) => {
-        const connector = item.connectorChoice === "ใช้หัวต่อ" ? ` ใช้หัวต่อ ${item.headJoint || "-"} หัว` : " ไม่ใช้หัวต่อ";
-        const methodText = item.method || "-";
-        const detailText = item.method === "ตัดต่อใหม่"
-          ? `ตัดต่อ ${item.cutPoint || "-"} จุด จุดละ ${item.corePoint || "-"} Core${connector}`
-          : item.method === "ฝาก Core"
-            ? `ฝากที่ ${item.depositLine || "-"} | Core ${item.depositCoreFrom || "-"} ต่อ Core ${item.depositCoreTo || "-"}`
-            : `${methodText}${item.distance ? ` ${item.distance} เมตร` : ""}${connector}`;
-        return `${index + 1}) ${item.ofcType} (${item.quantity} เส้น): ${detailText}${item.note ? ` | ${item.note}` : ""}`;
-      });
-      document.getElementById("solution").value = `รายละเอียดการแก้ไขแต่ละเส้น\n${lines.join("\n")}`;
+      document.getElementById("solution").value = buildMultiLineSolution(window.selectedOfcLines);
       return;
     }
 
