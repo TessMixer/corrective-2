@@ -3177,6 +3177,7 @@ function getIncidentKey(item) {
       const details = normalizeMultiOfcData(JSON.parse(modalEl?.dataset?.latestMultiOfc || "{}"));
       renderFinishMultiRepairRows(details, []);
       toggleSolutionFields();
+      syncMultiLineYokeSectionState();
     });
   }
 
@@ -3197,6 +3198,12 @@ function getIncidentKey(item) {
     if (!isMultiOfcFinish && isUrgentOnly && !document.getElementById("solution").value.trim()) {
       document.getElementById("solution").value = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
     }
+  }
+  function syncMultiLineYokeSectionState() {
+    if (!window.isUsingMultipleLines) return;
+    const hasYokeMethod = (window.selectedOfcLines || []).some((line) => line.method === "โยก Core");
+    document.getElementById("finish-method-yoke")?.classList.toggle("hidden", !hasYokeMethod);
+    document.getElementById("finish-method-yoke-detail")?.classList.toggle("hidden", !hasYokeMethod);
   }
 
   function addYokeCircuitRow(data = {}) {
@@ -3278,14 +3285,14 @@ function getIncidentKey(item) {
     });
     container.innerHTML = (window.selectedOfcLines || []).map((line) => {
       const isDepositCore = line.method === "ฝาก Core";
-
+      const useDistance = line.method === "ลากคร่อม" || line.method === "ร่นลูป";
 
       return `
         <div class="bg-white border border-cyan-200 rounded-lg p-3 space-y-2" data-line-no="${line.lineNo}">
           <div class="font-semibold text-slate-800">เส้นที่ ${line.lineNo}: ${line.type}</div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <select class="finish-multi-line-method bg-white border border-slate-300 rounded-lg px-3 py-2">
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+            <select class="finish-multi-line-method md:col-span-2 bg-white border border-slate-300 rounded-lg px-3 py-2">
               <option value="">เลือกวิธีการ</option>
               <option value="ลากคร่อม" ${line.method === "ลากคร่อม" ? "selected" : ""}>ลากคร่อม</option>
               <option value="ร่นลูป" ${line.method === "ร่นลูป" ? "selected" : ""}>ร่นลูป</option>
@@ -3293,11 +3300,11 @@ function getIncidentKey(item) {
               <option value="ตัดต่อใหม่" ${line.method === "ตัดต่อใหม่" ? "selected" : ""}>ตัดต่อใหม่</option>
               <option value="ฝาก Core" ${line.method === "ฝาก Core" ? "selected" : ""}>ฝาก Core</option>
             </select>
-            <input class="finish-multi-line-distance bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ระยะ (เมตร)" value="${line.distance || ""}">
-            <input class="finish-multi-line-cutpoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="ตัดต่อ (จุด)" value="${line.cutPoints || ""}">
-            <input class="finish-multi-line-corepoint bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="จุดละ (Core)" value="${line.corePerPoint || ""}">
-            <input class="finish-multi-line-head bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หัวต่อ" value="${line.connectors || ""}">
-            <select class="finish-multi-line-connector bg-white border border-slate-300 rounded-lg px-3 py-2">
+            <input class="finish-multi-line-distance finish-multi-line-distance-wrap md:col-span-1 bg-white border border-slate-300 rounded-lg px-3 py-2 ${(!useDistance || isDepositCore) ? "hidden" : ""}" placeholder="ระยะ (เมตร)" value="${line.distance || ""}">
+            <input class="finish-multi-line-cutpoint finish-multi-line-cutpoint-wrap md:col-span-1 bg-white border border-slate-300 rounded-lg px-3 py-2 ${isDepositCore ? "hidden" : ""}" placeholder="ตัดต่อ (จุด)" value="${line.cutPoints || ""}">
+            <input class="finish-multi-line-corepoint finish-multi-line-corepoint-wrap md:col-span-1 bg-white border border-slate-300 rounded-lg px-3 py-2 ${isDepositCore ? "hidden" : ""}" placeholder="จุดละ (Core)" value="${line.corePerPoint || ""}">
+            <input class="finish-multi-line-head finish-multi-line-head-wrap md:col-span-1 bg-white border border-slate-300 rounded-lg px-3 py-2 ${isDepositCore ? "hidden" : ""}" placeholder="หัวต่อ" value="${line.connectors || ""}">
+            <select class="finish-multi-line-connector finish-multi-line-connector-wrap md:col-span-2 bg-white border border-slate-300 rounded-lg px-3 py-2 ${isDepositCore ? "hidden" : ""}">
               <option value="ใช้หัวต่อ" ${line.useConnectors === "ใช้หัวต่อ" ? "selected" : ""}>ใช้หัวต่อ</option>
               <option value="ไม่ใช้หัวต่อ" ${line.useConnectors !== "ใช้หัวต่อ" ? "selected" : ""}>ไม่ใช้หัวต่อ</option>
             </select>
@@ -3307,19 +3314,16 @@ function getIncidentKey(item) {
           </div>
 
           <div class="finish-multi-line-deposit-fields ${isDepositCore ? "" : "hidden"}">
-            <div class="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
+           <div class="flex flex-wrap items-center gap-2">
               <label class="text-sm text-slate-700">เส้นที่ฝาก:</label>
-              <div class="flex items-center gap-2 md:col-span-3">
-                <span class="text-sm text-slate-700">เส้นที่</span>
-                <select class="finish-multi-line-deposit-line-no bg-white border border-slate-300 rounded-lg px-3 py-2"></select>
-                <span class="text-sm text-slate-700">:</span>
-                <select class="finish-multi-line-deposit-line-type bg-white border border-slate-300 rounded-lg px-3 py-2"></select>
-              </div>
-
-              <label class="text-sm text-slate-700">Core:</label>
-              <input class="finish-multi-line-deposit-core-from bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 1-12" value="${line.depositCore || ""}">
-              <label class="text-sm text-slate-700">กับ Core:</label>
-              <input class="finish-multi-line-deposit-core-to bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เช่น 132-144" value="${line.depositTargetCore || ""}">
+              <span class="text-sm text-slate-700">เส้นที่</span>
+              <select class="finish-multi-line-deposit-line-no bg-white border border-slate-300 rounded-lg px-3 py-2"></select>
+              <span class="text-sm text-slate-700">:</span>
+              <select class="finish-multi-line-deposit-line-type bg-white border border-slate-300 rounded-lg px-3 py-2"></select>
+              <span class="text-sm text-slate-700 ml-2">Core:</span>
+              <input class="finish-multi-line-deposit-core-from bg-white border border-slate-300 rounded-lg px-3 py-2 w-32" placeholder="เช่น 1-12" value="${line.depositCore || ""}">
+              <span class="text-sm text-slate-700">กับ Core:</span>
+              <input class="finish-multi-line-deposit-core-to bg-white border border-slate-300 rounded-lg px-3 py-2 w-32" placeholder="เช่น 132-144" value="${line.depositTargetCore || ""}">
             </div>
           </div>
 
@@ -3347,6 +3351,24 @@ function getIncidentKey(item) {
       const depositCoreFromEl = card.querySelector(".finish-multi-line-deposit-core-from");
       const depositCoreToEl = card.querySelector(".finish-multi-line-deposit-core-to");
       const noteEl = card.querySelector(".finish-multi-line-note");
+      const toggleMethodFields = () => {
+        const method = methodEl?.value || "";
+        const isDepositCore = method === "ฝาก Core";
+        const useDistance = method === "ลากคร่อม" || method === "ร่นลูป";
+
+        card.querySelector(".finish-multi-line-deposit-fields")?.classList.toggle("hidden", !isDepositCore);
+        card.querySelector(".finish-multi-line-distance-wrap")?.classList.toggle("hidden", !useDistance || isDepositCore);
+        card.querySelector(".finish-multi-line-cutpoint-wrap")?.classList.toggle("hidden", isDepositCore);
+        card.querySelector(".finish-multi-line-corepoint-wrap")?.classList.toggle("hidden", isDepositCore);
+        card.querySelector(".finish-multi-line-head-wrap")?.classList.toggle("hidden", isDepositCore);
+        card.querySelector(".finish-multi-line-connector-wrap")?.classList.toggle("hidden", isDepositCore);
+
+        if (!useDistance || isDepositCore) {
+          if (distanceEl) distanceEl.value = "";
+          updateLineValue(lineNo, "distance", "");
+        }
+      };
+
 
       populateDepositLineOptions(card, lineNo);
       const savedTarget = (window.selectedOfcLines || []).find((line) => line.lineNo === lineNo)?.depositToLine || "";
@@ -3356,15 +3378,11 @@ function getIncidentKey(item) {
         depositLineNoEl.dispatchEvent(new Event("change"));
       }
 
-      const toggleDepositFields = () => {
-        const isDepositCore = methodEl?.value === "ฝาก Core";
-
-        card.querySelector(".finish-multi-line-deposit-fields")?.classList.toggle("hidden", !isDepositCore);
-      };
-
       methodEl?.addEventListener("change", () => {
         updateLineValue(lineNo, "method", methodEl.value);
-        toggleDepositFields();
+        toggleMethodFields();
+        syncMultiLineYokeSectionState();
+
 
       });
 
@@ -3381,9 +3399,10 @@ function getIncidentKey(item) {
       depositCoreFromEl?.addEventListener("input", () => updateLineValue(lineNo, "depositCore", depositCoreFromEl.value));
       depositCoreToEl?.addEventListener("input", () => updateLineValue(lineNo, "depositTargetCore", depositCoreToEl.value));
 
-      toggleDepositFields();
+      toggleMethodFields();
 
     });
+      syncMultiLineYokeSectionState();
   }
 
   function renderFinishMultiRepairRows(multiOfcDetails = {}, savedRows = []) {
@@ -3401,8 +3420,8 @@ function getIncidentKey(item) {
     }
 
     createMultiLineSolutionInputs(window.ofcMultipleLinesData, savedRows);
-
     wrap.classList.remove("hidden");
+    syncMultiLineYokeSectionState();
   }
 
   function collectFinishMultiRepairDetails() {
@@ -3437,6 +3456,9 @@ function getIncidentKey(item) {
         parts.push(`ฝาก Core ${coreFrom} กับ ${toLine} Core ${coreTo}`);
       } else if (method === "ตัดต่อใหม่") {
         parts.push(`ตัดต่อใหม่ ${clean(line.cutPoints) || "-"} จุด จุดละ ${clean(line.corePerPoint) || line.coreCount || "-"} Core`);
+      } else if (method === "โยก Core") {
+        parts.push(buildYokeCoreText().split("\n")[0]);
+
       } else if (method) {
         parts.push(method);
         if (clean(line.distance)) {
@@ -3456,6 +3478,21 @@ function getIncidentKey(item) {
 
     return details.join("\n").trim();
   }
+  function buildYokeCoreText() {
+    const locA = document.getElementById("finish-site-a").value || document.getElementById("finish-yoke-loc-a").value || "-";
+    const locB = document.getElementById("finish-site-b").value || document.getElementById("finish-yoke-loc-b").value || "-";
+    const cards = Array.from(document.querySelectorAll(".finish-yoke-circuit-card"));
+    const lines = cards.map((card, idx) => {
+      const customer = card.querySelector(".finish-yoke-customer")?.value || "-";
+      const aOld = card.querySelector(".finish-yoke-a-old")?.value || "-";
+      const aNew = card.querySelector(".finish-yoke-a-new")?.value || "-";
+      const bOld = card.querySelector(".finish-yoke-b-old")?.value || "-";
+      const bNew = card.querySelector(".finish-yoke-b-new")?.value || "-";
+      return `${idx + 1}) ${customer} | จุด1: ${aOld}->${aNew} | จุด2: ${bOld}->${bNew}`;
+    });
+    return [`โยก Core ${locA} ไป ${locB}`, ...lines].join("\n").trim();
+  }
+
 
   function buildSolution() {
     const multiRepairDetails = collectFinishMultiRepairDetails();
@@ -3482,18 +3519,7 @@ function getIncidentKey(item) {
     } else if (method === "ตัดต่อใหม่") {
       result = `ตัดต่อใหม่ ${cutPoint} จุด จุดละ ${corePoint} Core${connectorText}`;
     } else if (method === "โยก Core") {
-      const locA = document.getElementById("finish-site-a").value || document.getElementById("finish-yoke-loc-a").value || "-";
-      const locB = document.getElementById("finish-site-b").value || document.getElementById("finish-yoke-loc-b").value || "-";
-      const cards = Array.from(document.querySelectorAll(".finish-yoke-circuit-card"));
-      const lines = cards.map((card, idx) => {
-        const customer = card.querySelector(".finish-yoke-customer")?.value || "-";
-        const aOld = card.querySelector(".finish-yoke-a-old")?.value || "-";
-        const aNew = card.querySelector(".finish-yoke-a-new")?.value || "-";
-        const bOld = card.querySelector(".finish-yoke-b-old")?.value || "-";
-        const bNew = card.querySelector(".finish-yoke-b-new")?.value || "-";
-        return `${idx + 1}) ${customer} | จุด1: ${aOld}->${aNew} | จุด2: ${bOld}->${bNew}`;
-      });
-      result = [`โยก Core ${locA} ไป ${locB}`, ...lines].join("\n")
+      result = buildYokeCoreText();
     } else if (method === "ค่าเร่งด่วน") {
       result = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
     }
@@ -3571,7 +3597,7 @@ function getIncidentKey(item) {
       savedCircuits.forEach((line) => addYokeCircuitRow({ customer: line }));
     }
     toggleSolutionFields(document.getElementById("finish-method").value);
-
+    syncMultiLineYokeSectionState();
     document.querySelectorAll(".finish-sub").forEach((el) => {
       el.checked = (latestUpdate.subcontractors || []).includes(el.value);
     });
