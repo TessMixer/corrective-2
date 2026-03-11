@@ -1955,6 +1955,425 @@ function getIncidentKey(item) {
     const pad = (n) => String(n).padStart(2, "0");
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
+
+  function formatDateTime(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  function formatDuration(ms) {
+    const safe = Number(ms);
+    if (!Number.isFinite(safe) || safe <= 0) return "0 Hrs 0 Mins";
+    const mins = Math.floor(safe / 60000);
+    const days = Math.floor(mins / 1440);
+    const hrs = Math.floor((mins % 1440) / 60);
+    const rem = mins % 60;
+    const parts = [];
+    if (days > 0) parts.push(`${days} Day`);
+    parts.push(`${hrs} Hrs`);
+    parts.push(`${rem} Mins`);
+    return parts.join(" ").trim();
+  }
+
+  function calculateTotalDownTime(downTime, upTime) {
+    const start = new Date(downTime).getTime();
+    const end = new Date(upTime).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
+    return end - start;
+  }
+
+  function calculatePendingTime(clockStartStopLogs) {
+    return (clockStartStopLogs || []).reduce((sum, log) => {
+      const start = new Date(log?.start || log?.startTime || log?.startClock || log?.startAt || 0).getTime();
+      const stop = new Date(log?.stop || log?.stopTime || log?.stopClock || log?.stopAt || 0).getTime();
+      if (!Number.isFinite(start) || !Number.isFinite(stop) || stop < start) return sum;
+      return sum + (stop - start);
+    }, 0);
+  }
+
+  function calculateDurationTime(totalMs, pendingMs) {
+    const total = Number(totalMs) || 0;
+    const pending = Number(pendingMs) || 0;
+    return Math.max(0, total - pending);
+  }
+  function buildConnectorText(connectorOption, connectorCount) {
+    const option = String(connectorOption || "").trim();
+    if (option === "ใช้หัวต่อ") {
+      return `ใช้หัวต่อ ${String(connectorCount || "-").trim() || "-"} หัว`;
+    }
+    if (option === "ไม่ใช้หัวต่อ") return "ไม่ใช้หัวต่อ";
+    return "-";
+  }
+
+  function buildUrgentText(urgentOption, urgentReason, includeReason = false) {
+    const option = String(urgentOption || "").trim();
+    if (option === "มีค่าเร่งด่วน") {
+      if (!includeReason) return "ค่า Stand By เร่งด่วน";
+
+      return `ค่า Stand By เร่งด่วน (${String(urgentReason || "-").trim() || "-"})`;
+    }
+    if (option === "ไม่มีค่าเร่งด่วน") return "ไม่มีค่าเร่งด่วน";
+    return "-";
+  }
+
+  function buildCoreShiftDetailReport(coreShiftDetails = {}) {
+    const mappings = Array.isArray(coreShiftDetails?.mappings) ? coreShiftDetails.mappings : [];
+    if (!mappings.length) return "";
+
+    const grouped = mappings.reduce((acc, item) => {
+      const key = String(item?.location || "-").trim() || "-";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(`  - C.${String(item?.oldCore || "-").trim() || "-"} (เดิม) โยกไป C.${String(item?.newCore || "-").trim() || "-"} (ใหม่)`);
+      return acc;
+    }, {});
+
+    const lines = [
+      `ข้อมูลโยก Core (รวม ${String(coreShiftDetails?.totalPoints || Object.keys(grouped).length || "-").trim() || "-"} จุด)`,
+      `Path: ${String(coreShiftDetails?.pathStart || "-").trim() || "-"} -> ${String(coreShiftDetails?.pathEnd || "-").trim() || "-"}`,
+      "",
+      "-----------------------------------",
+      `ลูกค้า: ${String(coreShiftDetails?.customerCode || "-").trim() || "-"} ${String(coreShiftDetails?.customerName || "-").trim() || "-"}`.trim(),
+    ];
+
+    Object.entries(grouped).forEach(([location, mapLines]) => {
+      lines.push(`${location}:`);
+      lines.push(...mapLines);
+    });
+
+    return lines.join("\n").trim();
+  }
+
+
+  function buildLineSolution(line, allLines = []) {
+    const clean = (v) => String(v || "").trim();
+    if (!line || typeof line !== "object") return "-";
+    const method = clean(line.method);
+    const connectorText = buildConnectorText(line.useConnectors || line.connectorOption, line.connectors || line.connectorCount);
+    const urgentText = buildUrgentText(line.urgent || line.urgentOption, line.urgentReason, false);
+    const spliceText = clean(line.cutPoints) ? `ตัดต่อใหม่ ${clean(line.cutPoints)} จุด (จุดละ ${clean(line.corePerPoint) || clean(line.coreCount) || "-"} Core)` : "";
+
+    let text = "-";
+    if (method === "ลากคร่อม") {
+      text = `ใช้สาย OFC ${clean(line.type) || "-"} ลากคร่อม ${clean(line.distance) || "-"} เมตร ${spliceText || ""} ${connectorText}`;
+    } else if (method === "ร่นลูป") {
+      text = `ร่นลูป ${clean(line.distance) || "-"} เมตร ${spliceText || ""} ${connectorText}`;
+
+    } else if (method === "โยก Core") {
+      text = `โยก Core ที่ จุดที่ 1 ${clean(line.pointA) || "-"} กับ จุดที่ 2 ${clean(line.pointB) || "-"} ${spliceText || ""} ${connectorText}`;
+    } else if (method === "ตัดต่อใหม่") {
+      text = `${spliceText || `ตัดต่อใหม่ - จุด (จุดละ ${clean(line.corePerPoint) || clean(line.coreCount) || "-"} Core)`} ${connectorText}`;
+    } else if (method === "ฝาก Core") {
+      const target = clean(line.depositTarget) || clean(line.depositToLine) || "-";
+      text = `ฝาก Core ${clean(line.depositCore) || "-"} กับ ${target} Core ${clean(line.depositTargetCore) || "-"}`;
+      if (spliceText) text = `${clean(line.type) || "-"} ${text} ${spliceText} ${connectorText}`;
+
+    }
+    const dedup = [...new Set(text.split(/\s+/).filter(Boolean))].join(" ").replace(/\s+\)/g, ")").trim();
+    const lineHeader = `เส้นที่ ${clean(line.lineNo) || "-"}: ${clean(line.type) || "-"}`;
+    const note = clean(line.note) ? ` (${clean(line.note)})` : "";
+    return `${lineHeader} ${dedup} + ${urgentText}${note}`.replace(/\s+/g, " ").trim();
+
+  }
+
+  function buildMultiLineSolution(data = {}) {
+    const lines = (data.selectedOfcLines || []).filter(Boolean).sort((a, b) => Number(a?.lineNo || 9999) - Number(b?.lineNo || 9999));
+    if (!lines.length) return String(data.solutionText || "-").trim() || "-";
+    return lines.map((line) => buildLineSolution(line, lines)).map((x) => x.trim()).filter(Boolean).join("\n").trim() || "-";
+  }
+  function buildSingleLineSolution(data = {}) {
+    const method = String(data.method || "").trim();
+    const connectorText = buildConnectorText(data.connectorOption, data.connectorCount);
+    const urgentText = buildUrgentText(data.urgentOption, data.urgentReason, method === "ค่าเร่งด่วน");
+    const spliceText = `ตัดต่อใหม่ ${String(data.cutPoints || "-").trim() || "-"} จุด (จุดละ ${String(data.corePerPoint || "-").trim() || "-"} Core)`;
+
+    if (method === "ลากคร่อม") {
+      return `ใช้สาย OFC ${String(data.ofcType || "-").trim() || "-"} ลากคร่อม ${String(data.distance || "-").trim() || "-"} เมตร ${spliceText} ${connectorText} + ${urgentText}`.replace(/\s+/g, " ").trim();
+    }
+    if (method === "ร่นลูป") {
+      return `ร่นลูป ${String(data.distance || "-").trim() || "-"} เมตร ${spliceText} ${connectorText} + ${urgentText}`.replace(/\s+/g, " ").trim();
+    }
+    if (method === "โยก Core") {
+      const coreText = `โยก Core ที่ จุดที่ 1 ${String(data.pointA || "-").trim() || "-"} กับ จุดที่ 2 ${String(data.pointB || "-").trim() || "-"} ${spliceText} ${connectorText} + ${urgentText}`;
+      const shift = buildCoreShiftDetailReport(data.coreShiftDetails || {});
+      return [coreText.replace(/\s+/g, " ").trim(), shift].filter(Boolean).join("\n").trim();
+    }
+    if (method === "ตัดต่อใหม่") {
+      return `${spliceText} ${connectorText} + ${urgentText}`.replace(/\s+/g, " ").trim();
+    }
+    if (method === "ฝาก Core") {
+      const depositTarget = String(data.depositTarget || data.depositToLine || "-").trim() || "-";
+      const base = `ฝาก Core ${String(data.depositCore || "-").trim() || "-"} กับ ${depositTarget}`;
+      const enrich = data.cutPoints ? `${spliceText} ${connectorText}` : "";
+      return `${base} ${enrich} + ${urgentText}`.replace(/\s+/g, " ").trim();
+    }
+    if (method === "ค่าเร่งด่วน") {
+      return urgentText;
+    }
+
+    return String(data.solutionText || "-").trim() || "-";
+  }
+
+  function createAutoSolutionDescription(data = {}) {
+    const isMulti = Boolean(data.isUsingMultipleLines);
+    const solution = isMulti ? buildMultiLineSolution(data) : buildSingleLineSolution(data);
+    return String(solution || "-").trim() || "-";
+  }
+
+
+  function buildMainNsFinishReport(data = {}) {
+    const totalMs = calculateTotalDownTime(data.downTime, data.upTime);
+    const pendingMs = calculatePendingTime(data.clockStartStopLogs);
+    const durationMs = calculateDurationTime(totalMs, pendingMs);
+    const callSubTime = data.responseTime ? new Date(new Date(data.responseTime).getTime() + (5 * 60000)).toISOString() : "";
+    const subArrivalTime = callSubTime ? new Date(new Date(callSubTime).getTime() + (60 * 60000)).toISOString() : "";
+    const repairStartTime = data.clockStartRepairTime || (subArrivalTime ? new Date(new Date(subArrivalTime).getTime() + (10 * 60000)).toISOString() : "");
+    const connectorCollectTime = data.upTime ? new Date(new Date(data.upTime).getTime() + (10 * 60000)).toISOString() : "";
+    const solutionText = createAutoSolutionDescription(data);
+    const ofcType = data.isUsingMultipleLines
+      ? (summarizeMultiOfcData(data.ofcMultipleLinesData || {}).join(", ").trim() || String(data.ofcType || "-").trim() || "-")
+      : (String(data.ofcType || "-").trim() || "-");
+
+
+    const overSla = totalMs > (3 * 60 * 60 * 1000) || durationMs > (3 * 60 * 60 * 1000);
+    const delay = overSla ? (String(data.delayReason || "").trim() || "เกิน SLA") : "-";
+
+    const lines = [
+      `รายละเอียดงานซ่อม : ${solutionText}`,
+      "",
+      `ปิดงาน: ${formatDateTime(data.downTime)} - ${formatDateTime(data.upTime)}`,
+      `${String(data.incidentNumber || "-").trim() || "-"} ${String(data.nodeName || "-").trim() || "-"} ${String(data.symphonyCid || "-").trim() || "-"} ${String(data.circuitSide || "-").trim() || "-"}`.trim(),
+      "",
+      `1. Sub : ${Array.isArray(data.subContractors) && data.subContractors.length ? data.subContractors.join(", ") : "-"}`,
+      `2. Down : ${formatDateTime(data.downTime)}`,
+      `3. Noc Alert : ${formatDateTime(data.alertTime)}`,
+      `4. NS Res. : ${formatDateTime(data.responseTime)}`,
+      `5. เรียก sub : ${formatDateTime(callSubTime)}`,
+      `6. Sub มาถึง : ${formatDateTime(subArrivalTime)}`,
+      `7. เริ่มแก้ไข : ${formatDateTime(repairStartTime)}`,
+      `8. Up time : ${formatDateTime(data.upTime)}`,
+      `9. Total Down time : ${formatDuration(totalMs)}`,
+      pendingMs > 0 ? `Pending time : ${formatDuration(pendingMs)}` : "",
+      pendingMs > 0 ? `Duration time : ${formatDuration(durationMs)}` : "",
+      `10. เก็บหัวต่อ : ${formatDateTime(connectorCollectTime)}`,
+      `11. OFC type : ${ofcType}`,
+      `12. ระยะ : ห่างจาก Site ${String(data.siteName || "-").trim() || "-"} ระยะ ${String(data.siteDistance || "-").trim() || "-"}`,
+      `13. สาเหตุ : ${String(data.cause || "-").trim() || "-"}`,
+      `14. บริเวณ : ${String(data.area || "-").trim() || "-"}`,
+      `15. longitude latitude : ${String(data.latitude || "-").trim() || "-"}, ${String(data.longitude || "-").trim() || "-"}`,
+      `16. แก้ไขอย่างไร : ${solutionText}`,
+      `17. ปรับ/ไม่ปรับ : ${String(data.adjustmentStatus || "-").trim() || "-"}`,
+      `18. ล่าช้า : ${delay}`,
+    ];
+    return lines.filter((line) => String(line || "").trim()).join("\n").trim();
+  }
+
+  function buildSubAssignmentReport(data = {}) {
+    const subs = Array.isArray(data.subContractors) ? data.subContractors.filter((x) => String(x || "").trim()) : [];
+    if (subs.length <= 1) return "";
+
+    const assignments = Array.isArray(data.multiSubAssignments) ? data.multiSubAssignments : [];
+    const lines = (data.selectedOfcLines || []).filter(Boolean);    
+    const sections = ["ข้อมูล Sub", ""];
+
+    subs.forEach((sub) => {
+      const subName = String(sub || "").trim();
+      const mine = assignments.filter((item) => {
+        const names = [item?.subName, item?.sub, ...(Array.isArray(item?.subNames) ? item.subNames : []), ...(Array.isArray(item?.subs) ? item.subs : [])]
+          .map((x) => String(x || "").trim())
+          .filter(Boolean);
+        return names.includes(subName);
+      }).sort((a, b) => Number(a?.lineNo || 9999) - Number(b?.lineNo || 9999));
+
+      sections.push(`[${subName || "-"}]`);
+      if (!mine.length) {
+
+        sections.push("-");
+      } else {
+        mine.forEach((item, idx) => {
+          const lineNo = Number(item?.lineNo || 0);
+          const line = lines.find((x) => Number(x?.lineNo) === lineNo);
+          if (line) {
+            sections.push(buildLineSolution(line, lines));
+          } else {
+            const task = String(item?.task || item?.text || item?.description || item?.detail || `งานที่ ${idx + 1}`).trim() || "-";
+            sections.push(task);
+          }
+
+        });
+      }
+      sections.push("");
+    });
+
+    return sections.join("\n").trim();
+  }
+
+  function buildFullNsFinishReport(data = {}) {
+    const main = buildMainNsFinishReport(data);
+    const sub = buildSubAssignmentReport(data);
+    const hasYoke = String(data.method || "").trim() === "โยก Core" || (data.selectedOfcLines || []).some((line) => String(line?.method || "").trim() === "โยก Core");
+    const shift = hasYoke ? buildCoreShiftDetailReport(data.coreShiftDetails || {}) : "";
+    return [main, sub, shift].filter((part) => String(part || "").trim()).join("\n\n").trim();
+
+  }
+
+  function ensureNsFinishReportModal() {
+    if (!document.getElementById("modal-ns-finish-report")) {
+      document.body.insertAdjacentHTML("beforeend", `
+        <div id="modal-ns-finish-report" class="ns-report-overlay hidden">
+          <div class="ns-report-modal">
+            <div class="ns-report-header">
+              <h3>NS Finish Report</h3>
+              <button id="btn-close-ns-report" class="ns-report-btn ns-report-btn-light">ปิด</button>
+            </div>
+            <div class="ns-report-body">
+              <textarea id="ns-report-preview" class="ns-report-preview" readonly></textarea>
+            </div>
+            <div class="ns-report-actions">
+              <button id="btn-copy-ns-report" class="ns-report-btn ns-report-btn-primary">Copy Report</button>
+              <button id="btn-close-ns-report-footer" class="ns-report-btn ns-report-btn-light">Close</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    if (!document.getElementById("ns-report-style")) {
+      document.head.insertAdjacentHTML("beforeend", `
+        <style id="ns-report-style">
+          .ns-report-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px;}
+          .ns-report-modal{width:min(980px,100%);max-height:92vh;background:#fff;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+          .ns-report-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #e2e8f0}
+          .ns-report-body{padding:12px 16px;flex:1;overflow:auto;background:#f8fafc}
+          .ns-report-preview{width:100%;min-height:380px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:12px;line-height:1.5;color:#0f172a;resize:vertical}
+          .ns-report-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid #e2e8f0}
+          .ns-report-btn{border:0;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer}
+          .ns-report-btn-primary{background:#2563eb;color:#fff}
+          .ns-report-btn-light{background:#e2e8f0;color:#0f172a}
+        </style>
+      `);
+    }
+
+    const modal = document.getElementById("modal-ns-finish-report");
+    if (modal && !modal.dataset.bound) {
+      document.getElementById("btn-close-ns-report")?.addEventListener("click", closeNsFinishReportModal);
+      document.getElementById("btn-close-ns-report-footer")?.addEventListener("click", closeNsFinishReportModal);
+      document.getElementById("btn-copy-ns-report")?.addEventListener("click", copyNsFinishReport);
+      modal.dataset.bound = "true";
+    }
+  }
+
+  function openNsFinishReportModal(data = {}) {
+    ensureNsFinishReportModal();
+    const report = buildFullNsFinishReport(data);
+    const modal = document.getElementById("modal-ns-finish-report");
+    const preview = document.getElementById("ns-report-preview");
+    if (preview) preview.value = report.trim() || "-";
+    if (modal) modal.classList.remove("hidden");
+  }
+
+  function closeNsFinishReportModal() {
+    document.getElementById("modal-ns-finish-report")?.classList.add("hidden");
+  }
+
+  async function copyNsFinishReport() {
+    const text = document.getElementById("ns-report-preview")?.value?.trim() || "-";
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("คัดลอกรายงานแล้ว");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      alert("คัดลอกรายงานแล้ว");
+    }
+  }
+
+  function validateNsFinishReportData(data = {}) {
+    const errors = [];
+    if (!data.incidentNumber) errors.push("missing incidentNumber");
+    return { valid: true, errors };
+  }
+
+  function handleSaveAndShowReport(data = {}) {
+    const result = validateNsFinishReportData(data);
+    if (!result.valid) return;
+    openNsFinishReportModal({
+      ...data,
+      solutionText: createAutoSolutionDescription(data),
+    });
+
+  }
+
+  function renderReportButton(item = {}) {
+    const incidentId = getIncidentKey(item) || "";
+    return `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incidentId}">Report</button>`;
+  }
+  window.renderReportButton = renderReportButton;
+
+  function buildNsReportInputFromIncident(incident = {}) {
+    const firstTicket = (incident.tickets || [])[0] || {};
+    const latestUpdate = (incident.updates || [])[incident.updates.length - 1] || {};
+    const finish = incident.nsFinish || {};
+    const details = finish.details || {};
+    const times = finish.times || {};
+
+    return {
+      incidentNumber: finish.incidentNumber || incident.incidentId || "-",
+      nodeName: latestUpdate.site || incident.node || "-",
+      symphonyCid: firstTicket.cid || "-",
+      circuitSide: firstTicket.port || "-",
+      subContractors: finish.subcontractors || latestUpdate.subcontractors || [],
+      downTime: times.downTime || firstTicket.downTime || incident.downTime || incident.createdAt || "",
+      alertTime: times.nocAlert || incident.createdAt || "",
+      responseTime: times.nsResponse || incident.respondedAt || incident.createdAt || "",
+      upTime: times.upTime || "",
+      clockStartStopLogs: incident.clockStartStopLogs || [],
+      clockStartRepairTime: times.startFix || "",
+      ofcType: details.ofcType || latestUpdate.ofcType || "-",
+      siteName: details.site || latestUpdate.site || "-",
+      siteDistance: details.distance || latestUpdate.distance || "-",
+      cause: details.cause || latestUpdate.cause || "-",
+      area: details.area || latestUpdate.area || "-",
+      latitude: String(details.latlng || latestUpdate.latlng || "").split(",")[0]?.trim() || "-",
+      longitude: String(details.latlng || latestUpdate.latlng || "").split(",")[1]?.trim() || "-",
+      solutionText: details.repairText || "-",
+     method: details.method || latestUpdate.workCase || "",
+      distance: details.methodDistance || "",
+      cutPoints: details.cutPoint || "",
+      corePerPoint: details.corePoint || "",
+      connectorOption: details.connectorChoice || "",
+      connectorCount: details.headJoint || "",
+      urgentOption: details.urgentLevel || "",
+      urgentReason: details.urgentReason || "",
+      pointA: details.siteA || "",
+      pointB: details.siteB || "",
+      coreShiftDetails: details.coreShiftDetails || {},
+
+      adjustmentStatus: details.patchStatus || "-",
+      delayReason: details.delayReason || incident.delayReason || "",
+      multiSubAssignments: details.multiSubAssignments || [],
+      selectedOfcLines: details.multiRepairDetails || [],
+      isUsingMultipleLines: details.ofcType === "หลายเส้น",
+      ofcMultipleLinesData: details.multiOfcDetails || latestUpdate.multiOfcDetails || {},
+    };
+  }
+
+  function bindNsFinishReportEvents() {
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest(".btn-corrective-report");
+      if (!target) return;
+      const found = getCorrectiveIncidentById(target.dataset.id);
+      if (!found) return;
+      openNsFinishReportModal(buildNsReportInputFromIncident(found.incident));
+    });
+  }
+
   function fileToDataURL(file) {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -2634,7 +3053,7 @@ function getIncidentKey(item) {
           : item
       );
 
-      LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
+      LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective, calendarEvents: current.calendarEvents });
       Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
       closeModal(modal);
       alert("บันทึก Update Equipment เรียบร้อย");
@@ -2769,6 +3188,46 @@ function getIncidentKey(item) {
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
       Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
       closeModal(modal);
+     handleSaveAndShowReport({
+        incidentNumber: payload.incidentNumber || incident.incidentId || "-",
+        nodeName: document.getElementById("finish-site").value || incident.node || "-",
+        symphonyCid: firstTicket.cid || "-",
+        circuitSide: firstTicket.port || "-",
+        subContractors: payload.subcontractors || [],
+        downTime: payload.times.downTime,
+        alertTime: payload.times.nocAlert,
+        responseTime: payload.times.nsResponse,
+        upTime: payload.times.upTime,
+        clockStartStopLogs: incident.clockStartStopLogs || [],
+        clockStartRepairTime: payload.times.startFix,
+        ofcType: payload.details.ofcType,
+        siteName: payload.details.site,
+        siteDistance: payload.details.distance,
+        cause: payload.details.cause,
+        area: payload.details.area,
+        latitude: String(payload.details.latlng || "").split(",")[0]?.trim() || "-",
+        longitude: String(payload.details.latlng || "").split(",")[1]?.trim() || "-",
+        solutionText: payload.details.repairText,
+        method: payload.details.method,
+        distance: payload.details.methodDistance,
+        cutPoints: payload.details.cutPoint,
+        corePerPoint: payload.details.corePoint,
+        connectorOption: payload.details.connectorChoice,
+        connectorCount: payload.details.headJoint,
+        urgentOption: payload.details.urgentLevel,
+        urgentReason: payload.details.urgentReason || "",
+        pointA: payload.details.siteA,
+        pointB: payload.details.siteB,
+        coreShiftDetails: payload.details.coreShiftDetails || {},
+
+        adjustmentStatus: payload.details.patchStatus,
+        delayReason: payload.details.delayReason || "",
+        multiSubAssignments: payload.details.multiSubAssignments || [],
+        selectedOfcLines: window.selectedOfcLines || payload.details.multiRepairDetails || [],
+        isUsingMultipleLines: window.isUsingMultipleLines,
+        ofcMultipleLinesData: payload.details.multiOfcDetails || {},
+      });
+
       alert("บันทึก NS Finish Equipment เรียบร้อย");
     };
 
@@ -3443,7 +3902,7 @@ function getIncidentKey(item) {
 
     })).filter((item) => item.ofcType);
   }
-  function buildMultiLineSolution(lines = window.selectedOfcLines || []) {
+  function buildFinishMultiLineSolution(lines = window.selectedOfcLines || []) {
     const clean = (value) => String(value || "").trim();
 
     const details = lines.map((line) => {
@@ -3494,43 +3953,48 @@ function getIncidentKey(item) {
   }
 
 
+
+  function collectAutoSolutionData() {
+    const ofcType = document.getElementById("finish-ofc-type")?.value || "-";
+    return {
+      isUsingMultipleLines: ofcType === "หลายเส้น",
+      selectedOfcLines: window.selectedOfcLines || [],
+      ofcMultipleLinesData: window.ofcMultipleLinesData || {},
+      solutionText: document.getElementById("solution")?.value || "",
+      ofcType,
+      method: document.getElementById("finish-method")?.value || "",
+      distance: document.getElementById("finish-method-distance")?.value || "",
+      cutPoints: document.getElementById("finish-cutpoint")?.value || "",
+      corePerPoint: document.getElementById("finish-core-point")?.value || "",
+      connectorOption: document.getElementById("finish-connector-choice")?.value || "",
+      connectorCount: document.getElementById("finish-head-joint")?.value || "",
+      urgentOption: document.getElementById("finish-urgent-level")?.value || "",
+      urgentReason: document.getElementById("finish-urgent-reason")?.value || "เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ",
+      pointA: document.getElementById("finish-site-a")?.value || document.getElementById("finish-yoke-loc-a")?.value || "",
+      pointB: document.getElementById("finish-site-b")?.value || document.getElementById("finish-yoke-loc-b")?.value || "",
+      coreShiftDetails: {
+        pathStart: document.getElementById("finish-site-a")?.value || document.getElementById("finish-yoke-loc-a")?.value || "",
+        pathEnd: document.getElementById("finish-site-b")?.value || document.getElementById("finish-yoke-loc-b")?.value || "",
+      },
+    };
+  }
+
+
   function buildSolution() {
-    const multiRepairDetails = collectFinishMultiRepairDetails();
-    if (document.getElementById("finish-ofc-type").value === "หลายเส้น" && multiRepairDetails.length) {
-      document.getElementById("solution").value = buildMultiLineSolution(window.selectedOfcLines);
-      return;
-    }
+    const generated = createAutoSolutionDescription(collectAutoSolutionData());
+    document.getElementById("solution").value = generated || "-";
+  }
 
-    const method = document.getElementById("finish-method").value || "";
-    const distance = document.getElementById("finish-method-distance").value || "-";
-    const cutPoint = document.getElementById("finish-cutpoint").value || "-";
-    const corePoint = document.getElementById("finish-core-point").value || "-";
-    const urgentLevel = document.getElementById("finish-urgent-level").value || "มีค่าเร่งด่วน";
-    const headJoint = document.getElementById("finish-head-joint").value || "";
-    const connectorChoice = document.getElementById("finish-connector-choice").value || "ไม่ใช้หัวต่อ";
 
-    const connectorText = connectorChoice === "ใช้หัวต่อ"
-      ? ` ใช้หัวต่อ ${headJoint || "-"} หัว`
-      : " ไม่ใช้หัวต่อ";
+  function bindAutoSolutionGenerator() {
+    const btn = document.getElementById("btn-generate-repair");
+    if (!btn || btn.dataset.boundAutoSolution) return;
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      buildSolution();
+    });
+    btn.dataset.boundAutoSolution = "true";
 
-    let result = "";
-    if (method === "ลากคร่อม" || method === "ร่นลูป") {
-      result = `${method} ${distance} เมตร${connectorText}`;
-    } else if (method === "ตัดต่อใหม่") {
-      result = `ตัดต่อใหม่ ${cutPoint} จุด จุดละ ${corePoint} Core${connectorText}`;
-    } else if (method === "โยก Core") {
-      result = buildYokeCoreText();
-    } else if (method === "ค่าเร่งด่วน") {
-      result = "ค่า Stand By เร่งด่วน (เรียกเร่งด่วนเนื่องจาก Interface Down หลังตรวจสอบพบ F/O ปกติ)";
-    }
-
-    if (!result && urgentLevel) {
-      result = urgentLevel;
-    }
-
-    if (result) {
-      document.getElementById("solution").value = result;
-    }
   }
 
   function collectYokeCircuitList() {
@@ -3621,7 +4085,7 @@ function getIncidentKey(item) {
 
     fillAutoTimes();
     document.getElementById("btn-auto-times").onclick = fillAutoTimes;
-    document.getElementById("btn-generate-repair").onclick = buildSolution;
+    bindAutoSolutionGenerator();
 
     document.getElementById("btn-save-finish").onclick = () => {
       const current = Store.getState();
@@ -3740,7 +4204,7 @@ function getIncidentKey(item) {
       clearRecycleBin();
     }
   });
-
+  bindNsFinishReportEvents();
   // ===== INITIAL LOAD =====
   (async function init() {
       try {

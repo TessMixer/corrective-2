@@ -64,7 +64,7 @@ const CorrectiveUI = {
             <button class="btn-action btn-action-success btn-corrective-finish" data-id="${incidentKey}">NS Finish</button>
             <button class="btn-action btn-action-danger btn-corrective-cancel" data-id="${incidentKey}">Cancel</button>
           </div>
-          <div class="flex gap-2"><button class="btn-action btn-action-primary btn-corrective-edit-type" data-id="${incidentKey}">Edit Work Type</button><button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incidentKey}">View Detail</button></div>
+          <div class="flex gap-2"><button class="btn-action btn-action-primary btn-corrective-edit-type" data-id="${incidentKey}">Edit Work Type</button><button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incidentKey}">View Detail</button>${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incidentKey}">Report</button>`}</div>
         </div>
       `;
 

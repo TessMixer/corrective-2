@@ -70,11 +70,15 @@ const HistoryUI = (function () {
 
         <div class="corrective-footer">
           <div></div>
-          <button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incident.incidentId}">View Detail</button>
+          <div class="flex gap-2">
+            <button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incident.incidentId}">View Detail</button>
+            ${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incident.incidentId}">Report</button>`}
+          </div>
         </div>
       </article>
     `;
   }
+
 
   function renderTabs(activeTab) {
     return `

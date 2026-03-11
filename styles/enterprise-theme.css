@@ -176,7 +176,7 @@
 .btn-action-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
 .btn-action-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
 .btn-action-purple { background: linear-gradient(135deg, #4f46e5, #6366f1); }
-
+.btn-action-orange { background: linear-gradient(135deg, #f59e0b, #ea580c); }
 .corrective-card {
   background: #ffffff;
   border: 1px solid #dbe2ea;
