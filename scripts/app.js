@@ -215,11 +215,11 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       dashboardSubmenu.innerHTML = dashboardExcelState.dashboardSheets
         .map((name) => {
           const sla = inferSlaHoursFromName(name);
-          const subview = normalizeSheetText(name).includes("summary")
+          const normalizedName = normalizeSheetText(name);
+          const subview = normalizedName.includes("summary") || normalizedName.includes("access") || normalizedName.includes("backbone")
+
             ? "summary"
-            : normalizeSheetText(name).includes("access") || normalizeSheetText(name).includes("backbone")
-              ? "region"
-              : "main";
+            : "main";
           return `<div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="${subview}" data-dashboard-sheet-name="${escapeHtml(name)}" data-dashboard-sla-hours="${sla}">${escapeHtml(name)}</div>`;
         })
         .join("");
