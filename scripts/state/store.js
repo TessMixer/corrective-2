@@ -35,6 +35,10 @@ const Store = (function () {
         calendarFocusDate: new Date().toISOString(),
         calendarFilter: 'all',
         dashboardSubView: 'main',
+        dashboardSheetName: 'Dashboard (3 Hrs.)',
+        dashboardSlaHours: 3,
+        dashboardDetailsSheetName: 'Details',
+        dashboardExcelError: '',
         modal: null
       }
     };
