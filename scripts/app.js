@@ -290,8 +290,9 @@ function getIncidentKey(item) {
   const dashboardCharts = {
     status: null,
     mttrTrend: null,
-    workType: null,
-    zone: null,
+    region: null,
+    subcontractor: null,
+    overdue: null,
     summaryMttr: null,
     summaryCause: null,
     regionWeekly: null,
@@ -765,6 +766,11 @@ function getIncidentKey(item) {
       cancel: alerts.filter((x) => x.status === "CANCEL").length + corrective.filter((x) => x.status === "CANCELLED").length,
       mttr: 0,
       overMttr: 0,
+      sla3Rate: 0,
+      sla4Rate: 0,
+      avgMttrHours: 0,
+      overdue: 0,
+      onTime: 0,
     };
 
     const completed = corrective.filter((x) => x.status === "COMPLETE");
@@ -778,22 +784,51 @@ function getIncidentKey(item) {
       if (hrs <= 3) stats.mttr += 1;
       else stats.overMttr += 1;
     });
+    const mttrHours = completed
+      .map((incident) => {
+        const down = incident.tickets?.[0]?.downTime || incident.createdAt;
+        const up = incident.nsFinish?.times?.upTime || incident.completedAt;
+        const d1 = new Date(down);
+        const d2 = new Date(up);
+        if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return null;
+        return (d2 - d1) / 3600000;
+      })
+      .filter((value) => Number.isFinite(value));
+
+    const totalClosed = mttrHours.length;
+    const sla3Count = mttrHours.filter((value) => value <= 3).length;
+    const sla4Count = mttrHours.filter((value) => value <= 4).length;
+    stats.onTime = sla3Count;
+    stats.overdue = mttrHours.filter((value) => value > 3).length;
+    stats.sla3Rate = totalClosed ? Number(((sla3Count / totalClosed) * 100).toFixed(1)) : 0;
+    stats.sla4Rate = totalClosed ? Number(((sla4Count / totalClosed) * 100).toFixed(1)) : 0;
+    stats.avgMttrHours = totalClosed
+      ? Number((mttrHours.reduce((acc, value) => acc + value, 0) / totalClosed).toFixed(2))
+      : 0;
+
 
     const statusChart = {
       labels: ["New", "Process", "Assign", "Finish", "Cancel"],
       values: [stats.newJob, stats.inprocess, stats.assign, stats.finish, stats.cancel],
     };
 
-    const typeCount = {
-      Fiber: corrective.filter((x) => String(x.workType).toLowerCase() === "fiber").length,
-      Equipment: corrective.filter((x) => String(x.workType).toLowerCase() === "equipment").length,
-      Other: corrective.filter((x) => String(x.workType).toLowerCase() !== "fiber" && String(x.workType).toLowerCase() !== "equipment").length,
-    };
-
-    const zoneCount = { "Zone 1": 0, "Zone 2": 0, "Zone 3": 0, "Zone 4": 0 };
+    const zoneCount = { "Zone 1": 0, "Zone 2": 0, "Zone 3": 0, "Zone 4": 0, Unknown: 0 };
     corrective.forEach((item) => {
       const zone = inferZoneFromNode(item.node);
       zoneCount[zone] = (zoneCount[zone] || 0) + 1;
+    });
+    const subcontractorCount = {};
+    corrective.forEach((incident) => {
+      const finishSubs = incident.nsFinish?.subcontractors || [];
+      const updateSubs = (incident.updates || []).flatMap((item) => item.subcontractors || []);
+      const teams = [...new Set([...finishSubs, ...updateSubs].filter(Boolean))];
+      if (!teams.length) {
+        subcontractorCount.Unassigned = (subcontractorCount.Unassigned || 0) + 1;
+        return;
+      }
+      teams.forEach((team) => {
+        subcontractorCount[team] = (subcontractorCount[team] || 0) + 1;
+      });
     });
 
     const days = [];
@@ -823,8 +858,9 @@ function getIncidentKey(item) {
     return {
       stats,
       statusChart,
-      typeCount,
       zoneCount,
+      subcontractorCount,
+      overdueSplit: { labels: ["On-time", "Overdue"], values: [stats.onTime, stats.overdue] },
       mttrTrend: { labels: dayLabel, values: dayValue },
       corrective,
       completed,
@@ -832,17 +868,20 @@ function getIncidentKey(item) {
   }
 
   function renderDashboardMain(container, data) {
+    const topSubcontractors = Object.entries(data.subcontractorCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
     container.innerHTML = `
       <div class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           ${[
-            ["New Job", data.stats.newJob, "งานเข้าใหม่", "tile-accent-blue"],
-            ["Inprocess", data.stats.inprocess, "กำลังดำเนินการ", "tile-accent-orange"],
-            ["Assign Job", data.stats.assign, "รอมอบหมาย", "tile-accent-purple"],
-            ["Finish", data.stats.finish, "ปิดงานแล้ว", "tile-accent-green"],
-            ["Job Cancel", data.stats.cancel, "งานถูกยกเลิก", "tile-accent-rose"],
-            ["MTTR", data.stats.mttr, "งานที่ Finish ไม่เกิน 3 ชม.", "tile-accent-green"],
-            ["Over MTTR", data.stats.overMttr, "งานที่ Finish เกิน 3 ชม.", "tile-accent-orange"],
+            ["Total Incidents", data.corrective.length + data.stats.newJob + data.stats.cancel, "จำนวนเหตุขัดข้องทั้งหมด", "tile-accent-blue"],
+            ["Avg MTTR", `${data.stats.avgMttrHours} hrs`, "ค่าเฉลี่ยเวลาซ่อม (Down→Up)", "tile-accent-green"],
+            ["SLA ≤ 3 Hrs", `${data.stats.sla3Rate}%`, "อัตราปิดงานภายใน 3 ชั่วโมง", "tile-accent-purple"],
+            ["SLA ≤ 4 Hrs", `${data.stats.sla4Rate}%`, "อัตราปิดงานภายใน 4 ชั่วโมง", "tile-accent-purple"],
+            ["Open Jobs", data.stats.newJob + data.stats.inprocess, "งานที่ยังไม่ปิด", "tile-accent-orange"],
+            ["Closed Jobs", data.stats.finish, "งานที่ปิดแล้ว", "tile-accent-green"],
+            ["Overdue", data.stats.overdue, "งานที่ใช้เวลาเกิน SLA 3 ชม.", "tile-accent-rose"],
           ].map(([title, value, sub, accent]) => `
             <div class="glass-card p-5 ${accent}">
               <div class="text-xs font-bold uppercase text-slate-500">${title}</div>
@@ -853,10 +892,11 @@ function getIncidentKey(item) {
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">ปริมาณงานแยกตามสถานะ</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-chart-status"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">แนวโน้ม MTTR งานรายวัน</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-mttr"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">ประเภทงาน (Fiber / Equipment / Other)</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-type"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cess Zone (Zone 1-4)</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-zone"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Job Status Distribution</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-chart-status"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">SLA Trend (MTTR ≤ 3hrs)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-mttr"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Incidents by Region</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-region"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Overdue vs On-time</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-overdue"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card lg:col-span-2"><h4 class="font-bold mb-3">Incidents by Subcontractor Team</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-subcontractor"></canvas></div></div>
         </div>
       </div>
     `;
@@ -865,8 +905,9 @@ function getIncidentKey(item) {
 
     destroyDashboardChart("status");
     destroyDashboardChart("mttrTrend");
-    destroyDashboardChart("workType");
-    destroyDashboardChart("zone");
+    destroyDashboardChart("region");
+    destroyDashboardChart("subcontractor");
+    destroyDashboardChart("overdue");
 
     dashboardCharts.status = createChartInstance("dash-chart-status", {
       type: "doughnut",
@@ -883,16 +924,38 @@ function getIncidentKey(item) {
       options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
     });
 
-    dashboardCharts.workType = createChartInstance("dash-chart-type", {
+    dashboardCharts.region = createChartInstance("dash-chart-region", {
       type: "bar",
-      data: { labels: Object.keys(data.typeCount), datasets: [{ label: "Count", data: Object.values(data.typeCount), backgroundColor: "#8b5cf6", borderRadius: 8, maxBarThickness: 48 }] },
+      data: { labels: Object.keys(data.zoneCount), datasets: [{ label: "Jobs", data: Object.values(data.zoneCount), backgroundColor: "#8b5cf6", borderRadius: 8, maxBarThickness: 48 }] },
       options: buildCartesianOptions(),
     });
 
-    dashboardCharts.zone = createChartInstance("dash-chart-zone", {
+    dashboardCharts.overdue = createChartInstance("dash-chart-overdue", {
+      type: "doughnut",
+      data: {
+        labels: data.overdueSplit.labels,
+        datasets: [{ data: data.overdueSplit.values, backgroundColor: ["#16a34a", "#ef4444"], borderWidth: 3, borderColor: "#ffffff", hoverOffset: 8 }],
+      },
+      options: buildBaseChartOptions({
+        cutout: "58%",
+        plugins: { legend: createLegend("bottom"), doughnutValuePlugin: { enabled: true } },
+      }),
+    });
+
+    dashboardCharts.subcontractor = createChartInstance("dash-chart-subcontractor", {
+
       type: "bar",
-      data: { labels: Object.keys(data.zoneCount), datasets: [{ label: "Count", data: Object.values(data.zoneCount), backgroundColor: "#ec4899", borderRadius: 8, maxBarThickness: 48 }] },
-      options: buildCartesianOptions(),
+      data: {
+        labels: topSubcontractors.map(([name]) => name),
+        datasets: [{ label: "Jobs", data: topSubcontractors.map(([, count]) => count), backgroundColor: "#ec4899", borderRadius: 8, maxBarThickness: 42 }],
+      },
+      options: buildCartesianOptions({
+        indexAxis: "y",
+        scales: {
+          x: { beginAtZero: true, ticks: { precision: 0, font: { size: getChartFontSize() } } },
+          y: { ticks: { font: { size: getChartFontSize() } }, grid: { display: false } },
+        },
+      }),
     });
   }
 
@@ -980,8 +1043,32 @@ function getIncidentKey(item) {
       },
       options: buildCartesianOptions({
         scales: {
-          y: { beginAtZero: true },
-          y1: { beginAtZero: true, max: 100, position: "right", grid: { drawOnChartArea: false }, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } },
+          y: { beginAtZero: true, ticks: { precision: 0, font: { size: getChartFontSize() } } },
+        },
+      }),
+    });
+
+    dashboardCharts.regionMttr = createChartInstance("dash-region-mttr", {
+      type: "line",
+      data: {
+        labels: zoneRows.map((row) => row.zone),
+        datasets: [
+          {
+            label: "MTTR %",
+            data: zoneRows.map((row) => Number(row.mttr.replace("%", ""))),
+            borderColor: "#1d4ed8",
+            backgroundColor: "rgba(29,78,216,0.15)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 5,
+          },
+        ],
+      },
+      options: buildCartesianOptions({
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } },
+
         },
       }),
     });
@@ -1042,24 +1129,29 @@ function getIncidentKey(item) {
             <tbody>${tableBody}</tbody>
           </table>
         </div>
-        <div class="glass-card p-5 dashboard-chart-card">
-          <h4 class="font-bold mb-3">Performance by Zone</h4>
-          <div class="chart-shell chart-shell--wide"><canvas id="dash-region-weekly"></canvas></div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="glass-card p-5 dashboard-chart-card">
+            <h4 class="font-bold mb-3">Performance by Zone (Meet/Fail)</h4>
+            <div class="chart-shell chart-shell--wide"><canvas id="dash-region-weekly"></canvas></div>
+          </div>
+          <div class="glass-card p-5 dashboard-chart-card">
+            <h4 class="font-bold mb-3">MTTR % by Zone</h4>
+            <div class="chart-shell chart-shell--wide"><canvas id="dash-region-mttr"></canvas></div>
+          </div>
         </div>
       </div>
     `;
 
     if (!window.Chart) return;
     destroyDashboardChart("regionWeekly");
-
+    destroyDashboardChart("regionMttr");
     dashboardCharts.regionWeekly = createChartInstance("dash-region-weekly", {
       type: "bar",
       data: {
         labels: zoneRows.map((row) => row.zone),
         datasets: [
-          { label: "Meet", data: zoneRows.map((row) => row.meet), backgroundColor: "#16a34a" },
-          { label: "Fail", data: zoneRows.map((row) => row.fail), backgroundColor: "#f97316" },
-          { label: "MTTR %", data: zoneRows.map((row) => Number(row.mttr.replace("%", ""))), type: "line", borderColor: "#1d4ed8", yAxisID: "y1" },
+          { label: "Meet", data: zoneRows.map((row) => row.meet), backgroundColor: "#16a34a", borderRadius: 8, maxBarThickness: 34 },
+          { label: "Fail", data: zoneRows.map((row) => row.fail), backgroundColor: "#f97316", borderRadius: 8, maxBarThickness: 34 },
         ],
       },
       options: buildCartesianOptions({
