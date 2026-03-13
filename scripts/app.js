@@ -20,6 +20,7 @@ const dashboardExcelState = {
   sheetNames: [],
   dashboardSheets: [],
   detailsSheet: null,
+  detailsColumns: [],
   detailsRows: [],
 };
 
@@ -58,12 +59,117 @@ function resolveRowValue(row, candidates = []) {
   }
   return "";
 }
-
-function toSortableMttr(value) {
-  if (typeof value === "number") return value;
-  const parsed = Number(String(value || "").replace(/[^0-9.\-]/g, ""));
-  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+function pickRowValue(row = {}, candidates = []) {
+  for (const key of candidates) {
+    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") return row[key];
+  }
+  return resolveRowValue(row, candidates);
 }
+
+function excelSerialToDate(serial) {
+  const value = Number(serial);
+  if (!Number.isFinite(value)) return null;
+  const epoch = Date.UTC(1899, 11, 30);
+  return new Date(epoch + value * 86400000);
+}
+
+function parseDateValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") {
+    const d = excelSerialToDate(value);
+    return d && !Number.isNaN(d.getTime()) ? d : null;
+  }
+  const text = String(value).trim();
+  if (!text) return null;
+  const asNumber = Number(text);
+  if (Number.isFinite(asNumber) && /^\d+(\.\d+)?$/.test(text)) {
+    const d = excelSerialToDate(asNumber);
+    if (d && !Number.isNaN(d.getTime())) return d;
+  }
+  const normalized = text.replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$2-$1").replace(" ", "T");
+  const d = new Date(normalized);
+  if (!Number.isNaN(d.getTime())) return d;
+  const d2 = new Date(text);
+  return Number.isNaN(d2.getTime()) ? null : d2;
+}
+function formatDateTimeDisplay(value) {
+  const date = parseDateValue(value);
+  if (!date || Number.isNaN(date.getTime())) return String(value ?? "");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`;
+}
+
+function formatDetailsCellValue(columnName, rawValue, row = {}) {
+  if (columnName === "Down Time" || columnName === "Up time") {
+    return formatDateTimeDisplay(rawValue);
+  }
+
+  if (columnName === "Down Time (Hrs.)") {
+    const upTimeValue = row["Up time"] || row["Finish Time"] || rawValue;
+    return formatDateTimeDisplay(upTimeValue);
+  }
+
+  return String(rawValue ?? "");
+}
+
+
+function getDashboardRowsBySheet(sheetName = "") {
+  const all = dashboardExcelState.detailsRows || [];
+  const key = normalizeSheetText(sheetName);
+  if (key.includes("access")) {
+    return all.filter((row) => normalizeSheetText(pickRowValue(row, ["Backbone/Access", "networkType"])).includes("access"));
+  }
+  if (key.includes("backbone")) {
+    return all.filter((row) => normalizeSheetText(pickRowValue(row, ["Backbone/Access", "networkType"])).includes("backbone"));
+  }
+  return all;
+}
+
+function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
+  return rows
+    .map((row, index) => {
+      const downDate = parseDateValue(pickRowValue(row, ["Down Time", "startTime"]));
+      const upDate = parseDateValue(pickRowValue(row, ["Up time", "finishTime"]));
+      let mttrHours = Number(pickRowValue(row, ["Down Time (Hrs.)", "mttr"]));
+      if (Number.isFinite(mttrHours)) {
+        mttrHours = mttrHours * 24;
+      }
+
+      const safeDown = downDate || new Date(Date.now() - 3600000);
+      const safeUp = upDate || (Number.isFinite(mttrHours) ? new Date(safeDown.getTime() + mttrHours * 3600000) : new Date(safeDown.getTime() + 3600000));
+      const statusRaw = slaHours >= 4 ? pickRowValue(row, ["MTTR 4Hrs.", "status4"]) : pickRowValue(row, ["MTTR 3Hrs.", "status3"]);
+      const team1 = pickRowValue(row, ["Sub-contractor Team 1"]);
+      const team2 = pickRowValue(row, ["Sub-contractor Team 2"]);
+      const team3 = pickRowValue(row, ["Sub-contractor Team 3"]);
+      const team4 = pickRowValue(row, ["Sub-contractor Team 4"]);
+      const teams = [team1, team2, team3, team4].filter((x) => String(x || "").trim());
+      return {
+        incidentId: pickRowValue(row, ["FC No.", "incidentId"]) || `DETAIL-${index + 1}`,
+        node: pickRowValue(row, ["Area", "region"]) || "-",
+        alarm: pickRowValue(row, ["Cause of incident", "cause"]) || "Unknown",
+        createdAt: safeDown.toISOString(),
+        completedAt: safeUp.toISOString(),
+        status: isComplete ? "COMPLETE" : "PROCESS",
+        tickets: [{ downTime: safeDown.toISOString() }],
+        updates: [{ cause: pickRowValue(row, ["Cause of incident", "cause"]) || "Unknown", subcontractors: teams }],
+        nsFinish: {
+          times: { upTime: safeUp.toISOString() },
+          details: {
+            cause: pickRowValue(row, ["Cause of incident", "cause"]) || "Unknown",
+            delayBy: pickRowValue(row, ["Delay by", "delayBy"]) || "Sub-Contractor",
+          },
+         subcontractors: teams,
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
 
 (function bootstrapApp() {
   const firebaseReady = initFirebase();
@@ -142,6 +248,7 @@ function toSortableMttr(value) {
   function loadDashboardWorkbook() {
     try {
       const sheetNames = Array.isArray(MTTR_WORKBOOK_DATA?.sheetNames) ? MTTR_WORKBOOK_DATA.sheetNames : [];
+      dashboardExcelState.detailsColumns = Array.isArray(MTTR_WORKBOOK_DATA?.detailsColumns) ? MTTR_WORKBOOK_DATA.detailsColumns : [];
       dashboardExcelState.detailsRows = Array.isArray(MTTR_WORKBOOK_DATA?.detailsRows) ? MTTR_WORKBOOK_DATA.detailsRows : [];
       buildDashboardMenusFromSheets(sheetNames);
 
@@ -884,12 +991,19 @@ function toSortableMttr(value) {
   }
 
   function computeDashboardData(state, slaHours = 3) {
-    const alerts = state.alerts || [];
-    const corrective = [
-      ...(state.corrective.fiber || []),
-      ...(state.corrective.equipment || []),
-      ...(state.corrective.other || []),
-    ];
+    const dashboardSheetName = state.ui.dashboardSheetName || "";
+    const detailsRows = getDashboardRowsBySheet(dashboardSheetName);
+    const useDetailsDataset = detailsRows.length > 0;
+
+    const alerts = useDetailsDataset ? [] : (state.alerts || []);
+    const corrective = useDetailsDataset
+      ? mapDetailRowsToIncidents(detailsRows, slaHours)
+      : [
+          ...(state.corrective.fiber || []),
+          ...(state.corrective.equipment || []),
+          ...(state.corrective.other || []),
+        ];
+
 
     const stats = {
       newJob: alerts.filter((x) => x.status === "ACTIVE").length,
@@ -1000,21 +1114,26 @@ function toSortableMttr(value) {
     };
   }
 
-  function renderDashboardMain(container, data) {
+
+  function renderDashboardMain(container, data, slaHours = 3, sheetName = "") {
     const topSubcontractors = Object.entries(data.subcontractorCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8);
     container.innerHTML = `
       <div class="space-y-6">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <h3 class="text-lg font-bold text-slate-700">${escapeHtml(sheetName || `Dashboard (${slaHours} Hrs.)`)}</h3>
+          <div class="text-xs text-slate-400">แหล่งข้อมูล: Details (${data.completed.length} รายการ)</div>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           ${[
             ["Total Incidents", data.corrective.length + data.stats.newJob + data.stats.cancel, "จำนวนเหตุขัดข้องทั้งหมด", "tile-accent-blue"],
             ["Avg MTTR", `${data.stats.avgMttrHours} hrs`, "ค่าเฉลี่ยเวลาซ่อม (Down→Up)", "tile-accent-green"],
-            ["SLA ≤ 3 Hrs", `${data.stats.sla3Rate}%`, "อัตราปิดงานภายใน 3 ชั่วโมง", "tile-accent-purple"],
+            [`SLA ≤ ${slaHours} Hrs`, `${data.stats.sla3Rate}%`, `อัตราปิดงานภายใน ${slaHours} ชั่วโมง`, "tile-accent-purple"],
             ["SLA ≤ 4 Hrs", `${data.stats.sla4Rate}%`, "อัตราปิดงานภายใน 4 ชั่วโมง", "tile-accent-purple"],
             ["Open Jobs", data.stats.newJob + data.stats.inprocess, "งานที่ยังไม่ปิด", "tile-accent-orange"],
             ["Closed Jobs", data.stats.finish, "งานที่ปิดแล้ว", "tile-accent-green"],
-            ["Overdue", data.stats.overdue, "งานที่ใช้เวลาเกิน SLA 3 ชม.", "tile-accent-rose"],
+            ["Overdue", data.stats.overdue, `งานที่ใช้เวลาเกิน SLA ${slaHours} ชม.`, "tile-accent-rose"],
           ].map(([title, value, sub, accent]) => `
             <div class="glass-card p-5 ${accent}">
               <div class="text-xs font-bold uppercase text-slate-500">${title}</div>
@@ -1026,7 +1145,7 @@ function toSortableMttr(value) {
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Job Status Distribution</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-chart-status"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">SLA Trend (MTTR ≤ 3hrs)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-mttr"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">SLA Trend (MTTR ≤ ${slaHours}hrs)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-mttr"></canvas></div></div>
           <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Incidents by Region</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-region"></canvas></div></div>
           <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Overdue vs On-time</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-overdue"></canvas></div></div>
           <div class="glass-card p-5 dashboard-chart-card lg:col-span-2"><h4 class="font-bold mb-3">Incidents by Subcontractor Team</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-subcontractor"></canvas></div></div>
@@ -1053,7 +1172,7 @@ function toSortableMttr(value) {
 
     dashboardCharts.mttrTrend = createChartInstance("dash-chart-mttr", {
       type: "line",
-      data: { labels: data.mttrTrend.labels, datasets: [{ label: "MTTR <= 3hrs (%)", data: data.mttrTrend.values, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,.2)", fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 4 }] },
+      data: { labels: data.mttrTrend.labels, datasets: [{ label: `MTTR <= ${slaHours}hrs (%)`, data: data.mttrTrend.values, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,.2)", fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 4 }] },
       options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
     });
 
@@ -1091,10 +1210,10 @@ function toSortableMttr(value) {
       }),
     });
   }
+  function renderDashboardSummary(container, data, slaHours = 3) {
+    const monthlyRows = buildSummaryMonthlyRows(data.completed, slaHours);
+    const causeRows = buildCauseRows(data.completed, slaHours);
 
-  function renderDashboardSummary(container, data) {
-    const monthlyRows = buildSummaryMonthlyRows(data.completed);
-    const causeRows = buildCauseRows(data.completed);
 
     const summaryBody = monthlyRows.map((row) => `
       <tr>
@@ -1121,7 +1240,7 @@ function toSortableMttr(value) {
       <div class="space-y-6">
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div class="glass-card p-5 overflow-auto">
-            <h3 class="font-bold mb-3">Summary MTTR 3 Hrs. (Monthly)</h3>
+            <h3 class="font-bold mb-3">Summary MTTR ${slaHours} Hrs. (Monthly)</h3>
             <table class="w-full text-sm">
               <thead>
                 <tr class="bg-slate-50">
@@ -1154,7 +1273,7 @@ function toSortableMttr(value) {
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR 3 Hrs. (Monthly Trend)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-mttr"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR ${slaHours} Hrs. (Monthly Trend)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-mttr"></canvas></div></div>
           <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cause Distribution</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-cause"></canvas></div></div>
         </div>
       </div>
@@ -1225,9 +1344,8 @@ function toSortableMttr(value) {
       }),
     });
   }
-
-  function renderDashboardRegion(container, data) {
-    const zoneRows = buildRegionWeeklyRows(data.completed);
+  function renderDashboardRegion(container, data, slaHours = 3) {
+    const zoneRows = buildRegionWeeklyRows(data.completed, slaHours);
 
     const tableBody = zoneRows.map((row) => `
       <tr>
@@ -1243,7 +1361,7 @@ function toSortableMttr(value) {
     container.innerHTML = `
       <div class="space-y-6">
         <div class="glass-card p-5 overflow-auto">
-          <h3 class="font-bold mb-3">Region MTTR performance 3 Hrs. (Weekly by Zone)</h3>
+          <h3 class="font-bold mb-3">Region MTTR performance ${slaHours} Hrs. (Weekly by Zone)</h3>
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-slate-50">
@@ -1296,7 +1414,7 @@ function toSortableMttr(value) {
     });
   }
 
-  function renderDashboardReport(container, data) {
+  function renderDashboardReport(container, data, slaHours = 3) {
     container.innerHTML = `
       <div class="space-y-6">
         <div class="bg-red-700 text-white rounded-xl p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -1308,8 +1426,8 @@ function toSortableMttr(value) {
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR 3 Hrs. 2026</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-report-main"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR 3 Hrs.</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-report-incident"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR ${slaHours} Hrs. 2026</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-report-main"></canvas></div></div>
+          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR ${slaHours} Hrs.</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-report-incident"></canvas></div></div>
           <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cause of Incident</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-report-cause"></canvas></div></div>
           <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Delayed by</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-report-delay"></canvas></div></div>
         </div>
@@ -1433,22 +1551,40 @@ function toSortableMttr(value) {
     const page = Number(document.getElementById("details-page")?.value || 1);
     const pageSize = 10;
 
-    const mapped = rows.map((row) => ({
-      incidentId: row.incidentId || resolveRowValue(row, ["Incident ID", "Incident", "Ticket", "ID", "FC No."]),
-      region: row.region || resolveRowValue(row, ["Region", "Zone", "Area"]),
-      contractor: row.contractor || resolveRowValue(row, ["Contractor", "Subcontractor", "Team"]),
-      networkType: row.networkType || resolveRowValue(row, ["Network Type", "Network", "Type", "Backbone/Access"]),
-      slaGroup: row.slaGroup || resolveRowValue(row, ["SLA Group", "SLA", "Within 3 Hrs."]),
-      startTime: row.startTime || resolveRowValue(row, ["Start Time", "Down Time", "Start"]),
-      finishTime: row.finishTime || resolveRowValue(row, ["Finish Time", "Up Time", "Finish"]),
-      mttr: row.mttr || resolveRowValue(row, ["MTTR", "Duration", "Hours", "Down Time (Hrs.)"]),
-      status: row.status || resolveRowValue(row, ["Status", "MTTR 3Hrs."]),
+    const mapped = rows.map((row) => {
+      const teams = [
+        pickRowValue(row, ["Sub-contractor Team 1"]),
+        pickRowValue(row, ["Sub-contractor Team 2"]),
+        pickRowValue(row, ["Sub-contractor Team 3"]),
+        pickRowValue(row, ["Sub-contractor Team 4"]),
+      ].filter((x) => String(x || "").trim());
+      return {
+        incidentId: pickRowValue(row, ["FC No.", "Incident ID", "incidentId"]),
+        region: pickRowValue(row, ["Area", "Region", "region"]),
+        contractor: teams.join(", ") || pickRowValue(row, ["Contractor", "contractor"]),
+        networkType: pickRowValue(row, ["Backbone/Access", "Network Type", "networkType"]),
+        slaGroup: pickRowValue(row, ["Within 3 Hrs.", "SLA Group", "slaGroup"]),
+        startTime: pickRowValue(row, ["Down Time", "Start Time", "startTime"]),
+        finishTime: pickRowValue(row, ["Up time", "Finish Time", "finishTime"]),
+        mttr: pickRowValue(row, ["Down Time (Hrs.)", "MTTR", "mttr"]),
+        status: pickRowValue(row, ["MTTR 3Hrs.", "Status", "status3", "status"]),
+        raw: row,
+      };
+    });
 
-    }));
+    const allColumns = dashboardExcelState.detailsColumns?.length
+      ? dashboardExcelState.detailsColumns
+      : Array.from(new Set(rows.flatMap((row) => Object.keys(row || {}))));
+
 
     const regionOpts = [...new Set(mapped.map((item) => String(item.region || "-").trim() || "-") )];
-    const contractorOpts = [...new Set(mapped.map((item) => String(item.contractor || "-").trim() || "-") )];
-    const slaOpts = [...new Set(mapped.map((item) => String(item.slaGroup || "-").trim() || "-") )];
+    const sortMttrSafe = (value) => {
+      if (typeof toSortableMttr === "function") {
+        return toSortableMttr(value);
+      }
+      const parsed = Number(String(value || "").replace(/[^0-9.\-]/g, ""));
+      return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+    };
 
     const filtered = mapped
       .filter((item) => (region === "all" ? true : String(item.region || "-") === region))
@@ -1459,7 +1595,7 @@ function toSortableMttr(value) {
         return normalizeSheetText(Object.values(item).join(" ")).includes(search);
       })
       .sort((a, b) => {
-        const delta = toSortableMttr(a.mttr) - toSortableMttr(b.mttr);
+        const delta = sortMttrSafe(a.mttr) - sortMttrSafe(b.mttr);
         return sortMode === "desc" ? -delta : delta;
       });
 
@@ -1476,15 +1612,15 @@ function toSortableMttr(value) {
         <input id="details-search" class="bg-slate-100 rounded-lg px-3 py-2 text-sm" placeholder="ค้นหา..." value="${escapeHtml(document.getElementById("details-search")?.value || "")}">
         <select id="details-filter-region" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
           <option value="all">ทุก Region</option>
-          ${regionOpts.map((item) => `<option value="${escapeHtml(item)}" ${item === region ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+          ${(typeof regionOpts === "undefined" ? [] : regionOpts).map((item) => `<option value="${escapeHtml(item)}" ${item === region ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
         </select>
         <select id="details-filter-contractor" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
           <option value="all">ทุก Contractor</option>
-          ${contractorOpts.map((item) => `<option value="${escapeHtml(item)}" ${item === contractor ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+          ${(typeof contractorOpts === "undefined" ? [] : contractorOpts).map((item) => `<option value="${escapeHtml(item)}" ${item === contractor ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
         </select>
         <select id="details-filter-sla" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
           <option value="all">ทุก SLA Group</option>
-          ${slaOpts.map((item) => `<option value="${escapeHtml(item)}" ${item === slaGroup ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+          ${(typeof slaOpts === "undefined" ? [] : slaOpts).map((item) => `<option value="${escapeHtml(item)}" ${item === slaGroup ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
         </select>
         <select id="details-sort-mttr" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
           <option value="asc" ${sortMode === "asc" ? "selected" : ""}>MTTR น้อยไปมาก</option>
@@ -1492,12 +1628,12 @@ function toSortableMttr(value) {
         </select>
       </div>
       <div class="glass-card overflow-auto">
-        <table class="w-full text-sm text-left">
+        <table class="w-full text-sm text-left min-w-[2200px]">
           <thead class="bg-slate-50 text-slate-500 uppercase text-[10px]"><tr>
-            <th class="px-4 py-3">Incident ID</th><th class="px-4 py-3">Region</th><th class="px-4 py-3">Contractor</th><th class="px-4 py-3">Network Type</th><th class="px-4 py-3">SLA Group</th><th class="px-4 py-3">Start Time</th><th class="px-4 py-3">Finish Time</th><th class="px-4 py-3">MTTR</th><th class="px-4 py-3">Status</th>
+            ${allColumns.map((col) => `<th class="px-4 py-3 whitespace-nowrap">${escapeHtml(col)}</th>`).join("")}
           </tr></thead>
           <tbody class="divide-y divide-slate-100 bg-white">
-            ${pageRows.map((item) => `<tr><td class="px-4 py-3">${escapeHtml(item.incidentId)}</td><td class="px-4 py-3">${escapeHtml(item.region)}</td><td class="px-4 py-3">${escapeHtml(item.contractor)}</td><td class="px-4 py-3">${escapeHtml(item.networkType)}</td><td class="px-4 py-3">${escapeHtml(item.slaGroup)}</td><td class="px-4 py-3">${escapeHtml(item.startTime)}</td><td class="px-4 py-3">${escapeHtml(item.finishTime)}</td><td class="px-4 py-3">${escapeHtml(item.mttr)}</td><td class="px-4 py-3">${escapeHtml(item.status)}</td></tr>`).join("") || `<tr><td colspan="9" class="px-4 py-5 text-center text-slate-400">ไม่พบข้อมูล</td></tr>`}
+            ${pageRows.map((item) => `<tr>${allColumns.map((col) => `<td class="px-4 py-3 whitespace-nowrap align-top">${escapeHtml(formatDetailsCellValue(col, item.raw?.[col], item.raw || {}))}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${allColumns.length || 1}" class="px-4 py-5 text-center text-slate-400">ไม่พบข้อมูล</td></tr>`}
           </tbody>
         </table>
       </div>
