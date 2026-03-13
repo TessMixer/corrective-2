@@ -5066,6 +5066,10 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     await AlertService.loadFromLocal();
 
     const refreshAlerts = async () => {
+      const currentView = Store.getState()?.ui?.currentView;
+      if (["dashboard", "dashboard-details"].includes(currentView)) {
+        return;
+      }
       try {
         await AlertService.loadFromLocal();
       } catch (error) {
