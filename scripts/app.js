@@ -560,6 +560,8 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     overdue: null,
     summaryMttr: null,
     summaryCause: null,
+    summaryTeam: null,
+    summaryDelay: null,
     regionWeekly: null,
     reportMain: null,
     reportIncident: null,
@@ -1391,104 +1393,256 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     });
     renderSelected(selectedKey);
   }
-  function renderDashboardSummary(container, data, slaHours = 3) {
-    const monthlyRows = buildSummaryMonthlyRows(data.completed, slaHours);
-    const causeRows = buildCauseRows(data.completed, slaHours);
+  function renderDashboardSummary(container, data, slaHours = 3, sheetName = "") {
+    const rows = getDashboardRowsBySheet(sheetName || "") || [];
+    const statusKey = slaHours >= 4 ? "MTTR 4Hrs." : "MTTR 3Hrs.";
+    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const weekOrder = ["W1", "W2", "W3", "W4", "W5"];
+    const monthState = document.getElementById("summary-month-select")?.value || "Jan";
+    const initMetric = () => ({ meet: 0, fail: 0, total: 0, uncontrol: 0, controlFail: 0 });
+    const monthlyMap = Object.fromEntries(monthOrder.map((month) => [month, initMetric()]));
+    const causeMap = {};
+    const delayWeekly = {};
+    const teamMap = {};
 
+    rows.forEach((row) => {
+      const status = normalizeSheetText(pickRowValue(row, [statusKey, "Status", "status"]));
+      const isMeet = status.includes("meet");
+      const isFail = status.includes("fail");
+      if (!isMeet && !isFail) return;
 
-    const summaryBody = monthlyRows.map((row) => `
-      <tr>
-        <td class="px-3 py-2 font-medium">${row.month}</td>
-        <td class="px-3 py-2 text-center text-green-700">${row.meet}</td>
-        <td class="px-3 py-2 text-center text-amber-700">${row.fail}</td>
-        <td class="px-3 py-2 text-center">${row.total}</td>
-        <td class="px-3 py-2 text-center font-semibold">${row.mttr}</td>
-        <td class="px-3 py-2 text-center">${row.uncontrolled}</td>
-      </tr>
-    `).join("");
+      const month = String(pickRowValue(row, ["Month"]) || "").slice(0, 3);
+      const week = String(pickRowValue(row, ["Week"]) || "").trim();
+      const isUncontrol = normalizeSheetText(pickRowValue(row, ["Control / Uncontrol", "control"])).includes("uncontrol");
+      const cause = String(pickRowValue(row, ["Cause of incident", "cause", "สาเหตุหลัก"]) || "Unknown").trim() || "Unknown";
+      const delayBy = String(pickRowValue(row, ["Delay by", "delayBy"]) || (isUncontrol ? "MEA/PEA" : "Sub-Contractor")).trim() || "Sub-Contractor";
+      const team = String(pickRowValue(row, ["Team"]) || "Unknown").trim() || "Unknown";
 
-    const causeBody = causeRows.map((row) => `
-      <tr>
-        <td class="px-3 py-2">${row.cause}</td>
-        <td class="px-3 py-2 text-center text-green-700">${row.meet}</td>
-        <td class="px-3 py-2 text-center text-amber-700">${row.fail}</td>
-        <td class="px-3 py-2 text-center">${row.total}</td>
-        <td class="px-3 py-2 text-center font-semibold">${row.mttr}</td>
-      </tr>
-    `).join("");
+      if (!monthlyMap[month]) monthlyMap[month] = initMetric();
+      monthlyMap[month].total += 1;
+      if (isMeet) monthlyMap[month].meet += 1;
+      if (isFail) monthlyMap[month].fail += 1;
+      if (isUncontrol) monthlyMap[month].uncontrol += 1;
+      if (isFail && !isUncontrol) monthlyMap[month].controlFail += 1;
+
+      if (!causeMap[cause]) causeMap[cause] = initMetric();
+      causeMap[cause].total += 1;
+      if (isMeet) causeMap[cause].meet += 1;
+      if (isFail) causeMap[cause].fail += 1;
+      if (isUncontrol) causeMap[cause].uncontrol += 1;
+      if (isFail && !isUncontrol) causeMap[cause].controlFail += 1;
+
+      if (!delayWeekly[delayBy]) delayWeekly[delayBy] = { ...Object.fromEntries(weekOrder.map((w) => [w, 0])), total: 0, controlType: isUncontrol ? "Uncontrol" : "Control" };
+      if (!weekOrder.includes(week)) {
+        delayWeekly[delayBy].total += 1;
+      } else {
+        delayWeekly[delayBy][week] += 1;
+        delayWeekly[delayBy].total += 1;
+      }
+      if (isUncontrol) delayWeekly[delayBy].controlType = "Uncontrol";
+
+      if (!teamMap[team]) teamMap[team] = initMetric();
+      teamMap[team].total += 1;
+      if (isMeet) teamMap[team].meet += 1;
+      if (isFail) teamMap[team].fail += 1;
+      if (isUncontrol) teamMap[team].uncontrol += 1;
+      if (isFail && !isUncontrol) teamMap[team].controlFail += 1;
+    });
+
+    const buildRate = (meet, total) => (total ? `${((meet / total) * 100).toFixed(2)}%` : "0.00%");
+
+    const monthlyRows = monthOrder.map((month) => {
+      const row = monthlyMap[month] || initMetric();
+      const withoutTotal = Math.max(0, row.total - row.uncontrol);
+      return {
+        month,
+        meet: row.meet,
+        fail: row.fail,
+        total: row.total,
+        mttr: buildRate(row.meet, row.total),
+        controlFail: row.controlFail,
+        withoutTotal,
+        withoutRate: buildRate(row.meet, withoutTotal),
+      };
+    });
+
+    const sumMonthly = monthlyRows.reduce((acc, row) => {
+      acc.meet += row.meet;
+      acc.fail += row.fail;
+      acc.total += row.total;
+      acc.controlFail += row.controlFail;
+      acc.withoutTotal += row.withoutTotal;
+      return acc;
+    }, { meet: 0, fail: 0, total: 0, controlFail: 0, withoutTotal: 0 });
+    sumMonthly.mttr = buildRate(sumMonthly.meet, sumMonthly.total);
+    sumMonthly.withoutRate = buildRate(sumMonthly.meet, sumMonthly.withoutTotal);
+
+    const causeRows = Object.entries(causeMap).map(([cause, row]) => {
+      const withoutTotal = Math.max(0, row.total - row.uncontrol);
+      return {
+        cause,
+        meet: row.meet,
+        fail: row.fail,
+        total: row.total,
+        mttr: buildRate(row.meet, row.total),
+        controlFail: row.controlFail,
+        withoutTotal,
+        withoutRate: buildRate(row.meet, withoutTotal),
+      };
+    }).sort((a, b) => b.total - a.total);
+
+    const sumCause = causeRows.reduce((acc, row) => {
+      acc.meet += row.meet;
+      acc.fail += row.fail;
+      acc.total += row.total;
+      acc.controlFail += row.controlFail;
+      acc.withoutTotal += row.withoutTotal;
+      return acc;
+    }, { meet: 0, fail: 0, total: 0, controlFail: 0, withoutTotal: 0 });
+    sumCause.mttr = buildRate(sumCause.meet, sumCause.total);
+    sumCause.withoutRate = buildRate(sumCause.meet, sumCause.withoutTotal);
+
+    const summaryWeekly = weekOrder.map((week) => {
+      const weekRows = rows.filter((row) => String(pickRowValue(row, ["Week"]) || "") === week);
+      const weekStat = buildDashboardSectionStats(weekRows, slaHours);
+      return { week, meet: weekStat.meet, fail: weekStat.fail, total: weekStat.total, mttr: `${weekStat.mttrRate}%` };
+    });
+    const selectedMonthRows = rows.filter((row) => String(pickRowValue(row, ["Month"]) || "").slice(0, 3) === monthState);
+    const selectedWeekly = weekOrder.map((week) => {
+      const weekRows = selectedMonthRows.filter((row) => String(pickRowValue(row, ["Week"]) || "") === week);
+      const weekStat = buildDashboardSectionStats(weekRows, slaHours);
+      return { week, meet: weekStat.meet, fail: weekStat.fail, total: weekStat.total, mttr: `${weekStat.mttrRate}%` };
+    });
+
+    const teamOrder = ["Keng", "Jin", "Ball"];
+    const teamRows = teamOrder.map((team) => {
+      const stat = teamMap[team] || initMetric();
+      const withoutTotal = Math.max(0, stat.total - stat.uncontrol);
+      return {
+        team,
+        meet: stat.meet,
+        fail: stat.fail,
+        total: stat.total,
+        mttr: buildRate(stat.meet, stat.total),
+        controlFail: stat.controlFail,
+        withoutTotal,
+        withoutRate: buildRate(stat.meet, withoutTotal),
+      };
+    });
+
+    const teamMonthRows = teamOrder.map((team) => {
+      const list = selectedMonthRows.filter((row) => String(pickRowValue(row, ["Team"]) || "") === team);
+      const stat = buildDashboardSectionStats(list, slaHours);
+      const controlFail = list.filter((row) => normalizeSheetText(pickRowValue(row, [statusKey])).includes("fail") && !normalizeSheetText(pickRowValue(row, ["Control / Uncontrol"])) .includes("uncontrol")).length;
+      return {
+        team,
+        meet: stat.meet,
+        fail: stat.fail,
+        total: stat.total,
+        mttr: `${stat.mttrRate}%`,
+        controlFail,
+        withoutTotal: stat.withoutUncontrolTotal,
+        withoutRate: `${stat.withoutRate}%`,
+      };
+    });
 
     container.innerHTML = `
       <div class="space-y-6">
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="glass-card p-5 overflow-auto">
-            <h3 class="font-bold mb-3">Summary MTTR ${slaHours} Hrs. (Monthly)</h3>
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="bg-slate-50">
-                  <th class="px-3 py-2 text-left">Month</th>
-                  <th class="px-3 py-2 text-center">Meet</th>
-                  <th class="px-3 py-2 text-center">Fail</th>
-                  <th class="px-3 py-2 text-center">Total</th>
-                  <th class="px-3 py-2 text-center">MTTR</th>
-                  <th class="px-3 py-2 text-center">Without Uncontrol</th>
-                </tr>
-              </thead>
-              <tbody>${summaryBody}</tbody>
+        <div class="glass-card p-4 overflow-auto">
+          <h3 class="font-bold mb-3">1) Summary MTTR ${slaHours} Hrs.</h3>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <table class="w-full text-sm border border-slate-200">
+              <thead class="bg-slate-100"><tr><th class="px-2 py-1">Month</th><th class="px-2 py-1 text-green-700">Meet</th><th class="px-2 py-1 text-amber-700">Fail</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">MTTR</th><th class="px-2 py-1">Fail(Control)</th><th class="px-2 py-1">Without Total</th><th class="px-2 py-1">Without Uncontrol</th></tr></thead>
+              <tbody>${monthlyRows.map((r) => `<tr><td class="px-2 py-1">${r.month}</td><td class="px-2 py-1 text-center">${r.meet}</td><td class="px-2 py-1 text-center">${r.fail}</td><td class="px-2 py-1 text-center">${r.total}</td><td class="px-2 py-1 text-center">${r.mttr}</td><td class="px-2 py-1 text-center">${r.controlFail}</td><td class="px-2 py-1 text-center">${r.withoutTotal}</td><td class="px-2 py-1 text-center">${r.withoutRate}</td></tr>`).join("")}<tr class="bg-slate-100 font-semibold"><td class="px-2 py-1">SUM</td><td class="px-2 py-1 text-center">${sumMonthly.meet}</td><td class="px-2 py-1 text-center">${sumMonthly.fail}</td><td class="px-2 py-1 text-center">${sumMonthly.total}</td><td class="px-2 py-1 text-center">${sumMonthly.mttr}</td><td class="px-2 py-1 text-center">${sumMonthly.controlFail}</td><td class="px-2 py-1 text-center">${sumMonthly.withoutTotal}</td><td class="px-2 py-1 text-center">${sumMonthly.withoutRate}</td></tr></tbody>
             </table>
-          </div>
-          <div class="glass-card p-5 overflow-auto">
-            <h3 class="font-bold mb-3">Cause of incident</h3>
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="bg-slate-50">
-                  <th class="px-3 py-2 text-left">Cause</th>
-                  <th class="px-3 py-2 text-center">Meet</th>
-                  <th class="px-3 py-2 text-center">Fail</th>
-                  <th class="px-3 py-2 text-center">Total</th>
-                  <th class="px-3 py-2 text-center">MTTR</th>
-                </tr>
-              </thead>
-              <tbody>${causeBody || '<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">ยังไม่มีข้อมูล</td></tr>'}</tbody>
+            <table class="w-full text-sm border border-slate-200">
+              <thead class="bg-slate-100"><tr><th class="px-2 py-1 text-left">Cause of incident</th><th class="px-2 py-1 text-green-700">Meet</th><th class="px-2 py-1 text-amber-700">Fail</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">MTTR</th><th class="px-2 py-1">Fail(Control)</th><th class="px-2 py-1">Without Total</th><th class="px-2 py-1">Without Uncontrol</th></tr></thead>
+              <tbody>${causeRows.map((r) => `<tr><td class="px-2 py-1">${escapeHtml(r.cause)}</td><td class="px-2 py-1 text-center">${r.meet}</td><td class="px-2 py-1 text-center">${r.fail}</td><td class="px-2 py-1 text-center">${r.total}</td><td class="px-2 py-1 text-center">${r.mttr}</td><td class="px-2 py-1 text-center">${r.controlFail}</td><td class="px-2 py-1 text-center">${r.withoutTotal}</td><td class="px-2 py-1 text-center">${r.withoutRate}</td></tr>`).join("")}<tr class="bg-slate-100 font-semibold"><td class="px-2 py-1">SUM</td><td class="px-2 py-1 text-center">${sumCause.meet}</td><td class="px-2 py-1 text-center">${sumCause.fail}</td><td class="px-2 py-1 text-center">${sumCause.total}</td><td class="px-2 py-1 text-center">${sumCause.mttr}</td><td class="px-2 py-1 text-center">${sumCause.controlFail}</td><td class="px-2 py-1 text-center">${sumCause.withoutTotal}</td><td class="px-2 py-1 text-center">${sumCause.withoutRate}</td></tr></tbody>
             </table>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">MTTR ${slaHours} Hrs. (Monthly Trend)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-mttr"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Cause Distribution</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-cause"></canvas></div></div>
+        <div class="glass-card p-4">
+          <h3 class="font-bold mb-3">2) Chart Summary</h3>
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div class="dashboard-chart-card"><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-mttr"></canvas></div></div>
+            <div class="dashboard-chart-card"><div class="chart-shell chart-shell--donut"><canvas id="dash-summary-cause"></canvas></div></div>
+            <div class="dashboard-chart-card"><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-cause-bar"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="glass-card p-4 overflow-auto">
+          <h3 class="font-bold mb-3">3) Summary รายสัปดาห์</h3>
+          <div class="mb-3 flex items-center gap-2 text-sm"><label for="summary-month-select" class="font-medium">Month:</label><select id="summary-month-select" class="bg-slate-100 rounded px-2 py-1">${monthOrder.map((m) => `<option value="${m}" ${m===monthState?"selected":""}>${m}</option>`).join("")}</select></div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <table class="w-full text-sm border border-slate-200"><thead class="bg-slate-100"><tr><th class="px-2 py-1">Summary</th><th class="px-2 py-1">Meet</th><th class="px-2 py-1">Fail</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">MTTR</th></tr></thead><tbody>${summaryWeekly.map((r)=>`<tr><td class="px-2 py-1">${r.week}</td><td class="px-2 py-1 text-center">${r.meet}</td><td class="px-2 py-1 text-center">${r.fail}</td><td class="px-2 py-1 text-center">${r.total}</td><td class="px-2 py-1 text-center">${r.mttr}</td></tr>`).join("")}</tbody></table>
+            <table class="w-full text-sm border border-slate-200"><thead class="bg-slate-100"><tr><th class="px-2 py-1">Delayed by</th>${weekOrder.map((w)=>`<th class="px-2 py-1">${w}</th>`).join("")}<th class="px-2 py-1">Total</th></tr></thead><tbody>${Object.entries(delayWeekly).map(([k,v])=>`<tr><td class="px-2 py-1">${escapeHtml(k)}</td>${weekOrder.map((w)=>`<td class="px-2 py-1 text-center">${v[w]||0}</td>`).join("")}<td class="px-2 py-1 text-center">${v.total||0}</td></tr>`).join("")}</tbody></table>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <table class="w-full text-sm border border-slate-200"><thead class="bg-slate-100"><tr><th class="px-2 py-1">${monthState}</th><th class="px-2 py-1">Meet</th><th class="px-2 py-1">Fail</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">MTTR</th></tr></thead><tbody>${selectedWeekly.map((r)=>`<tr><td class="px-2 py-1">${r.week}</td><td class="px-2 py-1 text-center">${r.meet}</td><td class="px-2 py-1 text-center">${r.fail}</td><td class="px-2 py-1 text-center">${r.total}</td><td class="px-2 py-1 text-center">${r.mttr}</td></tr>`).join("")}</tbody></table>
+            <div class="text-xs text-slate-500 flex items-center">ข้อมูลรายสัปดาห์คำนวณจาก Data Sheet/Week และแยก Delay by</div>
+          </div>
+        </div>
+
+        <div class="glass-card p-4 overflow-auto">
+          <h3 class="font-bold mb-3">4) Performance Team (Keng / Jin / Ball)</h3>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div class="space-y-3">
+              <table class="w-full text-sm border border-slate-200"><thead class="bg-slate-100"><tr><th class="px-2 py-1">Summary</th><th class="px-2 py-1">Meet</th><th class="px-2 py-1">Fail</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">MTTR</th><th class="px-2 py-1">control</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">Without Uncontrol</th></tr></thead><tbody>${teamRows.map((r)=>`<tr><td class="px-2 py-1">${r.team}</td><td class="px-2 py-1 text-center">${r.meet}</td><td class="px-2 py-1 text-center">${r.fail}</td><td class="px-2 py-1 text-center">${r.total}</td><td class="px-2 py-1 text-center">${r.mttr}</td><td class="px-2 py-1 text-center">${r.controlFail}</td><td class="px-2 py-1 text-center">${r.withoutTotal}</td><td class="px-2 py-1 text-center">${r.withoutRate}</td></tr>`).join("")}</tbody></table>
+              <table class="w-full text-sm border border-slate-200"><thead class="bg-slate-100"><tr><th class="px-2 py-1">${monthState}</th><th class="px-2 py-1">Meet</th><th class="px-2 py-1">Fail</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">MTTR</th><th class="px-2 py-1">control</th><th class="px-2 py-1">Total</th><th class="px-2 py-1">Without Uncontrol</th></tr></thead><tbody>${teamMonthRows.map((r)=>`<tr><td class="px-2 py-1">${r.team}</td><td class="px-2 py-1 text-center">${r.meet}</td><td class="px-2 py-1 text-center">${r.fail}</td><td class="px-2 py-1 text-center">${r.total}</td><td class="px-2 py-1 text-center">${r.mttr}</td><td class="px-2 py-1 text-center">${r.controlFail}</td><td class="px-2 py-1 text-center">${r.withoutTotal}</td><td class="px-2 py-1 text-center">${r.withoutRate}</td></tr>`).join("")}</tbody></table>
+            </div>
+            <div class="space-y-4">
+              <div class="dashboard-chart-card"><div class="chart-shell chart-shell--wide"><canvas id="dash-summary-team"></canvas></div></div>
+              <div class="dashboard-chart-card"><div class="chart-shell chart-shell--donut"><canvas id="dash-summary-delay"></canvas></div></div>
+            </div>
+          </div>
+
         </div>
       </div>
     `;
+    const monthSelect = document.getElementById("summary-month-select");
+    if (monthSelect) {
+      monthSelect.addEventListener("change", () => renderDashboardSummary(container, data, slaHours, sheetName));
+    }
 
     if (!window.Chart) return;
     destroyDashboardChart("summaryMttr");
     destroyDashboardChart("summaryCause");
+    destroyDashboardChart("summaryCauseBar");
+    destroyDashboardChart("summaryTeam");
+    destroyDashboardChart("summaryDelay");
+
+    const monthlyLabels = [...monthOrder, "SUM"];
 
     dashboardCharts.summaryMttr = createChartInstance("dash-summary-mttr", {
-      type: "line",
-      data: {
-        labels: monthlyRows.map((row) => row.month),
-        datasets: [
-          { label: "Meet", data: monthlyRows.map((row) => row.meet), borderColor: "#16a34a", tension: 0.25 },
-          { label: "Fail", data: monthlyRows.map((row) => row.fail), borderColor: "#f59e0b", tension: 0.25 },
-          { label: "MTTR %", data: monthlyRows.map((row) => Number(row.mttr.replace("%", ""))), borderColor: "#2563eb", yAxisID: "y1", tension: 0.25 },
-        ],
-      },
-      options: buildCartesianOptions({
-        scales: {
-          y: { beginAtZero: true, ticks: { precision: 0, font: { size: getChartFontSize() } } },
-        },
-      }),
-    });
-
-    const topCauses = causeRows.slice(0, 8);
-    dashboardCharts.summaryCause = createChartInstance("dash-summary-cause", {
       type: "bar",
       data: {
-        labels: topCauses.map((row) => row.cause),
+        labels: monthlyLabels,
         datasets: [
-          { label: "Meet", data: topCauses.map((row) => row.meet), backgroundColor: "#16a34a" },
-          { label: "Fail", data: topCauses.map((row) => row.fail), backgroundColor: "#f97316" },
+         { label: "Meet", data: [...monthlyRows.map((r) => r.meet), sumMonthly.meet], backgroundColor: "#4472c4" },
+          { label: "Fail", data: [...monthlyRows.map((r) => r.fail), sumMonthly.fail], backgroundColor: "#ed7d31" },
+          { label: "Total", data: [...monthlyRows.map((r) => r.total), sumMonthly.total], backgroundColor: "#a3a3a3" },
+          { type: "line", label: "MTTR", data: [...monthlyRows.map((r) => Number(r.mttr.replace("%", ""))), Number(sumMonthly.mttr.replace("%", ""))], borderColor: "#eab308", yAxisID: "y1", tension: 0.2 },
+
+        ],
+      },
+      options: buildCartesianOptions({ scales: { y: { beginAtZero: true }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: (v) => `${v}%` } } } }),
+    });
+
+    dashboardCharts.summaryCause = createChartInstance("dash-summary-cause", {
+      type: "pie",
+      data: { labels: ["Meet", "Control", "Uncontrol"], datasets: [{ data: [sumMonthly.meet, sumMonthly.controlFail, Math.max(0, sumMonthly.fail - sumMonthly.controlFail)], backgroundColor: ["#70ad47", "#ed7d31", "#facc15"] }] },
+      options: buildBaseChartOptions({ plugins: { legend: createLegend("top") } }),
+    });
+
+    dashboardCharts.summaryCauseBar = createChartInstance("dash-summary-cause-bar", {
+
+      type: "bar",
+      data: {
+        labels: causeRows.map((r) => r.cause),
+        datasets: [
+          { label: "Meet", data: causeRows.map((r) => r.meet), backgroundColor: "#4472c4", borderRadius: 6, maxBarThickness: 22 },
+          { label: "Fail", data: causeRows.map((r) => r.fail), backgroundColor: "#ed7d31", borderRadius: 6, maxBarThickness: 22 },
         ],
       },
       options: buildCartesianOptions({
@@ -1623,13 +1777,29 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     dashboardCharts.reportCause = createChartInstance("dash-report-cause", {
       type: "bar",
       data: { labels: Object.keys(causes), datasets: [{ label: "Count", data: Object.values(causes), backgroundColor: "#3b82f6", borderRadius: 8, maxBarThickness: 28 }] },
-      options: buildCartesianOptions({
-        indexAxis: "y",
-        scales: {
-          x: { beginAtZero: true, grace: "10%", ticks: { precision: 0, font: { size: getChartFontSize() } } },
-          y: { ticks: { font: { size: getChartFontSize() } }, grid: { display: false } },
-        },
-      }),
+      options: buildCartesianOptions({ indexAxis: "y" }),
+    });
+
+    dashboardCharts.summaryTeam = createChartInstance("dash-summary-team", {
+      type: "bar",
+      data: {
+        labels: [...teamRows.map((r) => r.team), "SUM"],
+        datasets: [
+          { label: "Meet", data: [...teamRows.map((r) => r.meet), sumMonthly.meet], backgroundColor: "#4472c4" },
+          { label: "Fail", data: [...teamRows.map((r) => r.fail), sumMonthly.fail], backgroundColor: "#ed7d31" },
+          { label: "Total", data: [...teamRows.map((r) => r.total), sumMonthly.total], backgroundColor: "#a3a3a3" },
+          { type: "line", label: "MTTR", data: [...teamRows.map((r) => Number(r.mttr.replace("%", ""))), Number(sumMonthly.mttr.replace("%", ""))], borderColor: "#eab308", yAxisID: "y1" },
+          { type: "line", label: "Without Uncontrol", data: [...teamRows.map((r) => Number(r.withoutRate.replace("%", ""))), Number(sumMonthly.withoutRate.replace("%", ""))], borderColor: "#1e3a8a", yAxisID: "y1" },
+        ],
+      },
+      options: buildCartesianOptions({ scales: { y: { beginAtZero: true }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: (v) => `${v}%` } } } }),
+    });
+
+    dashboardCharts.summaryDelay = createChartInstance("dash-summary-delay", {
+      type: "pie",
+      data: { labels: Object.keys(delayWeekly), datasets: [{ data: Object.values(delayWeekly).map((v) => v.total), backgroundColor: ["#3b82f6", "#f97316", "#a3a3a3", "#facc15", "#06b6d4", "#16a34a", "#334155", "#a855f7"] }] },
+      options: buildBaseChartOptions({ plugins: { legend: createLegend("bottom") } }),
+
     });
 
     const delay = { "SYMC-NOC": 0, "SYMC-Region": 0, "Sub-Contractor": 0, Customer: 0, Building: 0, "Natural disaster": 0 };
