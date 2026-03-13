@@ -17,6 +17,10 @@ const HistoryUI = (function () {
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
+  function getIncidentKey(incident) {
+    return incident?.incidentId || incident?.incident || incident?.id || "-";
+  }
+
   function getCompletedByType(state, typeKey) {
     return (state.corrective[typeKey] || [])
       .filter((item) => item.status === "COMPLETE")
@@ -36,14 +40,15 @@ const HistoryUI = (function () {
   }
 
   function renderCard(incident, typeLabel) {
+    const incidentKey = getIncidentKey(incident);
     const finishedAt = incident.nsFinish?.times?.upTime || incident.completedAt || "-";
     const reason = incident.nsFinish?.details?.cause || incident.cause || "-";
 
     return `
-      <article class="corrective-card">
+      <article class="corrective-card cursor-pointer" data-history-open-detail="${incidentKey}" data-history-incident-id="${incidentKey}">
         <div class="flex items-start justify-between gap-2">
           <div>
-            <h3 class="incident-title text-indigo-700">${incident.incidentId}</h3>
+            <h3 class="incident-title text-indigo-700">${incidentKey}</h3>
             <p class="incident-subtitle mt-1">${typeLabel} - ${incident.node || "-"}</p>
           </div>
           <span class="eta-badge bg-green-100 text-green-700">Closed</span>
@@ -71,14 +76,13 @@ const HistoryUI = (function () {
         <div class="corrective-footer">
           <div></div>
           <div class="flex gap-2">
-            <button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incident.incidentId}">View Detail</button>
-            ${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incident.incidentId}">Report</button>`}
+            <button class="btn-action btn-action-purple btn-history-open-detail" data-history-open-detail="${incidentKey}">View Detail</button>
+            ${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incidentKey}">Report</button>`}
           </div>
         </div>
       </article>
     `;
   }
-
 
   function renderTabs(activeTab) {
     return `

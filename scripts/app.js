@@ -2312,21 +2312,43 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     }
 
     const pageButton = event.target.closest("[data-history-page]");
-    if (!pageButton) return;
+      if (pageButton) {
+      const direction = pageButton.dataset.historyPage;
+      Store.dispatch((state) => {
+        const currentPage = Number(state.ui.historyPage || 1);
+        const nextPage = direction === "prev" ? currentPage - 1 : currentPage + 1;
 
-    const direction = pageButton.dataset.historyPage;
-    Store.dispatch((state) => {
-      const currentPage = Number(state.ui.historyPage || 1);
-      const nextPage = direction === "prev" ? currentPage - 1 : currentPage + 1;
+        return {
+          ...state,
+          ui: {
+            ...state.ui,
+            historyPage: Math.max(1, nextPage),
+          },
+        };
+      });
+      return;
+    }
 
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          historyPage: Math.max(1, nextPage),
-        },
-      };
-    });
+    const historyTarget = event.target.closest("[data-history-open-detail]");
+    if (!historyTarget) return;
+
+    if (event.target.closest(".btn-corrective-report")) {
+      return;
+    }
+    const found = getCorrectiveIncidentById(historyTarget.dataset.historyOpenDetail);
+    if (!found?.incident) return;
+
+    const selectedIncident = mapCorrectiveIncidentToAlertDetail(found.incident);
+    if (!selectedIncident) return;
+
+    Store.dispatch((state) => ({
+      ...state,
+      ui: {
+        ...state.ui,
+        currentView: "alert-detail",
+        selectedIncident,
+      },
+    }));
   });
 
   function ensureCalendarCreateModal() {
@@ -2789,6 +2811,29 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
 
 
     return null;
+  }
+  function mapCorrectiveIncidentToAlertDetail(incident) {
+    if (!incident) return null;
+    const statusText = String(incident.status || "").toUpperCase();
+    const downTime = incident.downTime || incident.createdAt || incident.tickets?.[0]?.downTime || "";
+    const detailText = incident.detail
+      || incident.nsFinish?.details?.repairText
+      || incident.updates?.slice(-1)?.[0]?.message
+      || "No details available";
+
+    return {
+      id: getIncidentKey(incident),
+      node: incident.node || "-",
+      alarm: incident.alarm || "Network Alert",
+      detail: detailText,
+      nocBy: incident.nocBy || "System",
+      downTime,
+      severity: incident.severity || "Medium",
+      type: incident.type || incident.workType || "Network",
+      status: ["COMPLETE", "CLOSED", "RESOLVED"].includes(statusText) ? "resolved" : "active",
+      createdAt: incident.createdAt || downTime || new Date().toISOString(),
+      tickets: Array.isArray(incident.tickets) && incident.tickets.length ? incident.tickets : [],
+    };
   }
 
   function formatTimelineDate(value) {
