@@ -1,5 +1,5 @@
 import { initFirebase } from "./services/firebase.service.js";
-
+import { MTTR_WORKBOOK_DATA } from "./data/mttr-workbook.data.js";
 // ===== VIEW SWITCHER =====
 function showView(view) {
   document.querySelectorAll(".view-content").forEach((section) => {
@@ -16,10 +16,145 @@ function showView(view) {
 function getIncidentKey(item) {
   return item?.incident || item?.incidentId || item?.id || "";
 }
+const dashboardExcelState = {
+  sheetNames: [],
+  dashboardSheets: [],
+  detailsSheet: null,
+  detailsRows: [],
+};
+
+function normalizeSheetText(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function inferSlaHoursFromName(name = "") {
+  const text = String(name || "");
+  const match = text.match(/(\d+)\s*hrs?/i) || text.match(/(\d+)\s*hr/i);
+  return match ? Number(match[1]) : 3;
+}
+
+function escapeHtml(value = "") {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function resolveRowValue(row, candidates = []) {
+  const rowEntries = Object.entries(row || {});
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizeSheetText(candidate).replaceAll("_", " ");
+    const exact = rowEntries.find(([key]) => normalizeSheetText(key).replaceAll("_", " ") === normalizedCandidate);
+    if (exact) return exact[1];
+  }
+
+  for (const [key, value] of rowEntries) {
+    const normalizedKey = normalizeSheetText(key).replaceAll("_", " ");
+    if (candidates.some((candidate) => normalizedKey.includes(normalizeSheetText(candidate).replaceAll("_", " ")))) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function toSortableMttr(value) {
+  if (typeof value === "number") return value;
+  const parsed = Number(String(value || "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
 
 (function bootstrapApp() {
   const firebaseReady = initFirebase();
   const createAlertModal = document.getElementById("modal-create-alert");
+  const dashboardSubmenu = document.getElementById("dashboard-submenu");
+  const detailsSubmenu = document.getElementById("details-submenu");
+
+  function bindDynamicNavHandlers(scope = document) {
+    scope.querySelectorAll("[data-view]").forEach((el) => {
+      if (el.dataset.boundClick === "true") return;
+      el.dataset.boundClick = "true";
+      el.addEventListener("click", () => {
+        const dashboardSubview = el.dataset.dashboardSubview;
+        const dashboardSheetName = el.dataset.dashboardSheetName;
+        const dashboardSlaHours = Number(el.dataset.dashboardSlaHours || 3);
+        const dashboardDetailsSheetName = el.dataset.dashboardDetailsSheetName;
+
+        Store.dispatch((state) => ({
+          ...state,
+          ui: {
+            ...state.ui,
+            currentView: el.dataset.view,
+            ...(dashboardSubview ? { dashboardSubView: dashboardSubview } : {}),
+            ...(dashboardSheetName ? { dashboardSheetName } : {}),
+            ...(dashboardSlaHours ? { dashboardSlaHours } : {}),
+            ...(dashboardDetailsSheetName ? { dashboardDetailsSheetName } : {}),
+          },
+        }));
+      });
+    });
+  }
+
+  function buildDashboardMenusFromSheets(sheetNames = []) {
+    const names = Array.from(new Set((sheetNames || []).map((name) => String(name || "").trim()).filter(Boolean)));
+    dashboardExcelState.sheetNames = names;
+    dashboardExcelState.detailsSheet = names.find((name) => normalizeSheetText(name) === "details") || null;
+    dashboardExcelState.dashboardSheets = names.filter((name) => normalizeSheetText(name) !== "details");
+
+    if (dashboardSubmenu) {
+      dashboardSubmenu.innerHTML = dashboardExcelState.dashboardSheets
+        .map((name) => {
+          const sla = inferSlaHoursFromName(name);
+          const subview = normalizeSheetText(name).includes("summary")
+            ? "summary"
+            : normalizeSheetText(name).includes("access") || normalizeSheetText(name).includes("backbone")
+              ? "region"
+              : "main";
+          return `<div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="${subview}" data-dashboard-sheet-name="${escapeHtml(name)}" data-dashboard-sla-hours="${sla}">${escapeHtml(name)}</div>`;
+        })
+        .join("");
+    }
+
+    if (detailsSubmenu) {
+      detailsSubmenu.innerHTML = dashboardExcelState.detailsSheet
+        ? `<div class="sub-nav-item nav-item text-sm" data-view="dashboard-details" data-dashboard-details-sheet-name="${escapeHtml(dashboardExcelState.detailsSheet)}">Data Sheet</div>`
+        : "";
+    }
+
+    bindDynamicNavHandlers(document);
+
+    Store.dispatch((state) => {
+      const fallbackSheet = dashboardExcelState.dashboardSheets[0] || state.ui.dashboardSheetName;
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          dashboardSheetName: fallbackSheet,
+          dashboardSlaHours: inferSlaHoursFromName(fallbackSheet),
+          dashboardDetailsSheetName: dashboardExcelState.detailsSheet || state.ui.dashboardDetailsSheetName,
+          dashboardExcelError: "",
+        },
+      };
+    });
+  }
+
+  function loadDashboardWorkbook() {
+    try {
+      const sheetNames = Array.isArray(MTTR_WORKBOOK_DATA?.sheetNames) ? MTTR_WORKBOOK_DATA.sheetNames : [];
+      dashboardExcelState.detailsRows = Array.isArray(MTTR_WORKBOOK_DATA?.detailsRows) ? MTTR_WORKBOOK_DATA.detailsRows : [];
+      buildDashboardMenusFromSheets(sheetNames);
+
+    } catch (error) {
+      Store.dispatch((state) => ({
+        ...state,
+        ui: {
+          ...state.ui,
+          dashboardExcelError: "ไม่สามารถอ่านข้อมูลรายงานจากไฟล์ Excel ได้",
+        },
+      }));
+    }
+  }
 
   function openModal(modalEl) {
     if (modalEl) {
@@ -188,20 +323,10 @@ function getIncidentKey(item) {
     });
   }
 
-  // ===== NAVIGATION =====␊
-  document.querySelectorAll("[data-view]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const dashboardSubview = el.dataset.dashboardSubview;
-      Store.dispatch((state) => ({
-        ...state,
-        ui: {
-          ...state.ui,
-          currentView: el.dataset.view,
-          ...(dashboardSubview ? { dashboardSubView: dashboardSubview } : {}),
-        },
-      }));
-    });
-  });
+  // ===== NAVIGATION =====
+  bindDynamicNavHandlers(document);
+  loadDashboardWorkbook();
+
 
   // ===== RENDER =====␊
   function render(state) {
@@ -209,13 +334,13 @@ function getIncidentKey(item) {
       view.classList.add("hidden");
       view.style.display = "none";
     });
-    if (state.ui.currentView !== "dashboard") {
+    if (!["dashboard", "dashboard-details"].includes(state.ui.currentView)) {
       destroyAllDashboardCharts();
     }
-
-    if (state.ui.currentView === "dashboard") {
-      renderDashboardView(state);
+    if (state.ui.currentView === "dashboard-details") {
+      renderDashboardDetailsView(state);
     }
+
     if (state.ui.currentView === "alert") {
       const container = document.getElementById("alert-table-container");
       if (container) {
@@ -277,7 +402,15 @@ function getIncidentKey(item) {
     if (state.ui.currentView === "dashboard") {
       const parent = document.getElementById("menu-dashboard");
       if (parent) parent.classList.add("active");
-      const sub = document.querySelector(`#dashboard-submenu [data-dashboard-subview="${state.ui.dashboardSubView || "main"}"]`);
+     const sub = document.querySelector(`#dashboard-submenu [data-dashboard-sheet-name="${CSS.escape(state.ui.dashboardSheetName || "")}"]`)
+        || document.querySelector(`#dashboard-submenu [data-dashboard-subview="${state.ui.dashboardSubView || "main"}"]`);
+      if (sub) sub.classList.add("active");
+    } else if (state.ui.currentView === "dashboard-details") {
+      const parent = document.getElementById("menu-details");
+      if (parent) parent.classList.add("active");
+      const sub = document.querySelector(`#details-submenu [data-dashboard-details-sheet-name="${CSS.escape(state.ui.dashboardDetailsSheetName || "")}"]`)
+        || document.querySelector("#details-submenu [data-view='dashboard-details']");
+
       if (sub) sub.classList.add("active");
     } else {
       const activeNav = document.querySelector(`[data-view="${state.ui.currentView}"]`);
@@ -663,7 +796,7 @@ function getIncidentKey(item) {
     return (d2 - d1) / 3600000;
   }
 
-  function buildSummaryMonthlyRows(completed) {
+  function buildSummaryMonthlyRows(completed, slaHours = 3) {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const rows = monthNames.map((label, idx) => ({
       month: label,
@@ -682,7 +815,7 @@ function getIncidentKey(item) {
       const hrs = toMttrHours(incident);
       if (!Number.isFinite(hrs)) return;
       rows[monthIndex].total += 1;
-      if (hrs <= 3) rows[monthIndex].meet += 1;
+      if (hrs <= slaHours) rows[monthIndex].meet += 1;
       else rows[monthIndex].fail += 1;
 
       const delay = incident.nsFinish?.details?.delayBy || "";
@@ -697,7 +830,7 @@ function getIncidentKey(item) {
     return rows;
   }
 
-  function buildCauseRows(completed) {
+  function buildCauseRows(completed, slaHours = 3) {
     const bucket = {};
     completed.forEach((incident) => {
       const cause = incident.nsFinish?.details?.cause || incident.updates?.[0]?.cause || incident.alarm || "Unknown";
@@ -707,7 +840,7 @@ function getIncidentKey(item) {
         bucket[cause] = { cause, meet: 0, fail: 0, total: 0, mttr: "0.00%" };
       }
       bucket[cause].total += 1;
-      if (hrs <= 3) bucket[cause].meet += 1;
+      if (hrs <= slaHours) bucket[cause].meet += 1;
       else bucket[cause].fail += 1;
     });
 
@@ -718,7 +851,7 @@ function getIncidentKey(item) {
     return rows;
   }
 
-  function buildRegionWeeklyRows(completed) {
+  function buildRegionWeeklyRows(completed, slaHours = 3) {
     const zones = ["Zone 1", "Zone 2", "Zone 3", "Zone 4"];
     return zones.map((zone) => {
       const week = [0, 0, 0, 0, 0].map(() => ({ meet: 0, fail: 0, total: 0 }));
@@ -732,7 +865,7 @@ function getIncidentKey(item) {
         const hrs = toMttrHours(incident);
         if (!Number.isFinite(hrs)) return;
         week[weekIndex].total += 1;
-        if (hrs <= 3) week[weekIndex].meet += 1;
+        if (hrs <= slaHours) week[weekIndex].meet += 1;
         else week[weekIndex].fail += 1;
       });
 
@@ -750,7 +883,7 @@ function getIncidentKey(item) {
     });
   }
 
-  function computeDashboardData(state) {
+  function computeDashboardData(state, slaHours = 3) {
     const alerts = state.alerts || [];
     const corrective = [
       ...(state.corrective.fiber || []),
@@ -781,7 +914,7 @@ function getIncidentKey(item) {
       const d2 = new Date(up);
       if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return;
       const hrs = (d2 - d1) / 3600000;
-      if (hrs <= 3) stats.mttr += 1;
+      if (hrs <= slaHours) stats.mttr += 1;
       else stats.overMttr += 1;
     });
     const mttrHours = completed
@@ -796,10 +929,10 @@ function getIncidentKey(item) {
       .filter((value) => Number.isFinite(value));
 
     const totalClosed = mttrHours.length;
-    const sla3Count = mttrHours.filter((value) => value <= 3).length;
+    const sla3Count = mttrHours.filter((value) => value <= slaHours).length;
     const sla4Count = mttrHours.filter((value) => value <= 4).length;
     stats.onTime = sla3Count;
-    stats.overdue = mttrHours.filter((value) => value > 3).length;
+    stats.overdue = mttrHours.filter((value) => value > slaHours).length;
     stats.sla3Rate = totalClosed ? Number(((sla3Count / totalClosed) * 100).toFixed(1)) : 0;
     stats.sla4Rate = totalClosed ? Number(((sla4Count / totalClosed) * 100).toFixed(1)) : 0;
     stats.avgMttrHours = totalClosed
@@ -850,7 +983,7 @@ function getIncidentKey(item) {
         const d2 = new Date(up);
         if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return;
         total += 1;
-        if ((d2 - d1) / 3600000 <= 3) meet += 1;
+        if ((d2 - d1) / 3600000 <= slaHours) meet += 1;
       });
       return total ? Number(((meet / total) * 100).toFixed(1)) : 0;
     });
@@ -1242,25 +1375,150 @@ function getIncidentKey(item) {
     const container = document.getElementById("view-dashboard");
     if (!container) return;
 
-    const data = computeDashboardData(state);
+    if (state.ui.dashboardExcelError) {
+      container.innerHTML = `<div class="glass-card p-8 text-center text-rose-500 font-semibold">${state.ui.dashboardExcelError}</div>`;
+      return;
+    }
+
+    const slaHours = Number(state.ui.dashboardSlaHours || 3);
+    const data = computeDashboardData(state, slaHours);
+
     const subView = state.ui.dashboardSubView || "main";
 
     if (subView === "summary") {
-      renderDashboardSummary(container, data);
+      renderDashboardSummary(container, data, slaHours, state.ui.dashboardSheetName);
       return;
     }
 
     if (subView === "region") {
-      renderDashboardRegion(container, data);
+      renderDashboardRegion(container, data, slaHours, state.ui.dashboardSheetName);
       return;
     }
 
     if (subView === "report") {
-      renderDashboardReport(container, data);
+      renderDashboardReport(container, data, slaHours, state.ui.dashboardSheetName);
       return;
     }
 
-    renderDashboardMain(container, data);
+    renderDashboardMain(container, data, slaHours, state.ui.dashboardSheetName);
+  }
+
+  function getSheetRows(sheetName = "") {
+    if (normalizeSheetText(sheetName) !== "details") return [];
+    return dashboardExcelState.detailsRows || [];
+
+  }
+
+  function renderDashboardDetailsView(state) {
+    const container = document.getElementById("view-dashboard-details");
+    if (!container) return;
+
+    if (state.ui.dashboardExcelError) {
+      container.innerHTML = `<div class="glass-card p-8 text-center text-rose-500 font-semibold">${state.ui.dashboardExcelError}</div>`;
+
+      return;
+    }
+
+    const rows = getSheetRows(state.ui.dashboardDetailsSheetName || "Details");
+    if (!rows.length) {
+      container.innerHTML = `<div class="glass-card p-8 text-center text-slate-500">ไม่พบข้อมูล Details</div>`;
+      return;
+    }
+
+    const search = normalizeSheetText(document.getElementById("details-search")?.value || "");
+    const region = document.getElementById("details-filter-region")?.value || "all";
+    const contractor = document.getElementById("details-filter-contractor")?.value || "all";
+    const slaGroup = document.getElementById("details-filter-sla")?.value || "all";
+    const sortMode = document.getElementById("details-sort-mttr")?.value || "asc";
+    const page = Number(document.getElementById("details-page")?.value || 1);
+    const pageSize = 10;
+
+    const mapped = rows.map((row) => ({
+      incidentId: row.incidentId || resolveRowValue(row, ["Incident ID", "Incident", "Ticket", "ID", "FC No."]),
+      region: row.region || resolveRowValue(row, ["Region", "Zone", "Area"]),
+      contractor: row.contractor || resolveRowValue(row, ["Contractor", "Subcontractor", "Team"]),
+      networkType: row.networkType || resolveRowValue(row, ["Network Type", "Network", "Type", "Backbone/Access"]),
+      slaGroup: row.slaGroup || resolveRowValue(row, ["SLA Group", "SLA", "Within 3 Hrs."]),
+      startTime: row.startTime || resolveRowValue(row, ["Start Time", "Down Time", "Start"]),
+      finishTime: row.finishTime || resolveRowValue(row, ["Finish Time", "Up Time", "Finish"]),
+      mttr: row.mttr || resolveRowValue(row, ["MTTR", "Duration", "Hours", "Down Time (Hrs.)"]),
+      status: row.status || resolveRowValue(row, ["Status", "MTTR 3Hrs."]),
+
+    }));
+
+    const regionOpts = [...new Set(mapped.map((item) => String(item.region || "-").trim() || "-") )];
+    const contractorOpts = [...new Set(mapped.map((item) => String(item.contractor || "-").trim() || "-") )];
+    const slaOpts = [...new Set(mapped.map((item) => String(item.slaGroup || "-").trim() || "-") )];
+
+    const filtered = mapped
+      .filter((item) => (region === "all" ? true : String(item.region || "-") === region))
+      .filter((item) => (contractor === "all" ? true : String(item.contractor || "-") === contractor))
+      .filter((item) => (slaGroup === "all" ? true : String(item.slaGroup || "-") === slaGroup))
+      .filter((item) => {
+        if (!search) return true;
+        return normalizeSheetText(Object.values(item).join(" ")).includes(search);
+      })
+      .sort((a, b) => {
+        const delta = toSortableMttr(a.mttr) - toSortableMttr(b.mttr);
+        return sortMode === "desc" ? -delta : delta;
+      });
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const pageRows = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+    container.innerHTML = `
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <h2 class="text-2xl font-bold text-slate-800">Details</h2>
+        <div class="text-sm text-slate-500">ทั้งหมด ${filtered.length} รายการ</div>
+      </div>
+      <div class="glass-card p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+        <input id="details-search" class="bg-slate-100 rounded-lg px-3 py-2 text-sm" placeholder="ค้นหา..." value="${escapeHtml(document.getElementById("details-search")?.value || "")}">
+        <select id="details-filter-region" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
+          <option value="all">ทุก Region</option>
+          ${regionOpts.map((item) => `<option value="${escapeHtml(item)}" ${item === region ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+        </select>
+        <select id="details-filter-contractor" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
+          <option value="all">ทุก Contractor</option>
+          ${contractorOpts.map((item) => `<option value="${escapeHtml(item)}" ${item === contractor ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+        </select>
+        <select id="details-filter-sla" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
+          <option value="all">ทุก SLA Group</option>
+          ${slaOpts.map((item) => `<option value="${escapeHtml(item)}" ${item === slaGroup ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+        </select>
+        <select id="details-sort-mttr" class="bg-slate-100 rounded-lg px-3 py-2 text-sm">
+          <option value="asc" ${sortMode === "asc" ? "selected" : ""}>MTTR น้อยไปมาก</option>
+          <option value="desc" ${sortMode === "desc" ? "selected" : ""}>MTTR มากไปน้อย</option>
+        </select>
+      </div>
+      <div class="glass-card overflow-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-slate-50 text-slate-500 uppercase text-[10px]"><tr>
+            <th class="px-4 py-3">Incident ID</th><th class="px-4 py-3">Region</th><th class="px-4 py-3">Contractor</th><th class="px-4 py-3">Network Type</th><th class="px-4 py-3">SLA Group</th><th class="px-4 py-3">Start Time</th><th class="px-4 py-3">Finish Time</th><th class="px-4 py-3">MTTR</th><th class="px-4 py-3">Status</th>
+          </tr></thead>
+          <tbody class="divide-y divide-slate-100 bg-white">
+            ${pageRows.map((item) => `<tr><td class="px-4 py-3">${escapeHtml(item.incidentId)}</td><td class="px-4 py-3">${escapeHtml(item.region)}</td><td class="px-4 py-3">${escapeHtml(item.contractor)}</td><td class="px-4 py-3">${escapeHtml(item.networkType)}</td><td class="px-4 py-3">${escapeHtml(item.slaGroup)}</td><td class="px-4 py-3">${escapeHtml(item.startTime)}</td><td class="px-4 py-3">${escapeHtml(item.finishTime)}</td><td class="px-4 py-3">${escapeHtml(item.mttr)}</td><td class="px-4 py-3">${escapeHtml(item.status)}</td></tr>`).join("") || `<tr><td colspan="9" class="px-4 py-5 text-center text-slate-400">ไม่พบข้อมูล</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-end gap-2">
+        <button id="details-prev" class="px-3 py-2 rounded-lg bg-slate-100 text-sm" ${safePage <= 1 ? "disabled" : ""}>ก่อนหน้า</button>
+        <span class="text-sm text-slate-500">หน้า ${safePage}/${totalPages}</span>
+        <button id="details-next" class="px-3 py-2 rounded-lg bg-slate-100 text-sm" ${safePage >= totalPages ? "disabled" : ""}>ถัดไป</button>
+        <input id="details-page" type="hidden" value="${safePage}">
+      </div>
+    `;
+
+    ["details-search", "details-filter-region", "details-filter-contractor", "details-filter-sla", "details-sort-mttr"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", () => renderDashboardDetailsView(Store.getState()));
+      if (el) el.addEventListener("change", () => renderDashboardDetailsView(Store.getState()));
+    });
+    const prev = document.getElementById("details-prev");
+    if (prev) prev.addEventListener("click", () => { document.getElementById("details-page").value = String(Math.max(1, safePage - 1)); renderDashboardDetailsView(Store.getState()); });
+    const next = document.getElementById("details-next");
+    if (next) next.addEventListener("click", () => { document.getElementById("details-page").value = String(Math.min(totalPages, safePage + 1)); renderDashboardDetailsView(Store.getState()); });
+
   }
 
   function getAllCorrectiveIncidents(state) {
