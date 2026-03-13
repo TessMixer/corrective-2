@@ -143,6 +143,9 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       const safeDown = downDate || new Date(Date.now() - 3600000);
       const safeUp = upDate || (Number.isFinite(mttrHours) ? new Date(safeDown.getTime() + mttrHours * 3600000) : new Date(safeDown.getTime() + 3600000));
       const statusRaw = slaHours >= 4 ? pickRowValue(row, ["MTTR 4Hrs.", "status4"]) : pickRowValue(row, ["MTTR 3Hrs.", "status3"]);
+      const statusText = normalizeSheetText(statusRaw || "");
+      const computedStatus = statusText.includes("meet") || statusText.includes("fail") ? "COMPLETE" : "PROCESS";
+
       const team1 = pickRowValue(row, ["Sub-contractor Team 1"]);
       const team2 = pickRowValue(row, ["Sub-contractor Team 2"]);
       const team3 = pickRowValue(row, ["Sub-contractor Team 3"]);
@@ -154,7 +157,7 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
         alarm: pickRowValue(row, ["Cause of incident", "cause"]) || "Unknown",
         createdAt: safeDown.toISOString(),
         completedAt: safeUp.toISOString(),
-        status: isComplete ? "COMPLETE" : "PROCESS",
+        status: computedStatus,
         tickets: [{ downTime: safeDown.toISOString() }],
         updates: [{ cause: pickRowValue(row, ["Cause of incident", "cause"]) || "Unknown", subcontractors: teams }],
         nsFinish: {
@@ -444,8 +447,30 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     if (!["dashboard", "dashboard-details"].includes(state.ui.currentView)) {
       destroyAllDashboardCharts();
     }
+
+    if (state.ui.currentView === "dashboard") {
+      try {
+        renderDashboardView(state);
+      } catch (error) {
+        console.error("Dashboard render failed:", error);
+        const container = document.getElementById("view-dashboard");
+        if (container) {
+          container.innerHTML = `<div class="glass-card p-8 text-center text-rose-500 font-semibold">เกิดข้อผิดพลาดในการประมวลผล Dashboard</div>`;
+        }
+      }
+    }
     if (state.ui.currentView === "dashboard-details") {
-      renderDashboardDetailsView(state);
+      try {
+
+        renderDashboardDetailsView(state);
+      } catch (error) {
+        console.error("Dashboard details render failed:", error);
+        const container = document.getElementById("view-dashboard-details");
+        if (container) {
+          container.innerHTML = `<div class="glass-card p-8 text-center text-rose-500 font-semibold">เกิดข้อผิดพลาดในการประมวลผล Details</div>`;
+        }
+      }
+
     }
 
     if (state.ui.currentView === "alert") {
@@ -1296,31 +1321,6 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       options: buildCartesianOptions({
         scales: {
           y: { beginAtZero: true, ticks: { precision: 0, font: { size: getChartFontSize() } } },
-        },
-      }),
-    });
-
-    dashboardCharts.regionMttr = createChartInstance("dash-region-mttr", {
-      type: "line",
-      data: {
-        labels: zoneRows.map((row) => row.zone),
-        datasets: [
-          {
-            label: "MTTR %",
-            data: zoneRows.map((row) => Number(row.mttr.replace("%", ""))),
-            borderColor: "#1d4ed8",
-            backgroundColor: "rgba(29,78,216,0.15)",
-            fill: true,
-            tension: 0.3,
-            pointRadius: 4,
-            pointHoverRadius: 5,
-          },
-        ],
-      },
-      options: buildCartesianOptions({
-        scales: {
-          y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } },
-
         },
       }),
     });

@@ -466,7 +466,9 @@ el.classList.remove("hidden")
 }
 </script>
 <!-- BOOTSTRAP -->
-<script type="module" src="scripts/app.js?v=20260313"></script>
+<script type="module">
+import(`./scripts/app.js?v=20260313d_${Date.now()}`);
+</script>
 <script>
 document.getElementById("menu-dashboard").onclick = () => {
 
