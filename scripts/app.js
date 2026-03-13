@@ -1138,102 +1138,258 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       completed,
     };
   }
+  function buildDashboardSectionStats(rows = [], slaHours = 3) {
+    const statusKey = slaHours >= 4 ? "MTTR 4Hrs." : "MTTR 3Hrs.";
+    let meet = 0;
+    let fail = 0;
+    let uncontrol = 0;
+    let mttrSum = 0;
+    let mttrCount = 0;
+
+    rows.forEach((row) => {
+      const status = normalizeSheetText(pickRowValue(row, [statusKey, "Status", "status"]));
+      if (status.includes("meet")) meet += 1;
+      if (status.includes("fail")) fail += 1;
+
+      const controlFlag = normalizeSheetText(pickRowValue(row, ["Control / Uncontrol", "control"]));
+      if (controlFlag.includes("uncontrol")) uncontrol += 1;
+
+      const mttrDays = Number(String(pickRowValue(row, ["Down Time (Hrs.)", "MTTR", "mttr"]) || "").replace(/,/g, ""));
+      if (Number.isFinite(mttrDays)) {
+        mttrSum += mttrDays * 24;
+        mttrCount += 1;
+      }
+    });
+
+    const total = meet + fail;
+    const withoutUncontrolTotal = Math.max(0, total - uncontrol);
+    const mttr = mttrCount ? (mttrSum / mttrCount).toFixed(2) : "0.00";
+    const mttrRate = total ? ((meet / total) * 100).toFixed(2) : "0.00";
+    const withoutRate = withoutUncontrolTotal ? ((meet / withoutUncontrolTotal) * 100).toFixed(2) : "0.00";
+    return {
+      allCase: rows.length,
+      meet,
+      fail,
+      total,
+      uncontrol,
+      withoutUncontrolTotal,
+      mttr,
+      mttrRate,
+      withoutRate,
+    };
+  }
+
+  function buildDashboardReportPayload(rows = [], slaHours = 3) {
+    const stats = buildDashboardSectionStats(rows, slaHours);
+    const statusKey = slaHours >= 4 ? "MTTR 4Hrs." : "MTTR 3Hrs.";
+    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthMap = Object.fromEntries(monthOrder.map((m) => [m, { meet: 0, fail: 0, total: 0, without: 0 }]));
+    rows.forEach((row) => {
+      const month = String(pickRowValue(row, ["Month"]) || "").slice(0, 3);
+      if (!monthMap[month]) return;
+      const status = normalizeSheetText(pickRowValue(row, [statusKey, "Status", "status"]));
+      const controlFlag = normalizeSheetText(pickRowValue(row, ["Control / Uncontrol", "control"]));
+      if (status.includes("meet")) monthMap[month].meet += 1;
+      if (status.includes("fail")) monthMap[month].fail += 1;
+      monthMap[month].total += status.includes("meet") || status.includes("fail") ? 1 : 0;
+      if (!controlFlag.includes("uncontrol") && (status.includes("meet") || status.includes("fail"))) {
+        monthMap[month].without += 1;
+      }
+    });
+
+    const monthly = monthOrder.map((m) => {
+      const row = monthMap[m];
+      return {
+        month: m,
+        meet: row.meet,
+        fail: row.fail,
+        total: row.total,
+        mttrPct: row.total ? Number(((row.meet / row.total) * 100).toFixed(2)) : 0,
+        withoutPct: row.without ? Number(((row.meet / row.without) * 100).toFixed(2)) : 0,
+      };
+    });
+
+    const delayed = { "Sub-Contractor": 0, "MEA/PEA": 0, "SYMC-NOC": 0, "SYMC-Region": 0, "Building": 0, "Natural disaster": 0, "Customer": 0, "Partner/Off-net": 0 };
+    const causes = {};
+    rows.forEach((row) => {
+      const delay = String(pickRowValue(row, ["Delay by", "delayBy"]) || "Sub-Contractor").trim() || "Sub-Contractor";
+      if (delayed[delay] === undefined) delayed[delay] = 0;
+      delayed[delay] += 1;
+
+      const cause = String(pickRowValue(row, ["Cause of incident", "cause", "สาเหตุหลัก"]) || "Unknown").trim() || "Unknown";
+      const status = normalizeSheetText(pickRowValue(row, [statusKey, "Status", "status"]));
+      if (!causes[cause]) causes[cause] = { meet: 0, fail: 0 };
+      if (status.includes("meet")) causes[cause].meet += 1;
+      if (status.includes("fail")) causes[cause].fail += 1;
+    });
+
+    const causeRows = Object.entries(causes)
+      .map(([cause, value]) => ({ cause, meet: value.meet, fail: value.fail, total: value.meet + value.fail }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 12);
+
+    return {
+      stats,
+      monthly,
+      delayed,
+      causes: causeRows,
+    };
+
+  }
 
 
   function renderDashboardMain(container, data, slaHours = 3, sheetName = "") {
-    const topSubcontractors = Object.entries(data.subcontractorCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
-    container.innerHTML = `
-      <div class="space-y-6">
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-          <h3 class="text-lg font-bold text-slate-700">${escapeHtml(sheetName || `Dashboard (${slaHours} Hrs.)`)}</h3>
-          <div class="text-xs text-slate-400">แหล่งข้อมูล: Details (${data.completed.length} รายการ)</div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          ${[
-            ["Total Incidents", data.corrective.length + data.stats.newJob + data.stats.cancel, "จำนวนเหตุขัดข้องทั้งหมด", "tile-accent-blue"],
-            ["Avg MTTR", `${data.stats.avgMttrHours} hrs`, "ค่าเฉลี่ยเวลาซ่อม (Down→Up)", "tile-accent-green"],
-            [`SLA ≤ ${slaHours} Hrs`, `${data.stats.sla3Rate}%`, `อัตราปิดงานภายใน ${slaHours} ชั่วโมง`, "tile-accent-purple"],
-            ["SLA ≤ 4 Hrs", `${data.stats.sla4Rate}%`, "อัตราปิดงานภายใน 4 ชั่วโมง", "tile-accent-purple"],
-            ["Open Jobs", data.stats.newJob + data.stats.inprocess, "งานที่ยังไม่ปิด", "tile-accent-orange"],
-            ["Closed Jobs", data.stats.finish, "งานที่ปิดแล้ว", "tile-accent-green"],
-            ["Overdue", data.stats.overdue, `งานที่ใช้เวลาเกิน SLA ${slaHours} ชม.`, "tile-accent-rose"],
-          ].map(([title, value, sub, accent]) => `
-            <div class="glass-card p-5 ${accent}">
-              <div class="text-xs font-bold uppercase text-slate-500">${title}</div>
-              <div class="text-4xl font-black text-slate-800 mt-1">${value}</div>
-              <div class="text-xs text-slate-400">${sub}</div>
-            </div>
-          `).join("")}
-        </div>
+    const allRows = dashboardExcelState.detailsRows || [];
+    const accessRows = allRows.filter((row) => normalizeSheetText(pickRowValue(row, ["Backbone/Access", "networkType"])).includes("access"));
+    const backboneRows = allRows.filter((row) => normalizeSheetText(pickRowValue(row, ["Backbone/Access", "networkType"])).includes("backbone"));
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Job Status Distribution</h4><div class="chart-shell chart-shell--donut"><canvas id="dash-chart-status"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">SLA Trend (MTTR ≤ ${slaHours}hrs)</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-mttr"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Incidents by Region</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-region"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card"><h4 class="font-bold mb-3">Overdue vs On-time</h4><div class="chart-shell chart-shell--compact"><canvas id="dash-chart-overdue"></canvas></div></div>
-          <div class="glass-card p-5 dashboard-chart-card lg:col-span-2"><h4 class="font-bold mb-3">Incidents by Subcontractor Team</h4><div class="chart-shell chart-shell--wide"><canvas id="dash-chart-subcontractor"></canvas></div></div>
+    const sections = [
+      {
+        key: "overall",
+        title: `Report MTTR ${slaHours} Hrs.`,
+        color: "#b80000",
+        rows: allRows,
+      },
+      {
+        key: "access",
+        title: `Report MTTR ${slaHours} Hrs.(Access)`,
+        color: "#05a84b",
+        rows: accessRows,
+      },
+      {
+        key: "backbone",
+        title: `Report MTTR ${slaHours} Hrs.(Backbone)`,
+        color: "#2f5597",
+        rows: backboneRows,
+      },
+
+    ];
+
+
+    const selectedKey = document.getElementById("dashboard-report-segment")?.value || "overall";
+
+    container.innerHTML = `
+     <div class="space-y-4">
+        <div class="flex gap-2 flex-wrap">
+          ${sections
+            .map(
+              (section) => `<button class="dashboard-report-tab px-4 py-2 rounded-md text-white font-semibold text-sm" style="background:${section.color};opacity:${section.key === selectedKey ? "1" : "0.75"}" data-segment="${section.key}">${section.title}</button>`
+            )
+            .join("")}
         </div>
+        <input id="dashboard-report-segment" type="hidden" value="${selectedKey}">
+
+        <div id="dashboard-report-sheet"></div>
+
       </div>
     `;
 
-    if (!window.Chart) return;
+    const renderSelected = (segmentKey) => {
+      const target = sections.find((s) => s.key === segmentKey) || sections[0];
+      const payload = buildDashboardReportPayload(target.rows, slaHours);
+      const stats = payload.stats;
 
-    destroyDashboardChart("status");
-    destroyDashboardChart("mttrTrend");
-    destroyDashboardChart("region");
-    destroyDashboardChart("subcontractor");
-    destroyDashboardChart("overdue");
+      const monthlyLabels = [...payload.monthly.map((row) => row.month), "SUM"];
+      const meetData = [...payload.monthly.map((row) => row.meet), stats.meet];
+      const failData = [...payload.monthly.map((row) => row.fail), stats.fail];
+      const totalData = [...payload.monthly.map((row) => row.total), stats.total];
+      const mttrPctData = [...payload.monthly.map((row) => row.mttrPct), Number(stats.mttrRate)];
+      const withoutPctData = [...payload.monthly.map((row) => row.withoutPct), Number(stats.withoutRate)];
 
-    dashboardCharts.status = createChartInstance("dash-chart-status", {
-      type: "doughnut",
-      data: { labels: data.statusChart.labels, datasets: [{ data: data.statusChart.values, backgroundColor: ["#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e", "#ef4444"], borderWidth: 3, borderColor: "#ffffff", hoverOffset: 8, spacing: 2 }] },
-      options: buildBaseChartOptions({
-        cutout: "58%",
-        plugins: { legend: createLegend("bottom"), doughnutValuePlugin: { enabled: true } },
-      }),
-    });
+      const sheet = document.getElementById("dashboard-report-sheet");
+      if (!sheet) return;
 
-    dashboardCharts.mttrTrend = createChartInstance("dash-chart-mttr", {
-      type: "line",
-      data: { labels: data.mttrTrend.labels, datasets: [{ label: `MTTR <= ${slaHours}hrs (%)`, data: data.mttrTrend.values, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,.2)", fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 4 }] },
-      options: buildCartesianOptions({ scales: { y: { min: 0, max: 100, ticks: { callback: (value) => `${value}%`, font: { size: getChartFontSize() } } } } }),
-    });
+      sheet.innerHTML = `
+        <div class="glass-card overflow-hidden border border-slate-300">
+          <div class="text-white px-4 py-2" style="background:${target.color}">
+            <div class="text-center font-bold text-2xl underline mb-2">${target.title}</div>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-2 text-center text-lg font-semibold">
+              <div><div class="text-sm font-medium">All Case</div><div>${stats.allCase}</div></div>
+              <div><div class="text-sm font-medium">Meet</div><div>${stats.meet}<br>${stats.withoutUncontrolTotal}</div></div>
+              <div><div class="text-sm font-medium">Fail</div><div>${stats.fail}<br>${stats.uncontrol}</div></div>
+              <div><div class="text-sm font-medium">Total</div><div>${stats.total}<br>${stats.withoutUncontrolTotal}</div></div>
+              <div><div class="text-sm font-medium">MTTR (Hrs)</div><div>${stats.mttr}</div></div>
+              <div><div class="text-sm font-medium">Rate</div><div>${stats.mttrRate}%<br>${stats.withoutRate}%</div></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-0 border-t border-slate-300">
+            <div class="lg:col-span-2 p-4 border-r border-slate-300"><div class="chart-shell chart-shell--wide"><canvas id="dash-report-main"></canvas></div></div>
+            <div class="p-4"><div class="chart-shell chart-shell--donut"><canvas id="dash-report-incident"></canvas></div></div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-0 border-t border-slate-300">
+            <div class="lg:col-span-2 p-4 border-r border-slate-300"><div class="chart-shell chart-shell--wide"><canvas id="dash-report-cause"></canvas></div></div>
+            <div class="p-4"><div class="chart-shell chart-shell--donut"><canvas id="dash-report-delay"></canvas></div></div>
+          </div>
+        </div>
+      `;
+      destroyDashboardChart("reportMain");
+      destroyDashboardChart("reportIncident");
+      destroyDashboardChart("reportCause");
+      destroyDashboardChart("reportDelayed");
 
-    dashboardCharts.region = createChartInstance("dash-chart-region", {
-      type: "bar",
-      data: { labels: Object.keys(data.zoneCount), datasets: [{ label: "Jobs", data: Object.values(data.zoneCount), backgroundColor: "#8b5cf6", borderRadius: 8, maxBarThickness: 48 }] },
-      options: buildCartesianOptions(),
-    });
+      if (!window.Chart) return;
 
-    dashboardCharts.overdue = createChartInstance("dash-chart-overdue", {
-      type: "doughnut",
-      data: {
-        labels: data.overdueSplit.labels,
-        datasets: [{ data: data.overdueSplit.values, backgroundColor: ["#16a34a", "#ef4444"], borderWidth: 3, borderColor: "#ffffff", hoverOffset: 8 }],
-      },
-      options: buildBaseChartOptions({
-        cutout: "58%",
-        plugins: { legend: createLegend("bottom"), doughnutValuePlugin: { enabled: true } },
-      }),
-    });
-
-    dashboardCharts.subcontractor = createChartInstance("dash-chart-subcontractor", {
-
-      type: "bar",
-      data: {
-        labels: topSubcontractors.map(([name]) => name),
-        datasets: [{ label: "Jobs", data: topSubcontractors.map(([, count]) => count), backgroundColor: "#ec4899", borderRadius: 8, maxBarThickness: 42 }],
-      },
-      options: buildCartesianOptions({
-        indexAxis: "y",
-        scales: {
-          x: { beginAtZero: true, ticks: { precision: 0, font: { size: getChartFontSize() } } },
-          y: { ticks: { font: { size: getChartFontSize() } }, grid: { display: false } },
+      dashboardCharts.reportMain = createChartInstance("dash-report-main", {
+        type: "bar",
+        data: {
+          labels: monthlyLabels,
+          datasets: [
+            { label: "Meet", data: meetData, backgroundColor: "#3b82f6" },
+            { label: "Fail", data: failData, backgroundColor: "#f97316" },
+            { label: "Total", data: totalData, backgroundColor: "#9ca3af" },
+            { type: "line", label: "MTTR", data: mttrPctData, borderColor: "#eab308", yAxisID: "y1", tension: 0.25 },
+            { type: "line", label: "Without Uncontrol", data: withoutPctData, borderColor: "#1d4ed8", yAxisID: "y1", tension: 0.25 },
+          ],
         },
-      }),
+        options: buildCartesianOptions({
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+            y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: (v) => `${v}%` } },
+          },
+        }),
+      });
+
+      dashboardCharts.reportIncident = createChartInstance("dash-report-incident", {
+        type: "pie",
+        data: {
+          labels: ["Meet", "Control", "Uncontrol"],
+          datasets: [{ data: [stats.meet, stats.fail, stats.uncontrol], backgroundColor: ["#70ad47", "#ed7d31", "#facc15"] }],
+        },
+        options: buildBaseChartOptions({ plugins: { legend: createLegend("top") } }),
+      });
+
+      dashboardCharts.reportCause = createChartInstance("dash-report-cause", {
+        type: "bar",
+        data: {
+          labels: payload.causes.map((row) => row.cause),
+          datasets: [
+            { label: "Meet", data: payload.causes.map((row) => row.meet), backgroundColor: "#4472c4", borderRadius: 6, maxBarThickness: 22 },
+            { label: "Fail", data: payload.causes.map((row) => row.fail), backgroundColor: "#ed7d31", borderRadius: 6, maxBarThickness: 22 },
+          ],
+        },
+        options: buildCartesianOptions({ indexAxis: "y" }),
+      });
+
+      dashboardCharts.reportDelayed = createChartInstance("dash-report-delay", {
+        type: "pie",
+        data: {
+          labels: Object.keys(payload.delayed),
+          datasets: [{ data: Object.values(payload.delayed), backgroundColor: ["#a8550f", "#16a34a", "#3b82f6", "#f97316", "#06b6d4", "#facc15", "#9ca3af", "#d946ef"] }],
+        },
+        options: buildBaseChartOptions({ plugins: { legend: createLegend("top") } }),
+      });
+    };
+
+    container.querySelectorAll(".dashboard-report-tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        const segment = button.dataset.segment || "overall";
+        const hidden = document.getElementById("dashboard-report-segment");
+        if (hidden) hidden.value = segment;
+        renderDashboardMain(container, data, slaHours, sheetName);
+      });
+
     });
+    renderSelected(selectedKey);
   }
   function renderDashboardSummary(container, data, slaHours = 3) {
     const monthlyRows = buildSummaryMonthlyRows(data.completed, slaHours);
