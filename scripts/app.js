@@ -2332,23 +2332,10 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     const historyTarget = event.target.closest("[data-history-open-detail]");
     if (!historyTarget) return;
 
-    if (event.target.closest(".btn-corrective-report")) {
+    if (event.target.closest(".btn-corrective-detail") || event.target.closest(".btn-corrective-report")) {
       return;
     }
-    const found = getCorrectiveIncidentById(historyTarget.dataset.historyOpenDetail);
-    if (!found?.incident) return;
-
-    const selectedIncident = mapCorrectiveIncidentToAlertDetail(found.incident);
-    if (!selectedIncident) return;
-
-    Store.dispatch((state) => ({
-      ...state,
-      ui: {
-        ...state.ui,
-        currentView: "alert-detail",
-        selectedIncident,
-      },
-    }));
+    openHistoryIncidentDetail(historyTarget.dataset.historyOpenDetail);
   });
 
   function ensureCalendarCreateModal() {
@@ -2712,6 +2699,7 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       ui: {
         ...state.ui,
         currentView: "alert-detail",
+        alertDetailReturnView: state.ui.currentView,
         selectedIncident: incidentForDetail,
       },
     }));
@@ -2835,6 +2823,25 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       tickets: Array.isArray(incident.tickets) && incident.tickets.length ? incident.tickets : [],
     };
   }
+  function openHistoryIncidentDetail(incidentId) {
+    if (!incidentId) return;
+    const found = getCorrectiveIncidentById(incidentId);
+    if (!found?.incident) return;
+
+    const selectedIncident = mapCorrectiveIncidentToAlertDetail(found.incident);
+    if (!selectedIncident) return;
+
+    Store.dispatch((state) => ({
+      ...state,
+      ui: {
+        ...state.ui,
+        currentView: "alert-detail",
+        alertDetailReturnView: state.ui.currentView,
+        selectedIncident,
+      },
+    }));
+  }
+
 
   function formatTimelineDate(value) {
     if (!value) return "-";

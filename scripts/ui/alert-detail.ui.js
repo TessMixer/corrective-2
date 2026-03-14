@@ -297,7 +297,7 @@ const AlertDetailUI = (function () {
         </div>
       `;
       lucide.createIcons();
-      return;
+      return
     }
 
     container.innerHTML = `
@@ -316,8 +316,8 @@ const AlertDetailUI = (function () {
           ...state,
           ui: {
             ...state.ui,
-            currentView: 'alert',
-            selectedIncident: null
+            currentView: state.ui.alertDetailReturnView || 'alert',
+            selectedIncident: null,
           }
         }));
       });

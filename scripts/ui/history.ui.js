@@ -18,7 +18,7 @@ const HistoryUI = (function () {
   }
 
   function getIncidentKey(incident) {
-    return incident?.incidentId || incident?.incident || incident?.id || "-";
+   return incident?.incident || incident?.incidentId || incident?.id || "-";
   }
 
   function getCompletedByType(state, typeKey) {
@@ -76,7 +76,7 @@ const HistoryUI = (function () {
         <div class="corrective-footer">
           <div></div>
           <div class="flex gap-2">
-            <button class="btn-action btn-action-purple btn-history-open-detail" data-history-open-detail="${incidentKey}">View Detail</button>
+            <button class="btn-action btn-action-purple btn-corrective-detail" data-id="${incidentKey}">View Detail</button>
             ${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incidentKey}">Report</button>`}
           </div>
         </div>

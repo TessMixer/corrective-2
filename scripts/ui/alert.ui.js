@@ -117,6 +117,7 @@ const AlertUI = (function () {
             ui: {
               ...state.ui,
               currentView: "alert-detail",
+              alertDetailReturnView: state.ui.currentView,
               selectedIncident: incident,
             },
           }));
