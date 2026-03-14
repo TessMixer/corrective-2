@@ -73,14 +73,34 @@ function pickRowValue(row = {}, candidates = []) {
   return resolveRowValue(row, candidates);
 }
 function normalizeNodesForLocalFlow(incident) {
+  const finishDetails = incident?.nsFinish?.details || {};
+  const finishTimes = incident?.nsFinish?.times || {};
+  const subContractors = Array.isArray(incident?.nsFinish?.subcontractors) ? incident.nsFinish.subcontractors : [];
   const explicitNodes = Array.isArray(incident?.nodes)
     ? incident.nodes
         .map((item) => ({
           node: item?.node || item?.name || "",
           alarm: item?.alarm || incident?.alarm || "Unknown",
           symphonyTicket: item?.symphonyTicket || item?.ticket || "",
+          cid: item?.cid || "",
           startTime: item?.startTime || item?.downTime || incident?.createdAt || "",
-          responseTime: item?.responseTime || incident?.respondedAt || incident?.timeline?.respondedAt || null,
+          responseTime: item?.responseTime || incident?.respondedAt || incident?.timeline?.respondedAt || finishTimes.nsResponse || null,
+          detail: item?.detail || finishDetails.repairText || "",
+          causeOfIncident: item?.causeOfIncident || finishDetails.cause || "",
+          hopRoad: item?.hopRoad || finishDetails.area || "",
+          latLong: item?.latLong || finishDetails.latlng || "",
+          subContractors,
+          delayBy: item?.delayBy || finishDetails.delayBy || incident?.delayReason || "",
+          customerTrunk: item?.customerTrunk || finishDetails.customerTrunk || incident?.customerTrunk || "",
+          controlStatus: item?.controlStatus || finishDetails.controlStatus || "",
+          team: item?.team || finishDetails.team || "",
+          mainCause: item?.mainCause || finishDetails.mainCause || "",
+          rootCauseFromSymc: item?.rootCauseFromSymc || finishDetails.rootCauseFromSymc || "",
+          rootCauseFromSub: item?.rootCauseFromSub || finishDetails.rootCauseFromSub || "",
+          rootCauseFromCustomer: item?.rootCauseFromCustomer || finishDetails.rootCauseFromCustomer || "",
+          rootCauseFromUncontrol: item?.rootCauseFromUncontrol || finishDetails.rootCauseFromUncontrol || "",
+          prevention: item?.prevention || finishDetails.prevention || "",
+
         }))
         .filter((item) => item.node)
     : [];
@@ -90,8 +110,24 @@ function normalizeNodesForLocalFlow(incident) {
           node: ticket?.node || incident?.node || incident?.region || `Node_${index + 1}`,
           alarm: ticket?.alarm || incident?.alarm || "Unknown",
           symphonyTicket: ticket?.symphonyTicket || ticket?.ticket || "",
-          startTime: ticket?.downTime || incident?.createdAt || "",
-          responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || null,
+          cid: ticket?.cid || "",
+          startTime: ticket?.downTime || incident?.createdAt || finishTimes.downTime || "",
+          responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || finishTimes.nsResponse || null,
+          detail: finishDetails.repairText || "",
+          causeOfIncident: finishDetails.cause || "",
+          hopRoad: finishDetails.area || "",
+          latLong: finishDetails.latlng || "",
+          subContractors,
+          delayBy: ticket?.delayBy || finishDetails.delayBy || incident?.delayReason || "",
+          customerTrunk: ticket?.customerTrunk || finishDetails.customerTrunk || incident?.customerTrunk || "",
+          controlStatus: ticket?.controlStatus || finishDetails.controlStatus || "",
+          team: ticket?.team || finishDetails.team || "",
+          mainCause: ticket?.mainCause || finishDetails.mainCause || "",
+          rootCauseFromSymc: ticket?.rootCauseFromSymc || finishDetails.rootCauseFromSymc || "",
+          rootCauseFromSub: ticket?.rootCauseFromSub || finishDetails.rootCauseFromSub || "",
+          rootCauseFromCustomer: ticket?.rootCauseFromCustomer || finishDetails.rootCauseFromCustomer || "",
+          rootCauseFromUncontrol: ticket?.rootCauseFromUncontrol || finishDetails.rootCauseFromUncontrol || "",
+          prevention: ticket?.prevention || finishDetails.prevention || "",
         }))
         .filter((item) => item.node)
     : [];
@@ -105,8 +141,24 @@ function normalizeNodesForLocalFlow(incident) {
       node: fallbackNode,
       alarm: incident?.alarm || "Unknown",
       symphonyTicket: "",
+      cid: "",
       startTime: incident?.createdAt || incident?.openedAt || incident?.timeline?.openedAt || incident?.tickets?.[0]?.downTime || new Date().toISOString(),
-      responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || null,
+      responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || finishTimes.nsResponse || null,
+      detail: finishDetails.repairText || "",
+      causeOfIncident: finishDetails.cause || "",
+      hopRoad: finishDetails.area || "",
+      latLong: finishDetails.latlng || "",
+      subContractors,
+      delayBy: finishDetails.delayBy || incident?.delayReason || "",
+      customerTrunk: finishDetails.customerTrunk || incident?.customerTrunk || "",
+      controlStatus: finishDetails.controlStatus || "",
+      team: finishDetails.team || "",
+      mainCause: finishDetails.mainCause || "",
+      rootCauseFromSymc: finishDetails.rootCauseFromSymc || "",
+      rootCauseFromSub: finishDetails.rootCauseFromSub || "",
+      rootCauseFromCustomer: finishDetails.rootCauseFromCustomer || "",
+      rootCauseFromUncontrol: finishDetails.rootCauseFromUncontrol || "",
+      prevention: finishDetails.prevention || "",
     },
   ];
 }
@@ -134,8 +186,36 @@ function applyFinishToLocalFlow(incident) {
   } catch (error) {
     console.warn("Local finish flow skipped due to invalid payload:", error);
   }
-
 }
+function toMonthShort(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-US", { month: "short" });
+}
+
+function toWeekOfMonthLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const firstDayOffset = firstDay.getDay();
+  const weekIndex = Math.ceil((date.getDate() + firstDayOffset) / 7);
+  return `W${Math.max(1, weekIndex)}`;
+}
+
+function minutesBetween(startValue, endValue) {
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "-";
+  return `${Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))} นาที`;
+}
+
+function toPeriodHoursLabel(downtimeMinutes) {
+  const mins = Number(downtimeMinutes);
+  if (!Number.isFinite(mins) || mins <= 0) return "0 Hrs.";
+  const hours = Math.max(1, Math.floor(mins / 60));
+  return `${hours} Hrs.`;
+}
+
 
 function excelSerialToDate(serial) {
   const value = Number(serial);
@@ -1952,22 +2032,55 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
   function getSheetRows(sheetName = "") {
     if (normalizeSheetText(sheetName) !== "details") return [];
     const dashboardRows = dashboardExcelState.detailsRows || [];
-    const localRows = getDataSheetRows().map((row) => ({
-      "FC No.": row.incidentNumber,
-      "Ticket No.": row.symphonyTicket,
-      "Area": row.node,
-      "Cause of incident": row.alarm,
-      "Down Time": row.startTime,
-      "NOC Alert": row.startTime,
-      "NS Respond": row.responseTime,
-      "Up time": row.finishTime,
-      "Down Time (Hrs.)": Number(row.downtimeMinutes || 0) / 60,
-      "Detail": "Generated from corrective finish flow",
-      "Backbone/Access": "NOC Local Flow",
-      "Within 3 Hrs.": Number(row.downtimeMinutes || 0) <= 180 ? "MTTR 3Hrs. Meet" : "MTTR 3Hrs. Fail",
-      "MTTR 3Hrs.": Number(row.downtimeMinutes || 0) <= 180 ? "MTTR 3Hrs. Meet" : "MTTR 3Hrs. Fail",
-      "MTTR 4Hrs.": Number(row.downtimeMinutes || 0) <= 240 ? "MTTR 4Hrs. Meet" : "MTTR 4Hrs. Fail",
-    }));
+    const localDataRows = getDataSheetRows();
+    const circuitsByIncident = localDataRows.reduce((acc, item) => {
+      const key = String(item.incidentNumber || "");
+      if (!key) return acc;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const localRows = localDataRows.map((row) => {
+      const subs = Array.isArray(row.subContractors) ? row.subContractors : [];
+      return {
+        "Month": toMonthShort(row.startTime),
+        "FC No.": row.incidentNumber,
+        "Ticket No.": row.symphonyTicket,
+        "Week": toWeekOfMonthLabel(row.startTime),
+        "Down Time": row.startTime,
+        "Up time": row.finishTime,
+        "Down Time (Hrs.)": Number(row.downtimeMinutes || 0) / 60,
+        "NOC Alert": minutesBetween(row.startTime, row.responseTime || row.finishTime),
+        "NS Respond": minutesBetween(row.responseTime || row.startTime, row.finishTime),
+        "MTTR 4Hrs.": Number(row.downtimeMinutes || 0) <= 240 ? "MTTR 4Hrs. Meet" : "MTTR 4Hrs. Fail",
+        "MTTR 3Hrs.": Number(row.downtimeMinutes || 0) <= 180 ? "MTTR 3Hrs. Meet" : "MTTR 3Hrs. Fail",
+        "Number of Circuits": circuitsByIncident[row.incidentNumber] || 1,
+        "Period Time": toPeriodHoursLabel(row.downtimeMinutes),
+        "Backbone/Access": "NOC Local Flow",
+        "Within 3 Hrs.": Number(row.downtimeMinutes || 0) <= 180 ? "MTTR 3Hrs. Meet" : "MTTR 3Hrs. Fail",
+        "Delay by": row.delayBy || "",
+        "CID": row.cid || "",
+        "Customer/Trunk": row.customerTrunk || row.node || "",
+        "Detail": row.detail || "",
+        "Column T": row.area || row.node || "",
+        "Area": row.node,
+        "Control / Uncontrol": row.controlStatus || "",
+        "Sub-contractor Team 1": subs[0] || "",
+        "Sub-contractor Team 2": subs[1] || "",
+        "Sub-contractor Team 3": subs[2] || "",
+        "Sub-contractor Team 4": subs[3] || "",
+        "Cause of incident": row.causeOfIncident || row.alarm,
+        "Root cause from SYMC": row.rootCauseFromSymc || "",
+        "Root cause from Sub": row.rootCauseFromSub || "",
+        "Root cause from Customer": row.rootCauseFromCustomer || "",
+        "Root cause from Uncontrol": row.rootCauseFromUncontrol || "",
+        "Prevention (แนวทางแก้ไข/ป้องกัน)": row.prevention || row.detail || "",
+        "Hop/Road": row.hopRoad || "",
+        "Lat/Long": row.latLong || "",
+        "Team": row.team || "",
+        "สาเหตุหลัก": row.mainCause || "",
+      };
+    });
 
     return [...localRows, ...dashboardRows];
 
