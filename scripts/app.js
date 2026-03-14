@@ -1,3 +1,10 @@
+import "../modules/corrective.js";
+import {
+  finishIncident as finishLocalIncidentFlow,
+  getDataSheetRows,
+  upsertActiveIncident,
+} from "../services/incident.service.js";
+
 import { initFirebase } from "./services/firebase.service.js";
 import { MTTR_WORKBOOK_DATA } from "./data/mttr-workbook.data.js";
 // ===== VIEW SWITCHER =====
@@ -64,6 +71,70 @@ function pickRowValue(row = {}, candidates = []) {
     if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") return row[key];
   }
   return resolveRowValue(row, candidates);
+}
+function normalizeNodesForLocalFlow(incident) {
+  const explicitNodes = Array.isArray(incident?.nodes)
+    ? incident.nodes
+        .map((item) => ({
+          node: item?.node || item?.name || "",
+          alarm: item?.alarm || incident?.alarm || "Unknown",
+          symphonyTicket: item?.symphonyTicket || item?.ticket || "",
+          startTime: item?.startTime || item?.downTime || incident?.createdAt || "",
+          responseTime: item?.responseTime || incident?.respondedAt || incident?.timeline?.respondedAt || null,
+        }))
+        .filter((item) => item.node)
+    : [];
+  const ticketNodes = Array.isArray(incident?.tickets)
+    ? incident.tickets
+        .map((ticket, index) => ({
+          node: ticket?.node || incident?.node || incident?.region || `Node_${index + 1}`,
+          alarm: ticket?.alarm || incident?.alarm || "Unknown",
+          symphonyTicket: ticket?.symphonyTicket || ticket?.ticket || "",
+          startTime: ticket?.downTime || incident?.createdAt || "",
+          responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || null,
+        }))
+        .filter((item) => item.node)
+    : [];
+
+  if (ticketNodes.length) return ticketNodes;
+  if (explicitNodes.length) return explicitNodes;
+
+  const fallbackNode = incident?.node || incident?.region || "Unknown_Node";
+  return [
+    {
+      node: fallbackNode,
+      alarm: incident?.alarm || "Unknown",
+      symphonyTicket: "",
+      startTime: incident?.createdAt || incident?.openedAt || incident?.timeline?.openedAt || incident?.tickets?.[0]?.downTime || new Date().toISOString(),
+      responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || null,
+    },
+  ];
+}
+
+function syncIncidentToLocalFlowActive(incident) {
+  const incidentNumber = getIncidentKey(incident);
+  if (!incidentNumber) return;
+
+  const activePayload = {
+    incidentNumber,
+    startTime: incident?.createdAt || incident?.openedAt || incident?.timeline?.openedAt || incident?.tickets?.[0]?.downTime || new Date().toISOString(),
+    responseTime: incident?.respondedAt || incident?.timeline?.respondedAt || null,
+    nodes: normalizeNodesForLocalFlow(incident),
+  };
+
+  upsertActiveIncident(activePayload);
+}
+
+function applyFinishToLocalFlow(incident) {
+  const incidentNumber = getIncidentKey(incident);
+  if (!incidentNumber) return;
+  try {
+    syncIncidentToLocalFlowActive(incident);
+    finishLocalIncidentFlow(incidentNumber);
+  } catch (error) {
+    console.warn("Local finish flow skipped due to invalid payload:", error);
+  }
+
 }
 
 function excelSerialToDate(serial) {
@@ -1880,7 +1951,25 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
 
   function getSheetRows(sheetName = "") {
     if (normalizeSheetText(sheetName) !== "details") return [];
-    return dashboardExcelState.detailsRows || [];
+    const dashboardRows = dashboardExcelState.detailsRows || [];
+    const localRows = getDataSheetRows().map((row) => ({
+      "FC No.": row.incidentNumber,
+      "Ticket No.": row.symphonyTicket,
+      "Area": row.node,
+      "Cause of incident": row.alarm,
+      "Down Time": row.startTime,
+      "NOC Alert": row.startTime,
+      "NS Respond": row.responseTime,
+      "Up time": row.finishTime,
+      "Down Time (Hrs.)": Number(row.downtimeMinutes || 0) / 60,
+      "Detail": "Generated from corrective finish flow",
+      "Backbone/Access": "NOC Local Flow",
+      "Within 3 Hrs.": Number(row.downtimeMinutes || 0) <= 180 ? "MTTR 3Hrs. Meet" : "MTTR 3Hrs. Fail",
+      "MTTR 3Hrs.": Number(row.downtimeMinutes || 0) <= 180 ? "MTTR 3Hrs. Meet" : "MTTR 3Hrs. Fail",
+      "MTTR 4Hrs.": Number(row.downtimeMinutes || 0) <= 240 ? "MTTR 4Hrs. Meet" : "MTTR 4Hrs. Fail",
+    }));
+
+    return [...localRows, ...dashboardRows];
 
   }
 
@@ -4079,6 +4168,10 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
         getIncidentKey(item) === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
       );
+      const finishedIncident = (nextCorrective[tab] || []).find((item) => getIncidentKey(item) === incidentId);
+      if (finishedIncident) {
+        applyFinishToLocalFlow(finishedIncident);
+      }
 
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
       Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
@@ -5028,6 +5121,10 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       nextCorrective[tab] = (nextCorrective[tab] || []).map((item) =>
         getIncidentKey(item) === incidentId ? { ...item, nsFinish: payload, status: "COMPLETE", completedAt: new Date().toISOString() } : item
       );
+      const finishedIncident = (nextCorrective[tab] || []).find((item) => getIncidentKey(item) === incidentId);
+      if (finishedIncident) {
+        applyFinishToLocalFlow(finishedIncident);
+      }
 
       LocalDB.saveState({ alerts: current.alerts, corrective: nextCorrective });
       Store.dispatch((state) => ({ ...state, corrective: nextCorrective }));
