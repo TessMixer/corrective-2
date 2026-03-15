@@ -38,6 +38,7 @@ const Store = (function () {
         dashboardSheetName: 'Dashboard (3 Hrs.)',
         dashboardSlaHours: 3,
         dashboardDetailsSheetName: 'Details',
+        dashboardDetailsSubView: 'data-sheet',
         dashboardExcelError: '',
         alertDetailReturnView: 'alert',
         modal: null

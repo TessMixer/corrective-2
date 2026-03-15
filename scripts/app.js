@@ -340,7 +340,7 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
         const dashboardSheetName = el.dataset.dashboardSheetName;
         const dashboardSlaHours = Number(el.dataset.dashboardSlaHours || 3);
         const dashboardDetailsSheetName = el.dataset.dashboardDetailsSheetName;
-
+        const dashboardDetailsSubView = el.dataset.dashboardDetailsSubview;
         Store.dispatch((state) => ({
           ...state,
           ui: {
@@ -350,6 +350,7 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
             ...(dashboardSheetName ? { dashboardSheetName } : {}),
             ...(dashboardSlaHours ? { dashboardSlaHours } : {}),
             ...(dashboardDetailsSheetName ? { dashboardDetailsSheetName } : {}),
+            ...(dashboardDetailsSubView ? { dashboardDetailsSubView } : {}),
           },
         }));
       });
@@ -378,7 +379,10 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
 
     if (detailsSubmenu) {
       detailsSubmenu.innerHTML = dashboardExcelState.detailsSheet
-        ? `<div class="sub-nav-item nav-item text-sm" data-view="dashboard-details" data-dashboard-details-sheet-name="${escapeHtml(dashboardExcelState.detailsSheet)}">Data Sheet</div>`
+        ? `
+          <div class="sub-nav-item nav-item text-sm" data-view="dashboard-details" data-dashboard-details-subview="data-sheet" data-dashboard-details-sheet-name="${escapeHtml(dashboardExcelState.detailsSheet)}">Data Sheet</div>
+          <div class="sub-nav-item nav-item text-sm" data-view="dashboard-details" data-dashboard-details-subview="search-incident" data-dashboard-details-sheet-name="${escapeHtml(dashboardExcelState.detailsSheet)}">SEARCH INCIDENT</div>
+        `
         : "";
     }
 
@@ -393,6 +397,7 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
           dashboardSheetName: fallbackSheet,
           dashboardSlaHours: inferSlaHoursFromName(fallbackSheet),
           dashboardDetailsSheetName: dashboardExcelState.detailsSheet || state.ui.dashboardDetailsSheetName,
+          dashboardDetailsSubView: state.ui.dashboardDetailsSubView || "data-sheet",          
           dashboardExcelError: "",
         },
       };
@@ -612,8 +617,11 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     }
     if (state.ui.currentView === "dashboard-details") {
       try {
-
-        renderDashboardDetailsView(state);
+        if (state.ui.dashboardDetailsSubView === "search-incident") {
+          renderSearchIncidentView(state);
+        } else {
+          renderDashboardDetailsView(state);
+        }
       } catch (error) {
         console.error("Dashboard details render failed:", error);
         const container = document.getElementById("view-dashboard-details");
@@ -691,7 +699,8 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     } else if (state.ui.currentView === "dashboard-details") {
       const parent = document.getElementById("menu-details");
       if (parent) parent.classList.add("active");
-      const sub = document.querySelector(`#details-submenu [data-dashboard-details-sheet-name="${CSS.escape(state.ui.dashboardDetailsSheetName || "")}"]`)
+      const sub = document.querySelector(`#details-submenu [data-dashboard-details-subview="${CSS.escape(state.ui.dashboardDetailsSubView || "data-sheet")}"]`)
+        || document.querySelector(`#details-submenu [data-dashboard-details-sheet-name="${CSS.escape(state.ui.dashboardDetailsSheetName || "")}"]`)
         || document.querySelector("#details-submenu [data-view='dashboard-details']");
 
       if (sub) sub.classList.add("active");
@@ -2477,6 +2486,317 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     const next = document.getElementById("details-next");
     if (next) next.addEventListener("click", () => { document.getElementById("details-page").value = String(Math.min(totalPages, safePage + 1)); renderDashboardDetailsView(Store.getState()); });
 
+  }
+  function renderSearchIncidentView(state) {
+    const container = document.getElementById("view-dashboard-details");
+    if (!container) return;
+
+    const rows = getSheetRows(state.ui.dashboardDetailsSheetName || "Details");
+
+    const filters = {
+      incidentNumber: (document.getElementById("incident-filter-number")?.value || "").trim(),
+      customerName: (document.getElementById("incident-filter-customer")?.value || "").trim(),
+      ticketNo: (document.getElementById("incident-filter-ticket")?.value || "").trim(),
+      cid: (document.getElementById("incident-filter-cid")?.value || "").trim(),
+      fromDate: (document.getElementById("incident-filter-from")?.value || "").trim(),
+      toDate: (document.getElementById("incident-filter-to")?.value || "").trim(),
+      status: document.getElementById("incident-filter-status")?.value || "all",
+      createdBy: (document.getElementById("incident-filter-created-by")?.value || "").trim(),
+      tableSearch: (document.getElementById("incident-table-search")?.value || "").trim(),
+      page: Number(document.getElementById("incident-page")?.value || 1),
+      editTicketNo: (document.getElementById("incident-edit-ticket")?.value || "").trim(),
+
+    };
+    const statusOptions = ["New", "Open", "Assigned", "In Progress", "Pending", "Resolve", "Close"];
+    const parseDateValue = (value) => {
+          if (!value) return null;
+          const isoLike = String(value).replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$2-$1");
+          const parsed = new Date(isoLike);
+          return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+      const mapStatus = (raw = "") => {
+      const text = String(raw || "").trim();
+      if (!text) return "Open";
+      const norm = normalizeSheetText(text);
+      if (norm.includes("new")) return "New";
+      if (norm.includes("assign")) return "Assigned";
+      if (norm.includes("progress")) return "In Progress";
+      if (norm.includes("pending")) return "Pending";
+      if (norm.includes("resolve")) return "Resolve";
+      if (norm.includes("close") || norm.includes("complete") || norm.includes("meet")) return "Close";
+      if (norm.includes("open")) return "Open";
+      return text;
+    };
+    const mapped = rows.map((row) => {
+      const downTime = pickRowValue(row, ["Down Time", "Start Time", "downTime"]);
+      const upTime = pickRowValue(row, ["Up time", "Finish Time", "upTime"]);
+      const status = mapStatus(pickRowValue(row, ["Ticket Status", "STATUS", "Status", "MTTR 3Hrs.", "MTTR 4Hrs."]));
+      const incidentDate = parseDateValue(downTime) || parseDateValue(upTime);
+      const ticketNo = pickRowValue(row, ["Ticket No.", "ticketNo"]);
+      const incidentNumber = pickRowValue(row, ["FC No.", "Incident Number", "incidentId"]);
+
+      return {
+        type: "INCIDENT",
+        actionLabel: "Edit",
+        ticketNo,
+        incidentNumber,
+        cid: pickRowValue(row, ["CID", "cid"]),
+        slaEffect: pickRowValue(row, ["Within 3 Hrs.", "MTTR 3Hrs.", "SLA Effect"]),
+        bandwidth: pickRowValue(row, ["Number of Circuits", "Bandwidth", "bandwidth"]),
+        node: pickRowValue(row, ["Column T", "Node", "nodeEffect"]),
+        port: pickRowValue(row, ["Port", "port"]),
+        customerName: pickRowValue(row, ["Customer/Trunk", "Customer", "customerName"]),
+        siteEffect: pickRowValue(row, ["Area", "siteEffect"]),
+        status,
+        downTime,
+        upTime,
+        totalDowntime: pickRowValue(row, ["Down Time (Hrs.)", "Total Downtime", "totalDowntime"]),
+        pendingStart: pickRowValue(row, ["Pending Start", "pendingStart"]),
+        pendingStop: pickRowValue(row, ["Pending Stop", "pendingStop"]),
+        pendingTime: pickRowValue(row, ["Pending Time", "pendingTime"]),
+        durationTime: pickRowValue(row, ["Period Time", "Duration Time", "durationTime"]),
+        createdBy: pickRowValue(row, ["Sub-contractor Team 1", "Team", "createdBy"]),
+        modifyBy: pickRowValue(row, ["Sub-contractor Team 2", "modifyBy"]),
+        openBy: pickRowValue(row, ["Open By", "openBy"]),
+        closeBy: pickRowValue(row, ["Close By", "closeBy"]),
+        incidentDate,
+      };
+    });
+    const fromDate = parseDateValue(filters.fromDate);
+    const toDate = parseDateValue(filters.toDate);
+    const filtered = mapped
+      .filter((item) => !filters.incidentNumber || normalizeSheetText(item.incidentNumber).includes(normalizeSheetText(filters.incidentNumber)))
+      .filter((item) => !filters.customerName || normalizeSheetText(item.customerName).includes(normalizeSheetText(filters.customerName)))
+      .filter((item) => !filters.ticketNo || normalizeSheetText(item.ticketNo).includes(normalizeSheetText(filters.ticketNo)))
+      .filter((item) => !filters.cid || normalizeSheetText(item.cid).includes(normalizeSheetText(filters.cid)))
+      .filter((item) => !filters.createdBy || normalizeSheetText(item.createdBy).includes(normalizeSheetText(filters.createdBy)))
+      .filter((item) => (filters.status === "all" ? true : normalizeSheetText(item.status) === normalizeSheetText(filters.status)))
+      .filter((item) => {
+        if (!fromDate && !toDate) return true;
+        if (!item.incidentDate) return false;
+        if (fromDate && item.incidentDate < fromDate) return false;
+        if (toDate) {
+          const end = new Date(toDate);
+          end.setHours(23, 59, 59, 999);
+          if (item.incidentDate > end) return false;
+        }
+        return true;
+      })
+      .filter((item) => !filters.tableSearch || normalizeSheetText(Object.values(item).join(" ")).includes(normalizeSheetText(filters.tableSearch)));
+
+
+    const pageSize = 15;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const safePage = Math.min(Math.max(1, Number.isFinite(filters.page) ? filters.page : 1), totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    const pageRows = filtered.slice(startIndex, startIndex + pageSize);
+    const showingFrom = filtered.length ? startIndex + 1 : 0;
+    const showingTo = filtered.length ? Math.min(startIndex + pageRows.length, filtered.length) : 0;
+
+    const selectedItem = filtered.find((item) => String(item.ticketNo || "") === String(filters.editTicketNo || "")) || null;
+
+    const renderEditPanel = (item) => {
+      if (!item) return "";
+      return `
+        <div class="mt-4 border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <div class="p-4 md:p-5 border-b border-slate-200 bg-slate-50">
+            <div class="text-3xl font-semibold text-slate-700">INCIDENT NUMBER . ${escapeHtml(item.incidentNumber || "-")}</div>
+            <div class="text-lg text-slate-600 mt-1">TICKET NO : ${escapeHtml(item.ticketNo || "-")}</div>
+            <div class="text-xs text-slate-500 mt-1">CUSTOMER NAME : ${escapeHtml(item.customerName || "-")}</div>
+          </div>
+          <div class="p-4 md:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div><label class="block text-slate-500 mb-1">CID:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.cid || "")}"></div>
+            <div><label class="block text-slate-500 mb-1">ORIGINATE SITE:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.node || "")}"></div>
+            <div><label class="block text-slate-500 mb-1">TERMINATE SITE:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.siteEffect || "")}"></div>
+            <div><label class="block text-slate-500 mb-1">DOWNTIME</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.downTime || "")}"></div>
+            <div><label class="block text-slate-500 mb-1">UPTIME</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.upTime || "")}"></div>
+            <div><label class="block text-slate-500 mb-1">ALARM TYPE:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.status || "")}"></div>
+            <div><label class="block text-slate-500 mb-1">PLAN TYPE:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="New"></div>
+            <div><label class="block text-slate-500 mb-1">STATUS:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="Actual"></div>
+            <div><label class="block text-slate-500 mb-1">BANDWITH:</label><input class="w-full border border-slate-300 rounded px-2 py-2" value="${escapeHtml(item.bandwidth || "")}"></div>
+          </div>
+          <div class="px-4 md:px-5 pb-5">
+            <label class="block text-xs text-slate-500 mb-1">REMARK:</label>
+            <textarea class="w-full border border-slate-300 rounded px-2 py-2 h-20"></textarea>
+            <div class="flex justify-end mt-3">
+              <button class="rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2">Save Data</button>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+    const pageButtons = Array.from({ length: totalPages }, (_, i) => i + 1)
+      .map((pageNo) => `<button data-page="${pageNo}" class="incident-page-btn rounded border px-2 py-0.5 ${pageNo === safePage ? "border-indigo-500 text-indigo-600 bg-indigo-50" : "border-slate-200 text-slate-500"}">${pageNo}</button>`)
+      .join("");
+
+    container.innerHTML = `
+      <div class="glass-card p-4 md:p-5">
+        <div class="flex items-center justify-between gap-3 flex-wrap border-b border-slate-200 pb-3">
+
+          <div>
+            <h2 class="text-base md:text-lg font-semibold text-slate-700 tracking-wide">SEARCH INCIDENT / ค้นหาข้อมูลงาน</h2>
+            <p class="text-[11px] text-slate-500 mt-0.5">ข้อมูลงาน การติดตามงาน การแก้ปัญหา และการสอบถามข้อมูล</p>
+          </div>
+          <div class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold text-slate-600">
+            <span class="px-2.5 py-1 rounded-md bg-white shadow-sm">TICKET</span>
+            <span class="px-2.5 py-1 rounded-md">INCIDENT</span>
+          </div>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2.5">
+          <div><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Incident Number:</label><input id="incident-filter-number" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.incidentNumber)}"></div>
+          <div><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Customer Name:</label><input id="incident-filter-customer" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.customerName)}"></div>
+          <div><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Ticket No:</label><input id="incident-filter-ticket" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.ticketNo)}"></div>
+          <div><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">CID:</label><input id="incident-filter-cid" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.cid)}"></div>
+        </div>
+
+        <div class="mt-2.5 grid grid-cols-1 md:grid-cols-8 gap-2.5 items-end">
+          <div class="md:col-span-2"><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">From Date:</label><input id="incident-filter-from" type="date" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.fromDate)}"></div>
+          <div class="md:col-span-2"><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">To Date:</label><input id="incident-filter-to" type="date" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.toDate)}"></div>
+          <div class="md:col-span-2"><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Ticket Status:</label><select id="incident-filter-status" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs"><option value="all" ${filters.status === "all" ? "selected" : ""}>ทั้งหมด</option>${statusOptions.map((status) => `<option value="${escapeHtml(status)}" ${filters.status === status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}</select></div>
+          <div class="md:col-span-2"><label class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Created By:</label><input id="incident-filter-created-by" class="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs" value="${escapeHtml(filters.createdBy)}"></div>
+        </div>
+
+        <div class="mt-3 flex items-center justify-between gap-3 flex-wrap">
+          <div class="text-xs text-slate-500">ทั้งหมด ${filtered.length} รายการ</div>
+          <button id="incident-search-btn" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition">Search Ticket</button>
+        </div>
+        ${renderEditPanel(selectedItem)}
+        <div class="mt-4 rounded-xl border border-slate-200 overflow-hidden bg-white">
+          <div class="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-slate-50/80">
+            <div class="flex items-center gap-2 text-xs text-slate-500"><span>Show</span><span class="rounded border border-slate-200 px-2 py-0.5 bg-white">15</span><span>entries</span></div>
+            <div class="flex items-center gap-2 text-xs"><span class="text-slate-500">Search:</span><input id="incident-table-search" class="rounded-md border border-slate-200 px-2 py-1 text-xs" value="${escapeHtml(filters.tableSearch)}" placeholder="ค้นหาในตาราง"></div>
+          </div>
+          <div class="overflow-auto">
+           <table class="w-full text-xs text-left min-w-[2350px]">
+              <thead class="bg-slate-100 text-slate-600 uppercase tracking-wide"><tr>
+                <th class="px-3 py-2 whitespace-nowrap">Action</th>
+                <th class="px-3 py-2 whitespace-nowrap">Type</th>
+                <th class="px-3 py-2 whitespace-nowrap">SLA</th>
+                <th class="px-3 py-2 whitespace-nowrap">Incident</th>
+                <th class="px-3 py-2 whitespace-nowrap">Ticket No</th>
+                <th class="px-3 py-2 whitespace-nowrap">CID</th>
+                <th class="px-3 py-2 whitespace-nowrap">SLA Effect</th>
+                <th class="px-3 py-2 whitespace-nowrap">Bandwidth</th>
+                <th class="px-3 py-2 whitespace-nowrap">Node</th>
+                <th class="px-3 py-2 whitespace-nowrap">Port</th>
+                <th class="px-3 py-2 whitespace-nowrap">Customer Name</th>
+                <th class="px-3 py-2 whitespace-nowrap">Site Effect</th>
+                <th class="px-3 py-2 whitespace-nowrap">Status</th>
+                <th class="px-3 py-2 whitespace-nowrap">Downtime</th>
+                <th class="px-3 py-2 whitespace-nowrap">Uptime</th>
+                <th class="px-3 py-2 whitespace-nowrap">Total Downtime</th>
+                <th class="px-3 py-2 whitespace-nowrap">Pending Start</th>
+                <th class="px-3 py-2 whitespace-nowrap">Pending Stop</th>
+                <th class="px-3 py-2 whitespace-nowrap">Pending Time</th>
+                <th class="px-3 py-2 whitespace-nowrap">Duration Time</th>
+                <th class="px-3 py-2 whitespace-nowrap">By</th>
+                <th class="px-3 py-2 whitespace-nowrap">Modify By</th>
+                <th class="px-3 py-2 whitespace-nowrap">Open By</th>
+                <th class="px-3 py-2 whitespace-nowrap">Close By</th>
+              </tr></thead>
+              <tbody class="divide-y divide-slate-100 bg-white">
+                ${pageRows.map((item) => `
+                  <tr class="${item.status === "Close" || item.status === "Resolve" ? "bg-emerald-100/70" : "bg-white"} hover:bg-indigo-50/40 transition-colors">
+                    <td class="px-3 py-2 whitespace-nowrap"><button class="incident-edit-btn inline-flex items-center text-sky-700 hover:text-sky-900 text-xs font-semibold" data-ticket-no="${escapeHtml(item.ticketNo || "")}">✎ Edit</button></td>
+                    <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex rounded bg-blue-600 text-white px-2 py-0.5 text-[10px] font-semibold">${escapeHtml(item.type || "INCIDENT")}</span></td>
+                    <td class="px-3 py-2 whitespace-nowrap ${item.slaEffect ? "bg-rose-100/60" : ""}">${escapeHtml(item.slaEffect ? "Yes" : "")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.incidentNumber || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.ticketNo || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.cid || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.slaEffect || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.bandwidth || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.node || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.port || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.customerName || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.siteEffect || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.status || "Open")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.downTime || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.upTime || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.totalDowntime || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.pendingStart || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.pendingStop || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.pendingTime || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.durationTime || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.createdBy || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.modifyBy || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.openBy || "-")}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">${escapeHtml(item.closeBy || "-")}</td>
+                    </tr>
+                `).join("") || `<tr><td colspan="24" class="px-4 py-5 text-center text-slate-400">ไม่พบข้อมูล</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+          <div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-[10px] text-slate-500 bg-white">
+           <span>Showing ${showingFrom} to ${showingTo} of ${filtered.length} entries</span>
+            <div class="inline-flex items-center gap-1">
+              <button id="incident-prev" class="rounded border border-slate-200 px-2 py-0.5 text-slate-500" ${safePage <= 1 ? "disabled" : ""}>Previous</button>
+              ${pageButtons}
+              <button id="incident-next" class="rounded border border-slate-200 px-2 py-0.5 text-slate-500" ${safePage >= totalPages ? "disabled" : ""}>Next</button>
+            </div>
+          </div>
+        </div>
+        <input id="incident-page" type="hidden" value="${safePage}">
+        <input id="incident-edit-ticket" type="hidden" value="${escapeHtml(filters.editTicketNo)}">
+      </div>
+    `;
+    const rerenderAndResetPage = () => {
+      const pageEl = document.getElementById("incident-page");
+      if (pageEl) pageEl.value = "1";
+      renderSearchIncidentView(Store.getState());
+    };
+
+    [
+      "incident-filter-number",
+      "incident-filter-customer",
+      "incident-filter-ticket",
+      "incident-filter-cid",
+      "incident-filter-from",
+      "incident-filter-to",
+      "incident-filter-status",
+      "incident-filter-created-by",
+      "incident-table-search",
+    ].forEach((id) => {
+
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", rerenderAndResetPage);
+      el.addEventListener("change", rerenderAndResetPage);
+    });
+    const searchBtn = document.getElementById("incident-search-btn");
+    if (searchBtn) searchBtn.addEventListener("click", rerenderAndResetPage);
+
+    const prevBtn = document.getElementById("incident-prev");
+    if (prevBtn) prevBtn.addEventListener("click", () => {
+      const pageEl = document.getElementById("incident-page");
+      if (pageEl) pageEl.value = String(Math.max(1, safePage - 1));
+      renderSearchIncidentView(Store.getState());
+    });
+
+    const nextBtn = document.getElementById("incident-next");
+    if (nextBtn) nextBtn.addEventListener("click", () => {
+      const pageEl = document.getElementById("incident-page");
+      if (pageEl) pageEl.value = String(Math.min(totalPages, safePage + 1));
+      renderSearchIncidentView(Store.getState());
+    });
+
+    container.querySelectorAll(".incident-page-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const pageNo = Number(btn.dataset.page || 1);
+        const pageEl = document.getElementById("incident-page");
+        if (pageEl) pageEl.value = String(pageNo);
+        renderSearchIncidentView(Store.getState());
+      });
+    });
+
+    container.querySelectorAll(".incident-edit-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const ticket = btn.dataset.ticketNo || "";
+        const editEl = document.getElementById("incident-edit-ticket");
+        if (editEl) editEl.value = ticket;
+        renderSearchIncidentView(Store.getState());
+      });
+    });
   }
 
   function getAllCorrectiveIncidents(state) {
