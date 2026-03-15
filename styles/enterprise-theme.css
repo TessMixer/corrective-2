@@ -482,6 +482,207 @@ body.sidebar-collapsed #app-sidebar {
 .dashboard-chart-card h4 {
   flex: 0 0 auto;
 }
+.dashboard-period-panel {
+  background: #ffffff;
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-filter-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.dashboard-period-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dashboard-period-tab {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.dashboard-period-tab:hover {
+  border-color: #818cf8;
+  background: #eef2ff;
+}
+
+.dashboard-period-tab.is-active {
+  border-color: #4f46e5;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.22);
+}
+
+.dashboard-period-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.14);
+  font-size: 16px;
+}
+
+.dashboard-period-tab.is-active .dashboard-period-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dashboard-period-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-period-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.dashboard-period-helper {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.dashboard-period-tab.is-active .dashboard-period-helper {
+  color: #e2e8f0;
+}
+
+.dashboard-select-wrap {
+  max-width: 420px;
+}
+
+.dashboard-period-picker {
+  position: relative;
+}
+
+.dashboard-period-picker-trigger {
+
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dashboard-period-picker-chevron {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.dashboard-period-picker-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+}
+
+.dashboard-period-picker-search-wrap {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.dashboard-period-picker-search {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.dashboard-period-picker-search:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.dashboard-period-picker-list {
+  max-height: 320px;
+  overflow: auto;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.dashboard-period-option {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 0.875rem;
+  text-align: left;
+  color: #0f172a;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dashboard-period-option:hover {
+  border-color: #a5b4fc;
+  background: #eef2ff;
+}
+
+.dashboard-period-option-check {
+  color: transparent;
+  font-weight: 700;
+}
+
+.dashboard-period-option.is-active {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #312e81;
+}
+
+.dashboard-period-option.is-active .dashboard-period-option-check {
+  color: #4f46e5;
+
+}
+
+@media (max-width: 1024px) {
+  .dashboard-period-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-period-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .chart-shell {
   position: relative;

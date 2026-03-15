@@ -1577,11 +1577,14 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
     const selectedPeriodKey = periodChoices.some((period) => period.key === rawPeriodKey) ? rawPeriodKey : "all";
 
     const periodOptions = [
-      { key: "daily", label: "รายวัน" },
-      { key: "weekly", label: "รายสัปดาห์" },
-      { key: "monthly", label: "รายเดือน" },
-      { key: "yearly", label: "รายปี" },
+      { key: "daily", label: "รายวัน", icon: "📅", helper: "เลือกตามวันที่" },
+      { key: "weekly", label: "รายสัปดาห์", icon: "🗓️", helper: "สรุปเป็นสัปดาห์" },
+      { key: "monthly", label: "รายเดือน", icon: "📆", helper: "ดูภาพรวมรายเดือน" },
+      { key: "yearly", label: "รายปี", icon: "🧾", helper: "เปรียบเทียบรายปี" },
     ];
+    const selectedPeriodLabel = selectedPeriodKey === "all"
+      ? "ทั้งหมด (ไม่กรอง)"
+      : periodChoices.find((period) => period.key === selectedPeriodKey)?.label || "ทั้งหมด (ไม่กรอง)";
     container.innerHTML = `
      <div class="space-y-4">
         <div class="flex gap-2 flex-wrap">
@@ -1592,19 +1595,50 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
             .join("")}
         </div>
         <input id="dashboard-report-segment" type="hidden" value="${selectedKey}">
-        <div class="flex gap-2 flex-wrap items-center">
-          <span class="text-sm text-slate-600 font-semibold">ช่วงเวลา:</span>
-          ${periodOptions
-            .map((period) => `<button class="dashboard-period-tab px-3 py-1.5 rounded-md text-sm font-semibold ${period.key === selectedGranularity ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-700"}" data-period="${period.key}">${period.label}</button>`)
-            .join("")}
+        <div class="dashboard-period-panel">
+          <div class="dashboard-filter-label">ช่วงเวลา</div>
+          <div class="dashboard-period-grid">
+            ${periodOptions
+              .map(
+                (period) => `<button class="dashboard-period-tab ${period.key === selectedGranularity ? "is-active" : ""}" data-period="${period.key}">
+                <span class="dashboard-period-icon">${period.icon}</span>
+                <span class="dashboard-period-copy">
+                  <span class="dashboard-period-title">${period.label}</span>
+                  <span class="dashboard-period-helper">${period.helper}</span>
+                </span>
+              </button>`
+              )
+              .join("")}
+          </div>
         </div>
         <input id="dashboard-report-granularity" type="hidden" value="${selectedGranularity}">
-        <div class="flex flex-wrap gap-2 items-center">
-          <span class="text-sm text-slate-600 font-semibold">เลือกเฉพาะ:</span>
-          <select id="dashboard-report-period-select" class="bg-slate-100 rounded-lg px-3 py-2 text-sm min-w-[260px]">
-            <option value="all" ${selectedPeriodKey === "all" ? "selected" : ""}>ทั้งหมด</option>
-            ${periodChoices.map((period) => `<option value="${period.key}" ${period.key === selectedPeriodKey ? "selected" : ""}>${period.label}</option>`).join("")}
-          </select>
+        <div class="dashboard-select-wrap">
+          <label class="dashboard-filter-label">เลือกเฉพาะ</label>
+          <div class="dashboard-period-picker" id="dashboard-period-picker">
+            <button type="button" class="dashboard-period-picker-trigger" id="dashboard-period-picker-trigger" aria-expanded="false">
+              <span class="dashboard-period-picker-value">${selectedPeriodLabel}</span>
+              <span class="dashboard-period-picker-chevron">▾</span>
+            </button>
+            <div class="dashboard-period-picker-menu hidden" id="dashboard-period-picker-menu">
+              <div class="dashboard-period-picker-search-wrap">
+                <input type="text" id="dashboard-period-picker-search" class="dashboard-period-picker-search" placeholder="ค้นหา...">
+              </div>
+              <div class="dashboard-period-picker-list" id="dashboard-period-picker-list">
+                <button type="button" class="dashboard-period-option ${selectedPeriodKey === "all" ? "is-active" : ""}" data-value="all" data-label="ทั้งหมด (ไม่กรอง)">
+                  <span>ทั้งหมด (ไม่กรอง)</span>
+                  <span class="dashboard-period-option-check">✓</span>
+                </button>
+                ${periodChoices
+                  .map(
+                    (period) => `<button type="button" class="dashboard-period-option ${period.key === selectedPeriodKey ? "is-active" : ""}" data-value="${period.key}" data-label="${period.label}">
+                    <span>${period.label}</span>
+                    <span class="dashboard-period-option-check">✓</span>
+                  </button>`
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </div>
         </div>
         <input id="dashboard-report-period-key" type="hidden" value="${selectedPeriodKey}">
 
@@ -1732,15 +1766,46 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
         renderDashboardMain(container, data, slaHours, sheetName);
       });
     });
-    document.getElementById("dashboard-report-period-select")?.addEventListener("change", (event) => {
-      const value = event.target?.value || "all";
-      const hidden = document.getElementById("dashboard-report-period-key");
-      if (hidden) hidden.value = value;
-      renderDashboardMain(container, data, slaHours, sheetName);
+    const periodPicker = document.getElementById("dashboard-period-picker");
+    const periodPickerTrigger = document.getElementById("dashboard-period-picker-trigger");
+    const periodPickerMenu = document.getElementById("dashboard-period-picker-menu");
+    const periodPickerSearch = document.getElementById("dashboard-period-picker-search");
+    const closePeriodPicker = () => {
+      periodPickerMenu?.classList.add("hidden");
+      periodPickerTrigger?.setAttribute("aria-expanded", "false");
+    };
+    periodPickerTrigger?.addEventListener("click", () => {
+      const shouldOpen = periodPickerMenu?.classList.contains("hidden");
+      periodPickerMenu?.classList.toggle("hidden", !shouldOpen);
+      periodPickerTrigger.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+      if (shouldOpen) periodPickerSearch?.focus();
     });
+    periodPickerSearch?.addEventListener("input", (event) => {
+      const keyword = normalizeSheetText(event.target?.value || "");
+      periodPicker?.querySelectorAll(".dashboard-period-option").forEach((button) => {
+        const label = normalizeSheetText(button.dataset.label || "");
+        button.classList.toggle("hidden", Boolean(keyword) && !label.includes(keyword));
+      });
+    });
+    periodPicker?.querySelectorAll(".dashboard-period-option").forEach((button) => {
+      button.addEventListener("click", () => {
+        const value = button.dataset.value || "all";
+        const hidden = document.getElementById("dashboard-report-period-key");
+        if (hidden) hidden.value = value;
+        closePeriodPicker();
+        renderDashboardMain(container, data, slaHours, sheetName);
+      });
+    });
+    if (container.__dashboardPeriodOutsideHandler) {
+      document.removeEventListener("click", container.__dashboardPeriodOutsideHandler);
+    }
+    container.__dashboardPeriodOutsideHandler = (event) => {
+      if (!periodPicker || periodPicker.contains(event.target)) return;
+      closePeriodPicker();
+    };
+    document.addEventListener("click", container.__dashboardPeriodOutsideHandler);
 
     renderSelected(selectedKey, selectedGranularity, selectedPeriodKey);
-    renderSelected(selectedKey, selectedGranularity);
   }
   function renderDashboardSummary(container, data, slaHours = 3, sheetName = "") {
     const rows = getDashboardRowsBySheet(sheetName || "") || [];
