@@ -1390,7 +1390,157 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
 
   }
 
+  function startOfIsoWeek(date) {
+    const value = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = value.getDay() || 7;
+    value.setDate(value.getDate() - day + 1);
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }
 
+  function formatDateBucketLabel(date, granularity = "monthly") {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "-";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    if (granularity === "daily") return `${day}/${month}/${year}`;
+    if (granularity === "weekly") return `W${Math.ceil(date.getDate() / 7)} ${month}/${year}`;
+    if (granularity === "monthly") return `${month}/${year}`;
+    return String(year);
+  }
+
+  function buildDashboardTrendRows(rows = [], slaHours = 3, granularity = "monthly") {
+    const statusKey = slaHours >= 4 ? "MTTR 4Hrs." : "MTTR 3Hrs.";
+    const bucketMap = new Map();
+
+    rows.forEach((row) => {
+      const status = normalizeSheetText(pickRowValue(row, [statusKey, "Status", "status"]));
+      const isMeet = status.includes("meet");
+      const isFail = status.includes("fail");
+      if (!isMeet && !isFail) return;
+
+      const controlFlag = normalizeSheetText(pickRowValue(row, ["Control / Uncontrol", "control"]));
+      const pointDate = parseDateValue(pickRowValue(row, ["Up time", "Down Time", "Finish Time"]));
+      if (!pointDate) return;
+
+      const year = pointDate.getFullYear();
+      const month = pointDate.getMonth();
+      const day = pointDate.getDate();
+      let bucketDate = new Date(year, month, day);
+      let bucketKey = "";
+
+      if (granularity === "daily") {
+        bucketKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      } else if (granularity === "weekly") {
+        bucketDate = startOfIsoWeek(pointDate);
+        bucketKey = `${bucketDate.getFullYear()}-W${String(Math.ceil(bucketDate.getDate() / 7)).padStart(2, "0")}-${String(bucketDate.getMonth() + 1).padStart(2, "0")}`;
+      } else if (granularity === "yearly") {
+        bucketDate = new Date(year, 0, 1);
+        bucketKey = String(year);
+      } else {
+        bucketDate = new Date(year, month, 1);
+        bucketKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      }
+
+      if (!bucketMap.has(bucketKey)) {
+        bucketMap.set(bucketKey, {
+          key: bucketKey,
+          sortDate: bucketDate,
+          meet: 0,
+          fail: 0,
+          total: 0,
+          without: 0,
+          label: formatDateBucketLabel(bucketDate, granularity),
+        });
+      }
+
+      const entry = bucketMap.get(bucketKey);
+      if (isMeet) entry.meet += 1;
+      if (isFail) entry.fail += 1;
+      entry.total += 1;
+      if (!controlFlag.includes("uncontrol")) entry.without += 1;
+    });
+
+    return Array.from(bucketMap.values())
+      .sort((a, b) => a.sortDate - b.sortDate)
+      .map((entry) => ({
+        label: entry.label,
+        meet: entry.meet,
+        fail: entry.fail,
+        total: entry.total,
+        mttrPct: entry.total ? Number(((entry.meet / entry.total) * 100).toFixed(2)) : 0,
+        withoutPct: entry.without ? Number(((entry.meet / entry.without) * 100).toFixed(2)) : 0,
+      }));
+  }
+  function getIsoWeekInfo(date) {
+    const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayNr = (target.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = new Date(target.getFullYear(), 0, 4);
+    const firstDayNr = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstDayNr + 3);
+    const week = 1 + Math.round((target - firstThursday) / 604800000);
+    const weekStart = new Date(target);
+    weekStart.setDate(target.getDate() - 3);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    return { year: target.getFullYear(), week, weekStart, weekEnd };
+  }
+  function getDashboardPeriodKey(date, granularity = "monthly") {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    if (granularity === "daily") return `${year}-${month}-${day}`;
+    if (granularity === "weekly") {
+      const iso = getIsoWeekInfo(date);
+      return `${iso.year}-W${String(iso.week).padStart(2, "0")}`;
+    }
+    if (granularity === "yearly") return String(year);
+    return `${year}-${month}`;
+  }
+  function buildDashboardPeriodOptions(rows = [], granularity = "monthly") {
+    const optionsMap = new Map();
+    rows.forEach((row) => {
+      const pointDate = parseDateValue(pickRowValue(row, ["Up time", "Down Time", "Finish Time"]));
+      if (!pointDate) return;
+      const key = getDashboardPeriodKey(pointDate, granularity);
+      if (!key || optionsMap.has(key)) return;
+
+      let label = key;
+      if (granularity === "daily") {
+        label = formatDateBucketLabel(pointDate, "daily");
+      } else if (granularity === "weekly") {
+        const info = getIsoWeekInfo(pointDate);
+        const startLabel = formatDateBucketLabel(info.weekStart, "daily");
+        const endLabel = formatDateBucketLabel(info.weekEnd, "daily");
+        label = `สัปดาห์ที่ ${info.week} (${startLabel} - ${endLabel})`;
+      } else if (granularity === "monthly") {
+        label = formatDateBucketLabel(pointDate, "monthly");
+      } else if (granularity === "yearly") {
+        label = formatDateBucketLabel(pointDate, "yearly");
+      }
+
+      optionsMap.set(key, {
+        key,
+        label,
+        sortDate: new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate()).getTime(),
+      });
+    });
+
+    return Array.from(optionsMap.values())
+      .sort((a, b) => b.sortDate - a.sortDate)
+      .map(({ key, label }) => ({ key, label }));
+  }
+  function filterDashboardRowsByPeriod(rows = [], granularity = "monthly", periodKey = "all") {
+    if (!periodKey || periodKey === "all") return rows;
+    return rows.filter((row) => {
+      const pointDate = parseDateValue(pickRowValue(row, ["Up time", "Down Time", "Finish Time"]));
+      if (!pointDate) return false;
+      return getDashboardPeriodKey(pointDate, granularity) === periodKey;
+    });
+  }
   function renderDashboardMain(container, data, slaHours = 3, sheetName = "") {
     const allRows = dashboardExcelState.detailsRows || [];
     const accessRows = allRows.filter((row) => normalizeSheetText(pickRowValue(row, ["Backbone/Access", "networkType"])).includes("access"));
@@ -1420,7 +1570,18 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
 
 
     const selectedKey = document.getElementById("dashboard-report-segment")?.value || "overall";
+    const selectedGranularity = document.getElementById("dashboard-report-granularity")?.value || "monthly";
+    const currentSection = sections.find((s) => s.key === selectedKey) || sections[0];
+    const periodChoices = buildDashboardPeriodOptions(currentSection.rows, selectedGranularity);
+    const rawPeriodKey = document.getElementById("dashboard-report-period-key")?.value || "all";
+    const selectedPeriodKey = periodChoices.some((period) => period.key === rawPeriodKey) ? rawPeriodKey : "all";
 
+    const periodOptions = [
+      { key: "daily", label: "รายวัน" },
+      { key: "weekly", label: "รายสัปดาห์" },
+      { key: "monthly", label: "รายเดือน" },
+      { key: "yearly", label: "รายปี" },
+    ];
     container.innerHTML = `
      <div class="space-y-4">
         <div class="flex gap-2 flex-wrap">
@@ -1431,23 +1592,40 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
             .join("")}
         </div>
         <input id="dashboard-report-segment" type="hidden" value="${selectedKey}">
+        <div class="flex gap-2 flex-wrap items-center">
+          <span class="text-sm text-slate-600 font-semibold">ช่วงเวลา:</span>
+          ${periodOptions
+            .map((period) => `<button class="dashboard-period-tab px-3 py-1.5 rounded-md text-sm font-semibold ${period.key === selectedGranularity ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-700"}" data-period="${period.key}">${period.label}</button>`)
+            .join("")}
+        </div>
+        <input id="dashboard-report-granularity" type="hidden" value="${selectedGranularity}">
+        <div class="flex flex-wrap gap-2 items-center">
+          <span class="text-sm text-slate-600 font-semibold">เลือกเฉพาะ:</span>
+          <select id="dashboard-report-period-select" class="bg-slate-100 rounded-lg px-3 py-2 text-sm min-w-[260px]">
+            <option value="all" ${selectedPeriodKey === "all" ? "selected" : ""}>ทั้งหมด</option>
+            ${periodChoices.map((period) => `<option value="${period.key}" ${period.key === selectedPeriodKey ? "selected" : ""}>${period.label}</option>`).join("")}
+          </select>
+        </div>
+        <input id="dashboard-report-period-key" type="hidden" value="${selectedPeriodKey}">
 
         <div id="dashboard-report-sheet"></div>
 
       </div>
     `;
 
-    const renderSelected = (segmentKey) => {
+      const renderSelected = (segmentKey, granularity, periodKey) => {
       const target = sections.find((s) => s.key === segmentKey) || sections[0];
-      const payload = buildDashboardReportPayload(target.rows, slaHours);
+      const filteredRows = filterDashboardRowsByPeriod(target.rows, granularity, periodKey);
+      const payload = buildDashboardReportPayload(filteredRows, slaHours);
+      const trendRows = buildDashboardTrendRows(filteredRows, slaHours, granularity);
       const stats = payload.stats;
 
-      const monthlyLabels = [...payload.monthly.map((row) => row.month), "SUM"];
-      const meetData = [...payload.monthly.map((row) => row.meet), stats.meet];
-      const failData = [...payload.monthly.map((row) => row.fail), stats.fail];
-      const totalData = [...payload.monthly.map((row) => row.total), stats.total];
-      const mttrPctData = [...payload.monthly.map((row) => row.mttrPct), Number(stats.mttrRate)];
-      const withoutPctData = [...payload.monthly.map((row) => row.withoutPct), Number(stats.withoutRate)];
+      const chartLabels = [...trendRows.map((row) => row.label), "SUM"];
+      const meetData = [...trendRows.map((row) => row.meet), stats.meet];
+      const failData = [...trendRows.map((row) => row.fail), stats.fail];
+      const totalData = [...trendRows.map((row) => row.total), stats.total];
+      const mttrPctData = [...trendRows.map((row) => row.mttrPct), Number(stats.mttrRate)];
+      const withoutPctData = [...trendRows.map((row) => row.withoutPct), Number(stats.withoutRate)];
 
       const sheet = document.getElementById("dashboard-report-sheet");
       if (!sheet) return;
@@ -1485,7 +1663,7 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
       dashboardCharts.reportMain = createChartInstance("dash-report-main", {
         type: "bar",
         data: {
-          labels: monthlyLabels,
+          labels: chartLabels,
           datasets: [
             { label: "Meet", data: meetData, backgroundColor: "#3b82f6" },
             { label: "Fail", data: failData, backgroundColor: "#f97316" },
@@ -1538,11 +1716,31 @@ function mapDetailRowsToIncidents(rows = [], slaHours = 3) {
         const segment = button.dataset.segment || "overall";
         const hidden = document.getElementById("dashboard-report-segment");
         if (hidden) hidden.value = segment;
+        const periodHidden = document.getElementById("dashboard-report-period-key");
+        if (periodHidden) periodHidden.value = "all";
         renderDashboardMain(container, data, slaHours, sheetName);
       });
 
     });
-    renderSelected(selectedKey);
+     container.querySelectorAll(".dashboard-period-tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        const period = button.dataset.period || "monthly";
+        const hidden = document.getElementById("dashboard-report-granularity");
+        if (hidden) hidden.value = period;
+        const periodHidden = document.getElementById("dashboard-report-period-key");
+        if (periodHidden) periodHidden.value = "all";
+        renderDashboardMain(container, data, slaHours, sheetName);
+      });
+    });
+    document.getElementById("dashboard-report-period-select")?.addEventListener("change", (event) => {
+      const value = event.target?.value || "all";
+      const hidden = document.getElementById("dashboard-report-period-key");
+      if (hidden) hidden.value = value;
+      renderDashboardMain(container, data, slaHours, sheetName);
+    });
+
+    renderSelected(selectedKey, selectedGranularity, selectedPeriodKey);
+    renderSelected(selectedKey, selectedGranularity);
   }
   function renderDashboardSummary(container, data, slaHours = 3, sheetName = "") {
     const rows = getDashboardRowsBySheet(sheetName || "") || [];
