@@ -1,0 +1,472 @@
+/* ═══════════════════════════════════════════════════════════════
+   NOC Incident — Dark Mode
+   Toggle via class="dark" on <html>
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Palette variables ───────────────────────────────────────── */
+html.dark {
+  color-scheme: dark;
+  --dm-bg:        #080d18;
+  --dm-surface:   #0f1623;
+  --dm-surface-2: #19253a;
+  --dm-surface-3: #243047;
+  --dm-border:    #1f2d42;
+  --dm-border-2:  #2d3f56;
+  --dm-text:      #e2e8f0;
+  --dm-text-muted:#94a3b8;
+  --dm-text-dim:  #64748b;
+}
+
+/* ── Body & main background ──────────────────────────────────── */
+html.dark body {
+  background-color: var(--dm-bg);
+  color: var(--dm-text);
+}
+html.dark .main-scroll-area,
+html.dark #view-dashboard,
+html.dark #view-alert,
+html.dark #view-corrective,
+html.dark #view-history,
+html.dark #view-improvement,
+html.dark #view-calendar,
+html.dark #view-search,
+html.dark #view-subcontractor,
+html.dark #view-alert-detail,
+html.dark #view-dashboard-details {
+  background-color: var(--dm-bg);
+}
+
+/* ── Header bar ──────────────────────────────────────────────── */
+html.dark header {
+  background-color: var(--dm-surface) !important;
+  border-color: var(--dm-border) !important;
+}
+html.dark #global-search {
+  background-color: var(--dm-surface-2) !important;
+  border-color: var(--dm-border-2) !important;
+  color: var(--dm-text) !important;
+}
+html.dark #global-search:focus {
+  background-color: var(--dm-surface-3) !important;
+}
+html.dark #global-search::placeholder { color: var(--dm-text-dim) !important; }
+
+html.dark #btn-toggle-sidebar {
+  color: var(--dm-text-muted) !important;
+}
+html.dark #btn-toggle-sidebar:hover {
+  background-color: var(--dm-surface-2) !important;
+}
+
+/* Zoom toolbar */
+html.dark .app-zoom-toolbar {
+  background: var(--dm-surface-2) !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .app-zoom-toolbar button {
+  color: var(--dm-text-muted) !important;
+}
+html.dark .app-zoom-toolbar button:hover {
+  background-color: var(--dm-surface-3) !important;
+}
+html.dark #app-zoom-label { color: var(--dm-text-muted) !important; }
+
+/* ── Tailwind background overrides ───────────────────────────── */
+html.dark .bg-white                   { background-color: var(--dm-surface)   !important; }
+html.dark .bg-slate-50                { background-color: var(--dm-surface-2) !important; }
+html.dark .bg-slate-100               { background-color: var(--dm-surface-2) !important; }
+html.dark .bg-slate-100\/70           { background-color: rgba(25,37,58,0.7)  !important; }
+html.dark .bg-slate-200               { background-color: var(--dm-surface-3) !important; }
+html.dark .hover\:bg-slate-50:hover   { background-color: var(--dm-surface-2) !important; }
+html.dark .hover\:bg-slate-50\/80:hover { background-color: var(--dm-surface-2) !important; }
+html.dark .hover\:bg-slate-100:hover  { background-color: var(--dm-surface-3) !important; }
+html.dark .hover\:bg-slate-200:hover  { background-color: var(--dm-surface-3) !important; }
+
+/* Inline opacity variants */
+html.dark [class*="bg-slate-50/"]     { background-color: var(--dm-surface-2) !important; }
+html.dark [class*="bg-white"]         { background-color: var(--dm-surface)   !important; }
+
+/* ── Tailwind text overrides ─────────────────────────────────── */
+html.dark .text-slate-900             { color: var(--dm-text)        !important; }
+html.dark .text-slate-800             { color: var(--dm-text)        !important; }
+html.dark .text-slate-700             { color: #cbd5e1               !important; }
+html.dark .text-slate-600             { color: var(--dm-text-muted)  !important; }
+html.dark .text-slate-500             { color: var(--dm-text-muted)  !important; }
+html.dark .text-slate-400             { color: var(--dm-text-dim)    !important; }
+html.dark .text-slate-300             { color: #475569               !important; }
+
+/* ── Tailwind border overrides ───────────────────────────────── */
+html.dark .border-slate-100           { border-color: var(--dm-border)   !important; }
+html.dark .border-slate-200           { border-color: var(--dm-border-2) !important; }
+html.dark .border-slate-300           { border-color: var(--dm-surface-3)!important; }
+html.dark [class*="divide-slate-"]    > * + * { border-color: var(--dm-border) !important; }
+
+/* Borders on articles/cards */
+html.dark article, html.dark .border { border-color: var(--dm-border-2) !important; }
+html.dark .border-l-4                { border-left-width: 4px !important; }
+
+/* ── Shadow overrides ────────────────────────────────────────── */
+html.dark .shadow-sm                  { box-shadow: 0 1px 4px rgba(0,0,0,.5)  !important; }
+html.dark .shadow-lg                  { box-shadow: 0 8px 24px rgba(0,0,0,.6) !important; }
+html.dark article.bg-white,
+html.dark article                     { box-shadow: 0 1px 4px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.4) !important; }
+html.dark article:hover               { box-shadow: 0 6px 24px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4) !important; }
+
+/* ── Inputs, Select, Textarea ─────────────────────────────────── */
+html.dark input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html.dark select,
+html.dark textarea {
+  background-color: var(--dm-surface-2) !important;
+  border-color: var(--dm-border-2) !important;
+  color: var(--dm-text) !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: var(--dm-text-dim) !important; }
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  background-color: var(--dm-surface-3) !important;
+}
+
+/* datetime-local picker icon color */
+html.dark input[type="datetime-local"] { color-scheme: dark; }
+
+/* ── Custom component overrides ───────────────────────────────── */
+
+/* ops-panel */
+html.dark .ops-panel {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3) !important;
+}
+
+/* glass-card */
+html.dark .glass-card {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+
+/* corrective-card */
+html.dark .corrective-card {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .corrective-value       { color: var(--dm-text)       !important; }
+html.dark .corrective-label       { color: var(--dm-text-dim)   !important; }
+html.dark .corrective-footer,
+html.dark .corrective-grid        { border-color: var(--dm-border) !important; }
+html.dark .alarm-text             { color: var(--dm-text-muted) !important; }
+
+/* Table: corrective-table */
+html.dark .corrective-table thead th {
+  background: var(--dm-surface-2) !important;
+  color: var(--dm-text-muted) !important;
+  border-color: var(--dm-border) !important;
+}
+html.dark .corrective-table tbody td {
+  border-color: var(--dm-border) !important;
+  color: var(--dm-text) !important;
+}
+html.dark .corrective-table tbody tr:hover {
+  background: var(--dm-surface-2) !important;
+}
+
+/* General table rows (alert table) */
+html.dark tbody tr:hover            { background-color: var(--dm-surface-2) !important; }
+html.dark tbody td                  { color: var(--dm-text)       !important; }
+
+/* ── Calendar ─────────────────────────────────────────────────── */
+html.dark .calendar-day-cell {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .calendar-day-cell.empty {
+  background: transparent !important;
+  border-color: var(--dm-border)  !important;
+}
+html.dark .calendar-week-col {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .calendar-day-event-card {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .calendar-day-number     { color: var(--dm-text-muted) !important; }
+html.dark .calendar-week-col-header { color: var(--dm-text)      !important; }
+html.dark .calendar-weekday-row    { color: var(--dm-text-muted) !important; }
+html.dark .calendar-day-label-mobile {
+  color: var(--dm-text-muted) !important;
+  background: var(--dm-surface-2) !important;
+}
+html.dark .calendar-stat-card {
+  background: linear-gradient(180deg, var(--dm-surface-2) 0%, var(--dm-surface) 100%) !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .calendar-stat-label     { color: var(--dm-text-muted) !important; }
+html.dark .calendar-stat-value     { color: #818cf8              !important; }
+
+/* ── Dashboard ────────────────────────────────────────────────── */
+html.dark .dashboard-period-panel {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .dashboard-filter-label  { color: var(--dm-text-muted) !important; }
+html.dark .dashboard-period-tab {
+  background: var(--dm-surface-2) !important;
+  border-color: var(--dm-border-2) !important;
+  color: var(--dm-text)           !important;
+}
+html.dark .dashboard-period-tab:hover:not(.is-active) {
+  border-color: #818cf8           !important;
+  background: rgba(99,102,241,.12) !important;
+}
+html.dark .dashboard-period-helper { color: var(--dm-text-dim)   !important; }
+html.dark .dashboard-period-picker-trigger {
+  background: var(--dm-surface-2) !important;
+  border-color: var(--dm-border-2) !important;
+  color: var(--dm-text)           !important;
+}
+html.dark .dashboard-period-picker-chevron { color: var(--dm-text-muted) !important; }
+html.dark .dashboard-period-picker-menu {
+  background: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,.7) !important;
+}
+html.dark .dashboard-period-picker-search-wrap {
+  background: var(--dm-surface-2) !important;
+  border-color: var(--dm-border)  !important;
+}
+html.dark .dashboard-period-picker-search {
+  background: var(--dm-surface-3) !important;
+  border-color: var(--dm-border-2) !important;
+  color: var(--dm-text)           !important;
+}
+html.dark .dashboard-period-option {
+  background: var(--dm-surface-2) !important;
+  border-color: var(--dm-border)  !important;
+  color: var(--dm-text)           !important;
+}
+html.dark .dashboard-period-option:hover:not(.is-active) {
+  border-color: #a5b4fc           !important;
+  background: rgba(99,102,241,.1) !important;
+}
+html.dark .dashboard-period-option.is-active {
+  border-color: #4f46e5           !important;
+  background: rgba(79,70,229,.15) !important;
+  color: #a5b4fc                  !important;
+}
+html.dark .dashboard-period-option.is-active .dashboard-period-option-check {
+  color: #818cf8                  !important;
+}
+html.dark .dashboard-period-panel { background: var(--dm-surface) !important; }
+
+/* ── Modal ────────────────────────────────────────────────────── */
+html.dark .modal-backdrop {
+  background: rgba(0,3,12,.8)     !important;
+}
+html.dark .modal-backdrop > div,
+html.dark [class*="rounded-"][class*="bg-white"],
+html.dark .bg-white.rounded-\[2rem\],
+html.dark .bg-white.rounded-2xl,
+html.dark .bg-white.rounded-3xl {
+  background-color: var(--dm-surface)   !important;
+  border-color: var(--dm-border-2) !important;
+}
+html.dark .bg-slate-50\/50        { background-color: rgba(25,37,58,.5) !important; }
+
+/* ── Recycle Bin ──────────────────────────────────────────────── */
+html.dark .recycle-badge {
+  background: rgba(79,70,229,.2)  !important;
+  color: #a5b4fc                  !important;
+}
+html.dark .recycle-status {
+  background: rgba(225,29,72,.15) !important;
+  color: #fb7185                  !important;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+html.dark ::-webkit-scrollbar-track  { background: transparent; }
+html.dark ::-webkit-scrollbar-thumb  { background: var(--dm-surface-3) !important; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #2d3f56 !important; }
+
+/* ── Focus ring ───────────────────────────────────────────────── */
+html.dark select:focus,
+html.dark input:focus,
+html.dark button:focus-visible {
+  outline-color: rgba(249,115,22,.6) !important;
+}
+
+/* ── Dark mode toggle button ─────────────────────────────────── */
+#btn-dark-mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+  flex-shrink: 0;
+}
+#btn-dark-mode:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+html.dark #btn-dark-mode {
+  background: var(--dm-surface-2) !important;
+  border-color: var(--dm-border-2) !important;
+  color: var(--dm-text-muted) !important;
+}
+html.dark #btn-dark-mode:hover {
+  background: var(--dm-surface-3) !important;
+  color: var(--dm-text) !important;
+}
+
+/* ── Zinc / dark buttons (Response btn) ───────────────────────── */
+/* bg-zinc-900 (#18181b) is nearly invisible on --dm-bg (#080d18)  */
+html.dark .bg-zinc-900              { background-color: #253a52 !important; }
+html.dark .hover\:bg-zinc-700:hover { background-color: #2d4a66 !important; }
+html.dark .bg-zinc-800              { background-color: var(--dm-surface-3) !important; }
+html.dark .bg-zinc-700              { background-color: var(--dm-surface-3) !important; }
+html.dark .bg-zinc-100              { background-color: var(--dm-surface-2) !important; }
+html.dark .text-zinc-600            { color: var(--dm-text-muted)  !important; }
+html.dark .text-zinc-700            { color: var(--dm-text)        !important; }
+
+/* ── Rose tints (alert Dn rows, Cancel btn, badges) ───────────── */
+html.dark .bg-rose-50               { background-color: rgba(225,29,72,.12)  !important; }
+html.dark [class*="bg-rose-50\/"]   { background-color: rgba(225,29,72,.10)  !important; }
+html.dark .hover\:bg-rose-50:hover  { background-color: rgba(225,29,72,.18)  !important; }
+html.dark [class*="hover\:bg-rose-50"]:hover { background-color: rgba(225,29,72,.18) !important; }
+html.dark .hover\:bg-rose-100:hover { background-color: rgba(225,29,72,.22)  !important; }
+html.dark .bg-rose-100              { background-color: rgba(225,29,72,.18)  !important; }
+html.dark .border-rose-100          { border-color: rgba(225,29,72,.25)      !important; }
+html.dark .border-rose-200          { border-color: rgba(225,29,72,.35)      !important; }
+html.dark .text-rose-700            { color: #fda4af                         !important; }
+
+/* ── Amber tints (alert Inf rows, badges) ─────────────────────── */
+html.dark .bg-amber-50              { background-color: rgba(245,158,11,.10) !important; }
+html.dark [class*="bg-amber-50\/"]  { background-color: rgba(245,158,11,.08) !important; }
+html.dark [class*="hover\:bg-amber-50"]:hover { background-color: rgba(245,158,11,.16) !important; }
+html.dark .bg-amber-100             { background-color: rgba(245,158,11,.16) !important; }
+html.dark .border-amber-200         { border-color: rgba(245,158,11,.30)     !important; }
+html.dark .text-amber-700           { color: #fcd34d                         !important; }
+html.dark .text-amber-600           { color: #fbbf24                         !important; }
+
+/* ── Orange tints (ticket badges, accents) ────────────────────── */
+html.dark .bg-orange-50             { background-color: rgba(249,115,22,.12) !important; }
+html.dark .bg-orange-100            { background-color: rgba(249,115,22,.18) !important; }
+html.dark .border-orange-100        { border-color: rgba(249,115,22,.25)     !important; }
+html.dark .hover\:bg-orange-600:hover { filter: brightness(1.15);            }
+
+/* ── Green tints (online badge, success states) ───────────────── */
+html.dark .bg-green-50              { background-color: rgba(34,197,94,.12)  !important; }
+html.dark .bg-green-100             { background-color: rgba(34,197,94,.18)  !important; }
+html.dark .border-green-100         { border-color: rgba(34,197,94,.25)      !important; }
+html.dark .text-green-600           { color: #4ade80                         !important; }
+html.dark .text-green-700           { color: #86efac                         !important; }
+
+/* ── Blue tints (info states) ────────────────────────────────────*/
+html.dark .bg-blue-50               { background-color: rgba(59,130,246,.10) !important; }
+html.dark .bg-blue-100              { background-color: rgba(59,130,246,.16) !important; }
+html.dark .border-blue-100          { border-color: rgba(59,130,246,.25)     !important; }
+html.dark .border-blue-200          { border-color: rgba(59,130,246,.35)     !important; }
+html.dark .text-blue-600            { color: #60a5fa                         !important; }
+html.dark .text-blue-700            { color: #93c5fd                         !important; }
+
+/* ── Purple / indigo tints ────────────────────────────────────── */
+html.dark .bg-purple-50             { background-color: rgba(168,85,247,.10) !important; }
+html.dark .bg-indigo-50             { background-color: rgba(99,102,241,.10) !important; }
+
+/* ── Gradient overrides (table thead) ────────────────────────────*/
+/* from-zinc-900 to-zinc-800 thead stays visible — keep it dark navy */
+html.dark .from-zinc-900            { --tw-gradient-from: #111827 !important; }
+html.dark .to-zinc-800              { --tw-gradient-to:   #1e293b !important; }
+
+/* ── Opacity group (Action column fades on non-hover) ────────────*/
+html.dark .opacity-70               { opacity: 0.85 !important; }
+
+/* ── Sidebar section labels (always-dark sidebar needs lighter) ── */
+html.dark .sidebar-label            { color: #64748b !important; }
+
+/* ── hover:bg-black (Response btn in alert-detail) ───────────── */
+html.dark .hover\:bg-black:hover    { background-color: #2d4a66 !important; }
+
+/* ── Orange opacity variants (corrective highlighted card) ───────*/
+html.dark [class*="bg-orange-50\/"] { background-color: rgba(249,115,22,.08) !important; }
+html.dark [class*="hover\:bg-orange-50"]:hover,
+html.dark .hover\:bg-orange-50:hover { background-color: rgba(249,115,22,.14) !important; }
+html.dark [class*="hover\:bg-orange-50\/40"]:hover { background-color: rgba(249,115,22,.14) !important; }
+
+/* ── Rose/amber opacity variants (alert row tints) ───────────── */
+/* Note: inside [class*="…"] quotes, : and / are literal — no escaping needed */
+html.dark [class*="bg-rose-50/"]:not(:hover)  { background-color: rgba(225,29,72,.10)  !important; }
+html.dark [class*="bg-amber-50/"]:not(:hover) { background-color: rgba(245,158,11,.08) !important; }
+html.dark [class*="hover:bg-rose-50/"]:hover  { background-color: rgba(225,29,72,.18)  !important; }
+html.dark [class*="hover:bg-amber-50/"]:hover { background-color: rgba(245,158,11,.14) !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   GRADIENT HEADER FIXES
+   Tailwind gradients use CSS custom properties (--tw-gradient-from /
+   --tw-gradient-to), not background-color, so they bypass the
+   bg-white / bg-slate-50 overrides above.  Override the variables
+   directly so from-slate-50→to-white headers become dark.
+   ══════════════════════════════════════════════════════════════════ */
+html.dark .from-slate-50  { --tw-gradient-from: #19253a !important; }
+html.dark .from-slate-100 { --tw-gradient-from: #19253a !important; }
+html.dark .from-white     { --tw-gradient-from: #0f1623 !important; }
+html.dark .to-white       { --tw-gradient-to:   #0f1623 !important; }
+html.dark .to-slate-50    { --tw-gradient-to:   #19253a !important; }
+html.dark .to-slate-100   { --tw-gradient-to:   #19253a !important; }
+
+/* ── Emerald tints (RESPONDED badge) ─────────────────────────── */
+html.dark .bg-emerald-100   { background-color: rgba(16,185,129,.15)  !important; }
+html.dark .bg-emerald-50    { background-color: rgba(16,185,129,.10)  !important; }
+html.dark .text-emerald-700 { color: #6ee7b7                          !important; }
+html.dark .text-emerald-600 { color: #34d399                          !important; }
+html.dark .border-emerald-200 { border-color: rgba(16,185,129,.30)    !important; }
+
+/* ── Dark slate buttons (bg-slate-900/800 blend into dark page) ─ */
+/* bg-slate-900 (#0f172a) ≈ --dm-bg (#080d18) → button invisible */
+html.dark .bg-slate-900              { background-color: #334155 !important; }
+html.dark .bg-slate-800              { background-color: #243047 !important; }
+html.dark .bg-slate-700              { background-color: var(--dm-surface-3) !important; }
+html.dark .hover\:bg-slate-900:hover { background-color: #3d4f66 !important; }
+html.dark .hover\:bg-slate-800:hover { background-color: #2d3f56 !important; }
+html.dark .hover\:bg-slate-700:hover { background-color: var(--dm-surface-3) !important; }
+html.dark .text-slate-100            { color: var(--dm-text)      !important; }
+
+/* ── Red color utilities ──────────────────────────────────────── */
+/* text-red-600 (#dc2626) is too dark on dark bg → brighten it   */
+html.dark .text-red-600  { color: #f87171 !important; }
+html.dark .text-red-500  { color: #fca5a5 !important; }
+html.dark .text-red-400  { color: #fca5a5 !important; }
+/* bg-red-400 / bg-red-500: vivid reds stay vivid in dark mode   */
+html.dark .bg-red-400    { background-color: #e11d48 !important; }
+html.dark .bg-red-500    { background-color: #dc2626 !important; }
+html.dark .hover\:bg-red-600:hover { background-color: #b91c1c !important; }
+
+/* ── Green color utilities ────────────────────────────────────── */
+/* bg-green-200 Start btn: light mint (#bbf7d0) + inherited light */
+/* text = invisible. Change to a dark green tint.                 */
+html.dark .bg-green-200  { background-color: rgba(34,197,94,.22) !important; }
+html.dark .bg-green-300  { background-color: rgba(34,197,94,.30) !important; }
+/* bg-green-600/700 (solid action buttons): keep natural dark green */
+html.dark .bg-green-600  { background-color: #15803d !important; }
+html.dark .hover\:bg-green-700:hover { background-color: #166534 !important; }
+
+/* ── Inline-style overrides for mobile ticket tables ─────────── */
+/* alert-detail.ui.js uses hardcoded inline styles; override via  */
+/* style-attribute substring selectors (dark mode only).          */
+html.dark [style*="background:#f1f5f9"] { background: #19253a !important; }
+html.dark [style*="background:#ffffff"] { background: #0f1623 !important; }
+html.dark [style*="background:#fff"]    { background: #0f1623 !important; }
+html.dark [style*="background:#f8fafc"] { background: #19253a !important; }
+html.dark [style*="color:#475569"]      { color: #94a3b8 !important; }
+html.dark [style*="color:#334155"]      { color: #e2e8f0 !important; }
+html.dark [style*="color:#1e293b"]      { color: #e2e8f0 !important; }
+html.dark [style*="border:1px solid #cbd5e1"] { border-color: #1f2d42 !important; }
+html.dark [style*="border:1px solid #e2e8f0"] { border-color: #1f2d42 !important; }

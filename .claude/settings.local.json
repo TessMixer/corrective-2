@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//f/NOC/V23/**)",
+      "Bash(netlify deploy:*)",
+      "Bash(grep -n \"class=\\\\\"btn-response\" /f/NOC/V23/scripts/ui/*.js)"
+    ]
+  }
+}

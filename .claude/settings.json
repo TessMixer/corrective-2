@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"window\\\\\\\\.Store\\\\|window\\\\\\\\.LocalDB\\\\|window\\\\\\\\.AlertService\" \"f:/NOC/V23/scripts/app.js\")",
+      "Bash(grep -n \"Store\\\\\\\\.dispatch\\\\|Store\\\\\\\\.getState\\\\|Store\\\\\\\\.subscribe\" \"f:/NOC/V23/scripts/app.js\")",
+      "Bash(netlify status:*)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(rm -rf e2e playwright.config.js)",
+      "Bash(npm uninstall *)",
+      "Bash(wc -l /f/NOC/V23/scripts/ui/*.js)",
+      "Bash(wc -l /f/NOC/V23/scripts/**/*.js)",
+      "Bash(grep -n \"firebase-admin\\\\|admin\\\\.initializeApp\" /f/NOC/V23/netlify/functions/*.js)",
+      "Bash(grep -n \"window.finishIncident\\\\|window.IncidentServiceLocal\\\\|IncidentServiceLocal\" f:/NOC/V23/scripts/services/*.js f:/NOC/V23/scripts/utils/*.js)",
+      "Bash(powershell -Command \"Get-Content 'f:\\\\NOC\\\\V23\\\\scripts\\\\app.js' | Select-Object -Skip 5759 -First 130\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Read(//f:/NOC/**)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}
