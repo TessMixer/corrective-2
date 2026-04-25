@@ -534,11 +534,29 @@ function getCalendarTodayCount(calendarEvents) {
   }, 0);
 }
 
+function getCalendarMonthCount(calendarEvents) {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return (calendarEvents || []).reduce((count, event) => {
+    if (String(event?.status || "").toUpperCase() === "CANCELLED") return count;
+    const startAt = new Date(event?.startAt || event?.createdAt || event?.actionDate || 0);
+    if (Number.isNaN(startAt.getTime())) return count;
+    if (startAt >= monthStart && startAt < monthEnd) return count + 1;
+    return count;
+  }, 0);
+}
+
 function updateCalendarTodayBell(state) {
   const bell = document.getElementById("nav-calendar-today-bell");
-  if (!bell) return;
+  const badge = document.getElementById("nav-calendar-month-count");
   const hasTodayJobs = getCalendarTodayCount(state?.calendarEvents) > 0;
-  bell.classList.toggle("hidden", !hasTodayJobs);
+  const monthCount = getCalendarMonthCount(state?.calendarEvents);
+  if (bell) bell.classList.toggle("hidden", !hasTodayJobs);
+  if (badge) {
+    badge.textContent = monthCount;
+    badge.classList.toggle("hidden", monthCount === 0);
+  }
 }
 
 function renderCalendarView(container, state) {
@@ -3263,6 +3281,23 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  if (action === "set-filter") {
+    const value = target.dataset.value || target.value || "all";
+    Store.dispatch((state) => ({
+      ...state,
+      ui: { ...state.ui, calendarFilter: value },
+    }));
+    return;
+  }
+
+  if (action === "today") {
+    Store.dispatch((state) => ({
+      ...state,
+      ui: { ...state.ui, calendarFocusDate: new Date().toISOString() },
+    }));
+    return;
+  }
+
   if (action === "prev" || action === "next") {
     const next = CalendarUI.shiftDate(focusDate, mode, action === "next" ? 1 : -1);
     Store.dispatch((state) => ({
@@ -3605,6 +3640,64 @@ function openHistoryIncidentDetail(incidentId) {
   }));
 }
 
+
+function openCorrectiveIncidentDetail(incidentId) {
+  if (!incidentId) return;
+
+  const found = getCorrectiveIncidentById(incidentId);
+  if (!found?.incident) return;
+
+  const inc = found.incident;
+  const baseFields = {
+    incident: getIncidentKey(inc),
+    incidentId: getIncidentKey(inc),
+    alarm: inc.alarm || "Network Alert",
+    detail: inc.detail || inc.latestUpdateMessage || "-",
+    nocBy: inc.nocBy || "System",
+    createdAt: inc.createdAt || new Date().toISOString(),
+    status: inc.status,
+    workType: inc.workType,
+  };
+
+  let selectedAlerts;
+  if (Array.isArray(inc.nodeDetails) && inc.nodeDetails.length) {
+    selectedAlerts = inc.nodeDetails.map((nd) => ({
+      ...baseFields,
+      node: nd.node || "-",
+      alarm: nd.alarm || baseFields.alarm,
+      detail: nd.detail || baseFields.detail,
+      tickets: nd.tickets || [],
+    }));
+  } else {
+    const nodeList = String(inc.node || "").split(",").map(s => s.trim()).filter(Boolean);
+    const allTickets = inc.tickets || [];
+    if (nodeList.length > 1 && allTickets.length === nodeList.length) {
+      selectedAlerts = nodeList.map((nodeName, i) => ({
+        ...baseFields, node: nodeName, tickets: [allTickets[i]],
+      }));
+    } else if (nodeList.length > 1 && allTickets.length > nodeList.length) {
+      const perNode = Math.ceil(allTickets.length / nodeList.length);
+      selectedAlerts = nodeList.map((nodeName, i) => ({
+        ...baseFields, node: nodeName, tickets: allTickets.slice(i * perNode, (i + 1) * perNode),
+      }));
+    } else {
+      selectedAlerts = nodeList.length
+        ? nodeList.map((nodeName) => ({ ...baseFields, node: nodeName, tickets: allTickets }))
+        : [{ ...baseFields, node: inc.node || "-", tickets: allTickets }];
+    }
+  }
+
+  Store.dispatch((state) => ({
+    ...state,
+    ui: {
+      ...state.ui,
+      currentView: "alert-detail",
+      alertDetailReturnView: "corrective",
+      selectedAlerts,
+      selectedIncident: null,
+    },
+  }));
+}
 
 function formatTimelineDate(value) {
   if (!value) return "-";
@@ -7363,7 +7456,7 @@ document.addEventListener("click", (event) => {
 document.addEventListener("click", (event) => {
   const target = event.target.closest(".btn-corrective-detail");
   if (!target) return;
-  openCorrectiveDetailModal(target.dataset.id);
+  openCorrectiveIncidentDetail(target.dataset.id);
 });
 
 document.addEventListener("click", (event) => {
@@ -7535,7 +7628,7 @@ function executeGlobalSearch(keyword) {
     } catch { return dt; }
   }
 
-  atomicHTMLUpdate(container, filtered.map(res => {
+  const tableRows = filtered.map(res => {
     const base = res.item || {};
     const t1 = base.tickets?.[0] || {};
     const n1 = base.nodes?.[0] || {};
@@ -7546,51 +7639,70 @@ function executeGlobalSearch(keyword) {
 
     let node = base.node || t1.node || n1.node || n1.name || "-";
     let cid = base.cid || t1.cid || n1.cid || "-";
-    let detail = base.detail || base.alarm || t1.detail || "-";
+    let alarm = base.alarm || base.detail || t1.detail || "-";
     const downTime = fmtDownTime(getDownTime(res));
 
     if (node === "-" && Array.isArray(base.nodes)) {
       node = base.nodes.map(n => n.node || n.name).filter(Boolean).join(", ") || "-";
     }
 
-    let icon = "search", colorClass = "bg-slate-500", shadowClass = "shadow-slate-500/30";
+    let sourceBg = "#64748b", sourceLabel = res.source;
+    if (res.source.startsWith("Corrective")) sourceBg = "#3b82f6";
+    else if (res.type === "alert") sourceBg = "#ea580c";
+    else if (res.type === "calendar") sourceBg = "#8b5cf6";
+    if (res.source === "Recycle Bin") sourceBg = "#dc2626";
+    else if (res.source === "Incident History") sourceBg = "#0d9488";
 
-    if (res.source.startsWith("Corrective")) { icon = "wrench"; colorClass = "bg-blue-600"; shadowClass = "shadow-blue-500/30"; }
-    else if (res.type === "alert") { icon = "bell"; colorClass = "bg-orange-500"; shadowClass = "shadow-orange-500/30"; }
-    else if (res.type === "calendar") { icon = "calendar"; colorClass = "bg-purple-600"; shadowClass = "shadow-purple-500/30"; }
-
-    if (res.source === "Recycle Bin") { icon = "trash-2"; colorClass = "bg-rose-500"; shadowClass = "shadow-rose-500/30"; }
-    else if (res.source === "Incident History") { icon = "box"; colorClass = "bg-slate-700"; shadowClass = "shadow-slate-500/30"; }
+    const isDn  = base.alertClass === "Dn";
+    const isInf = base.alertClass === "Inf";
+    const borderColor = isDn ? "#f87171" : isInf ? "#fb923c" : "#e2e8f0";
+    const badge = isDn
+      ? `<span class="tag dn" style="font-size:9px;padding:1px 5px">DN</span>`
+      : isInf ? `<span class="tag inf" style="font-size:9px;padding:1px 5px">INF</span>` : "";
 
     const isSelected = window._searchSelected?.has(res.id);
     return `
-        <div class="search-result-card bg-white border-2 ${isSelected ? "border-orange-400 bg-orange-50/30" : "border-slate-200"} rounded-2xl p-4 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-slate-300 transform transition-all cursor-pointer flex flex-col gap-3 group relative overflow-hidden"
-             data-search-type="${res.type}" data-search-id="${res.id}" data-search-queue="${res.queue || ""}" data-search-source="${res.source}">
-          <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-slate-50 to-transparent opacity-50 pointer-events-none rounded-bl-full"></div>
-          <!-- Select checkbox -->
-          <label class="absolute top-3 left-3 z-20" onclick="event.stopPropagation()">
-            <input type="checkbox" class="search-card-checkbox w-4 h-4 accent-orange-500 cursor-pointer rounded" data-select-id="${res.id}" ${isSelected ? "checked" : ""}>
-          </label>
-
-          <div class="flex items-center justify-between z-10 pl-6">
-            <span class="px-2.5 py-1 text-[10px] font-black text-white uppercase tracking-widest rounded-lg ${colorClass} ${shadowClass} flex items-center gap-1.5 shadow-md">
-              <i data-lucide="${icon}" class="w-3 h-3"></i> ${res.source}
-            </span>
-            <span class="text-xs font-bold text-slate-400 group-hover:text-orange-500 transition-colors flex items-center gap-1">ดูรายละเอียด <i data-lucide="arrow-right" class="w-3 h-3"></i></span>
+      <tr class="search-result-card hover:bg-orange-50 transition-colors cursor-pointer ${isSelected ? "bg-orange-50" : ""}"
+          data-search-type="${res.type}" data-search-id="${res.id}" data-search-queue="${res.queue || ""}" data-search-source="${res.source}"
+          style="border-bottom:1px solid var(--hair-soft)">
+        <td class="py-2.5 px-3" style="width:36px" onclick="event.stopPropagation()">
+          <input type="checkbox" class="search-card-checkbox w-4 h-4 cursor-pointer rounded" style="accent-color:#ea580c"
+            data-select-id="${res.id}" ${isSelected ? "checked" : ""}>
+        </td>
+        <td class="py-2.5 pl-0 pr-2" style="border-left:3px solid ${borderColor}">
+          <div class="flex items-center gap-1.5 pl-3">
+            <span class="text-xs font-black" style="color:var(--ink)">${title}</span>
+            ${badge}
           </div>
+        </td>
+        <td class="px-3 py-2.5 text-xs font-semibold" style="color:var(--ink)">${node}</td>
+        <td class="px-3 py-2.5 text-xs" style="color:var(--sev-dn)">${alarm}</td>
+        <td class="px-3 py-2.5 text-xs font-mono" style="color:var(--ink-muted)">${cid}</td>
+        <td class="px-3 py-2.5 text-xs font-semibold" style="color:var(--ink)">${downTime}</td>
+        <td class="px-3 py-2.5">
+          <span class="px-2 py-0.5 rounded text-[9px] font-black text-white uppercase tracking-wider" style="background:${sourceBg}">${sourceLabel}</span>
+        </td>
+      </tr>`;
+  }).join("");
 
-          <div class="z-10 mt-2">
-             <h4 class="font-black text-slate-800 text-base leading-tight group-hover:text-orange-600 transition-colors truncate tracking-wide">${title}</h4>
-             <p class="text-xs text-slate-500 font-semibold mt-1 truncate tracking-wide">NODE: <span class="font-bold text-slate-700">${node}</span> <span class="text-slate-300 mx-1">|</span> CID: <span class="font-bold text-slate-700">${cid}</span></p>
-             <p class="text-xs text-slate-400 mt-1 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3 shrink-0"></i> Down: <span class="font-semibold text-slate-600 ml-1">${downTime}</span></p>
-          </div>
-
-          <div class="mt-auto pt-3 border-t border-slate-100 z-10">
-             <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed font-medium">${detail}</p>
-          </div>
-        </div>
-      `;
-  }).join(""));
+  atomicHTMLUpdate(container, `
+    <div class="panel overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr style="background:var(--surface-2);border-bottom:1px solid var(--hair)">
+            <th class="py-2.5 pl-3" style="width:36px"></th>
+            <th class="py-2.5 pl-3 pr-3 text-left text-[10px] font-black uppercase tracking-widest" style="color:var(--ink-muted)">Incident</th>
+            <th class="px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-widest" style="color:var(--ink-muted)">Node</th>
+            <th class="px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-widest" style="color:var(--ink-muted)">Alarm</th>
+            <th class="px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-widest" style="color:var(--ink-muted)">CID</th>
+            <th class="px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-widest" style="color:var(--ink-muted)">Down Time</th>
+            <th class="px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-widest" style="color:var(--ink-muted)">Source</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  `);
 
   if (window.lucide) lucide.createIcons();
   renderSearchMapSection(filtered);

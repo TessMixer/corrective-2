@@ -6,525 +6,505 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#f97316" />
+  <meta name="theme-color" content="#ea580c" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="NOC Incident" />
   <link rel="apple-touch-icon" href="/symphony-logo.jpg" />
 
-  <!-- Tailwind CDN -->
+  <!-- Tailwind CDN (layout utilities) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Chart -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Leaflet (hotspot map) -->
+
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Enterprise Theme -->
+  <!-- Design System -->
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/design-system.css">
   <link rel="stylesheet" href="styles/enterprise-theme.css">
-
-  <link rel="stylesheet" href="styles/pages/alert-monitor.css">
   <link rel="stylesheet" href="styles/dark-mode.css">
+  <link rel="stylesheet" href="styles/pages/alert-monitor.css">
+
   <style>
-    body { font-family: 'Prompt', 'Inter', sans-serif !important; }
+    /* Ticket responsive */
     .ticket-desktop-view { display: none; }
-    .ticket-mobile-view { display: block; }
+    .ticket-mobile-view  { display: block; }
     @media (min-width: 768px) {
       .ticket-desktop-view { display: block; }
-      .ticket-mobile-view { display: none; }
+      .ticket-mobile-view  { display: none; }
     }
   </style>
 </head>
-<body class="overflow-hidden">
+<body>
 
-    <div id="app-shell" class="flex h-screen overflow-hidden">
-        
-        <!-- Example: finish incident action -->
-        <button onclick="finishIncident('I2503-000123')" class="hidden" id="example-finish-incident-btn">
-            Finish Incident
+<div id="app-shell" class="app-shell">
+
+  <!-- ═══ MODAL: CREATE ALERT ═══════════════════════════════ -->
+  <div id="modal-create-alert" class="modal-backdrop hidden">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <div style="flex:1">
+          <h3>Create New Alert</h3>
+          <p>NOC Support Center</p>
+        </div>
+        <button id="btn-close-create-alert" type="button" class="modal-close">
+          <i data-lucide="x" class="w-5 h-5"></i>
         </button>
-        <!-- MODAL: CREATE ALERT -->
-        <div id="modal-create-alert" class="modal-backdrop hidden">
-            <div class="bg-white rounded-[2rem] w-full max-w-lg md:max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-                <div class="p-6 md:p-8 border-b flex justify-between items-center bg-slate-50/50 shrink-0">
-                    <div>
-                        <h3 class="font-bold text-xl text-slate-800">Create New Alert</h3>
-                        <p class="text-xs text-orange-500 font-bold uppercase tracking-widest mt-1">NOC Support Center</p>
-                    </div>
-                    <button id="btn-close-create-alert" type="button" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
-                        <i data-lucide="x" class="w-6 h-6"></i>
-                    </button>
-                </div>
-                <form id="create-incident-form" class="flex flex-col flex-1 overflow-hidden">
-                    <div class="p-6 md:p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+      </div>
+      <form id="create-incident-form" class="flex flex-col flex-1 overflow-hidden">
+        <div class="modal-body space-y-5">
 
-                        <!-- Node & Incident Info -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div class="space-y-1.5">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Work Type</label>
-                                <div class="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm text-slate-400">
-                                    Set when pressing Response
-                                </div>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Incident Number</label>
-                                <input id="f-incidentId" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-xl px-4 py-3 text-sm transition-all outline-none" placeholder="Incident Number">
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Node Name / ID</label>
-                                <input id="f-node" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-xl px-4 py-3 text-sm transition-all outline-none" placeholder="e.g. Samrong_01_M8">
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alarm</label>
-                                <input id="f-alarm" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-xl px-4 py-3 text-sm transition-all outline-none" placeholder="Alarm description">
-                            </div>
-                        </div>
-
-                        <!-- Detail -->
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detail</label>
-                            <textarea id="f-detail" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-xl px-4 py-3 text-sm transition-all outline-none h-24 resize-none"></textarea>
-                        </div>
-
-                        <div class="pt-4 border-t border-slate-100">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-sm font-bold text-slate-700">Symphony Ticket (Optional)</h3>
-                                <button type="button" id="btn-add-ticket" class="text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 px-3 py-2 rounded-lg font-bold transition-colors">
-                                    + Add Ticket
-                                </button>
-                            </div>
-
-                            <div id="ticket-container" class="space-y-4">
-                                <div class="ticket-item grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 shrink-0 rounded-2xl border border-slate-100">
-                                    <div class="space-y-1 col-span-2 md:col-span-1">
-                                        <label class="text-[10px] font-bold text-slate-400 uppercase">Ticket NO</label>
-                                        <input id="f-ticket" placeholder="Ticket" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all">
-                                    </div>
-                                    <div class="space-y-1 col-span-2 md:col-span-1">
-                                        <label class="text-[10px] font-bold text-slate-400 uppercase">CID</label>
-                                        <input id="f-cid" placeholder="CID" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all">
-                                    </div>
-                                    <div class="space-y-1 col-span-2 md:col-span-2">
-                                        <label class="text-[10px] font-bold text-slate-400 uppercase">Port</label>
-                                        <input id="f-port" placeholder="Port" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all">
-                                    </div>
-                                    <div class="space-y-1 col-span-2 md:col-span-2">
-                                        <label class="text-[10px] font-bold text-slate-400 uppercase">Down Time</label>
-                                        <input id="f-downTime" type="datetime-local" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all text-slate-600">
-                                    </div>
-                                    <div class="space-y-1 col-span-2 md:col-span-2">
-                                        <label class="text-[10px] font-bold text-slate-400 uppercase">Clear Time</label>
-                                        <input id="f-clearTime" type="datetime-local" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all text-slate-600">
-                                    </div>
-                                    <div class="space-y-1 col-span-2 md:col-span-4 grid grid-cols-3 gap-3">
-                                        <input id="f-pending" placeholder="Pending" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all">
-                                        <input id="f-originate" placeholder="Originate" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all">
-                                        <input id="f-terminate" placeholder="Terminate" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-lg px-3 py-2 text-sm outline-none transition-all">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                    <!-- Sticky Footer -->
-                    <div class="p-4 md:p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
-                        <button type="button" id="btn-discard-create-alert" class="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all">Cancel</button>
-                        <button type="submit" class="px-6 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 shadow-lg shadow-orange-500/30 transition-all">Create Ticket</button>
-                    </div>
-                </form>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Work Type</label>
+              <div class="form-input flex items-center" style="color:var(--ink-dim)">Set when pressing Response</div>
             </div>
+            <div class="form-group">
+              <label class="form-label">Incident Number</label>
+              <input id="f-incidentId" class="form-input" placeholder="Incident Number">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Node Name / ID</label>
+              <input id="f-node" class="form-input" placeholder="e.g. Samrong_01_M8">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alarm</label>
+              <input id="f-alarm" class="form-input" placeholder="Alarm description">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Detail</label>
+            <textarea id="f-detail" class="form-input" style="height:96px"></textarea>
+          </div>
+
+          <div style="padding-top:12px;border-top:1px solid var(--hair)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <span style="font-size:13px;font-weight:700;color:var(--ink)">Symphony Ticket <span style="color:var(--ink-muted);font-weight:500">(Optional)</span></span>
+              <button type="button" id="btn-add-ticket" class="btn btn-sm btn-ghost" style="color:var(--accent)">
+                <i data-lucide="plus" class="w-3 h-3"></i> Add Ticket
+              </button>
+            </div>
+            <div id="ticket-container" class="space-y-3">
+              <div class="ticket-item" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;background:var(--surface-2);padding:14px;border-radius:10px;border:1px solid var(--hair)">
+                <div class="form-group" style="grid-column:span 2 / span 2">
+                  <label class="form-label">Ticket NO</label>
+                  <input id="f-ticket" placeholder="Ticket" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">CID</label>
+                  <input id="f-cid" placeholder="CID" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Port</label>
+                  <input id="f-port" placeholder="Port" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Down Time</label>
+                  <input id="f-downTime" type="datetime-local" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Clear Time</label>
+                  <input id="f-clearTime" type="datetime-local" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Pending</label>
+                  <input id="f-pending" placeholder="Pending" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Originate</label>
+                  <input id="f-originate" placeholder="Originate" class="form-input">
+                </div>
+                <div class="form-group" style="grid-column:span 2 / span 2">
+                  <label class="form-label">Terminate</label>
+                  <input id="f-terminate" placeholder="Terminate" class="form-input">
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-
-        <!-- RESPONSE MODAL -->
-
-        <div id="modal-response" class="modal-backdrop hidden">
-
-            <div class="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
-                <div class="p-6 border-b bg-slate-50/50">
-                    <h3 class="text-lg font-bold text-slate-800">NS Response</h3>
-                    <p class="text-xs text-slate-500 mt-1">Update status and arrival time</p>
-                </div>
-
-                <div class="p-6 space-y-5">
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Work Type</label>
-                        <select id="response-work-type" class="w-full bg-white border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 rounded-xl px-4 py-3 text-sm outline-none transition-all cursor-pointer text-slate-700">
-                          <option value="">Select Work Type</option>
-                          <option value="Fiber">Fiber</option>
-                          <option value="Equipment">Equipment</option>
-                        </select>
-                    </div>
-
-                    <div class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">ETA (Estimated Arrival Time)</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:bg-orange-50 has-[:checked]:border-orange-300">
-                                <input type="radio" name="eta" value="30 min" class="w-4 h-4 text-orange-600 border-slate-300 focus:ring-orange-500">
-                                <span class="text-sm font-medium text-slate-700">30 min</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:bg-orange-50 has-[:checked]:border-orange-300">
-                                <input type="radio" name="eta" value="1 hr" class="w-4 h-4 text-orange-600 border-slate-300 focus:ring-orange-500">
-                                <span class="text-sm font-medium text-slate-700">1 hr</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:bg-orange-50 has-[:checked]:border-orange-300">
-                                <input type="radio" name="eta" value="1.5 hrs" class="w-4 h-4 text-orange-600 border-slate-300 focus:ring-orange-500">
-                                <span class="text-sm font-medium text-slate-700">1.5 hrs</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:bg-orange-50 has-[:checked]:border-orange-300">
-                                <input type="radio" name="eta" value="2 hrs" class="w-4 h-4 text-orange-600 border-slate-300 focus:ring-orange-500">
-                                <span class="text-sm font-medium text-slate-700">2 hrs</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:bg-orange-50 has-[:checked]:border-orange-300">
-                                <input type="radio" name="eta" value="2.5 hrs" class="w-4 h-4 text-orange-600 border-slate-300 focus:ring-orange-500">
-                                <span class="text-sm font-medium text-slate-700">2.5 hrs</span>
-                            </label>
-                            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:bg-orange-50 has-[:checked]:border-orange-300">
-                                <input type="radio" name="eta" value="3 hrs" class="w-4 h-4 text-orange-600 border-slate-300 focus:ring-orange-500">
-                                <span class="text-sm font-medium text-slate-700">3 hrs</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-4 md:p-6 bg-slate-50 border-t flex justify-end gap-3 mt-auto">
-                    <button id="btn-cancel-response" class="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all">Cancel</button>
-                    <button id="btn-save-response" class="px-5 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 shadow-lg shadow-orange-500/30 transition-all">Save</button>
-                </div>
-
-            </div>
+        <div class="modal-foot">
+          <button type="button" id="btn-discard-create-alert" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-accent">Create Ticket</button>
         </div>
+      </form>
+    </div>
+  </div>
 
-        <!-- SIDEBAR -->
-        <aside id="app-sidebar" class="sidebar w-72 flex flex-col shrink-0 border-r border-zinc-900 bg-zinc-950">
-            <div class="p-8 pb-10">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="w-11 h-11 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 overflow-hidden shrink-0">
-                        <img src="symphony-logo.jpg" alt="Symphony" class="w-full h-full object-contain p-1">
-                    </div>
-                    <div class="flex-1 truncate">
-                        <h1 class="font-bold text-white text-xl leading-none truncate">NOC Incident</h1>
-                        <p class="text-[9px] text-orange-400 font-bold tracking-widest mt-1.5 uppercase truncate">Symphony Communication</p>
-                    </div>
-                    <button id="btn-close-sidebar-mobile" type="button" class="ml-auto inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden" aria-label="Close menu" title="Close menu">
-                        <span class="text-lg leading-none">←</span>
-                    </button>
-                </div>
-            </div>
+  <!-- ═══ MODAL: RESPONSE ═══════════════════════════════════ -->
+  <div id="modal-response" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <div style="flex:1">
+          <h3>NS Response</h3>
+          <p>Update status and arrival time</p>
+        </div>
+      </div>
+      <div class="modal-body space-y-5">
+        <div class="form-group">
+          <label class="form-label">Work Type</label>
+          <select id="response-work-type" class="form-input" style="height:40px;cursor:pointer">
+            <option value="">Select Work Type</option>
+            <option value="Fiber">Fiber</option>
+            <option value="Equipment">Equipment</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ETA (Estimated Arrival Time)</label>
+          <div class="radio-grid">
+            <label class="radio-option"><input type="radio" name="eta" value="30 min" style="display:none"> 30 min</label>
+            <label class="radio-option"><input type="radio" name="eta" value="1 hr"   style="display:none"> 1 hr</label>
+            <label class="radio-option"><input type="radio" name="eta" value="1.5 hrs" style="display:none"> 1.5 hrs</label>
+            <label class="radio-option"><input type="radio" name="eta" value="2 hrs"   style="display:none"> 2 hrs</label>
+            <label class="radio-option"><input type="radio" name="eta" value="2.5 hrs" style="display:none"> 2.5 hrs</label>
+            <label class="radio-option"><input type="radio" name="eta" value="3 hrs"   style="display:none"> 3 hrs</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="btn-cancel-response" class="btn btn-ghost">Cancel</button>
+        <button id="btn-save-response" class="btn btn-accent">Save</button>
+      </div>
+    </div>
+  </div>
 
-            <nav class="flex-1 overflow-y-auto space-y-6 py-4">
-                <section>
-                    <h3 class="sidebar-label">Main Menu</h3>
-                    <div data-view="alert" id="nav-alert" class="nav-item active">
-                        <i data-lucide="bell" class="w-5 h-5"></i>
-                        <span>Alert Monitor</span>
-                    </div>
-                    
-                    <div>
-                        <!-- Corrective -->
-                    <div id="menu-corrective" class="nav-item flex items-center justify-between cursor-pointer">
+  <!-- ═══ SIDEBAR ════════════════════════════════════════════ -->
+  <aside id="app-sidebar" class="sidebar">
 
-                    <div class="flex items-center gap-3">
-                    <i data-lucide="wrench" class="w-5 h-5"></i>
-                    <span>Corrective</span>
-                    </div>
-
-                    <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
-
-                    </div>
-
-                    <!-- Sub menu -->
-                    <div id="corrective-submenu" class="ml-9 mt-1 space-y-1 hidden border-l-2 border-zinc-800 pl-2">
-
-                    <div class="nav-item text-sm hover:bg-slate-800/60 rounded-lg !py-2 transition-colors" data-view="corrective">Fiber</div>
-                    <div class="nav-item text-sm hover:bg-slate-800/60 rounded-lg !py-2 transition-colors" data-view="corrective">Equipment</div>
-                    </div>
-                    </div>
-                    <div data-view="calendar" id="nav-calendar" class="nav-item">
-                        <i data-lucide="calendar" class="w-5 h-5"></i>
-                        <span>Calendar</span>
-                        <span id="nav-calendar-today-bell" class="nav-calendar-bell hidden" title="Jobs today">
-                            <i data-lucide="bell" class="w-3.5 h-3.5"></i>
-                        </span>
-                    </div>
-                    <div data-view="improvement" class="nav-item">
-                        <i data-lucide="trending-up" class="w-5 h-5"></i>
-                        <span>Improvement</span>
-                    </div>
-                    <div id="menu-history" class="nav-item flex items-center justify-between cursor-pointer">
-                        <div class="flex items-center gap-3">
-                            <i data-lucide="box" class="w-5 h-5"></i>
-                            <span>Incident History</span>
-                        </div>
-                        <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </div>
-                    <div id="history-submenu" class="ml-9 mt-1 space-y-1 hidden border-l-2 border-zinc-800 pl-2">
-                        <div data-view="history" class="nav-item text-sm hover:bg-slate-800/60 rounded-lg !py-2 transition-colors">
-                            <i data-lucide="clock" class="w-3.5 h-3.5"></i> History
-                        </div>
-                        <div data-view="search" id="nav-search" class="nav-item text-sm hover:bg-slate-800/60 rounded-lg !py-2 transition-colors">
-                            <i data-lucide="search" class="w-3.5 h-3.5"></i> Global Search
-                        </div>
-                    </div>
-                </section>
-
-                <section>
-                    <h3 class="sidebar-label">Reports & Archive</h3>
-                    <div>
-                        <div id="menu-dashboard" class="nav-item flex items-center justify-between cursor-pointer">
-                            <div class="flex items-center gap-3">
-                                <i data-lucide="layout-grid" class="w-5 h-5"></i>
-                                <span>Dashboard</span>
-                            </div>
-                            <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
-                        </div>
-                        <div id="dashboard-submenu" class="ml-10 mt-1 space-y-1 hidden">
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="main">Overview</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="report">Live Report</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="region">Region</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="report-main" data-dashboard-sla-hours="3">Report MTTR 3 Hrs.</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="summary" data-dashboard-sla-hours="3">Summary MTTR 3 Hrs.</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="report-main" data-dashboard-sla-hours="4">Report MTTR 4 Hrs.</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard" data-dashboard-subview="summary" data-dashboard-sla-hours="4">Summary MTTR 4 Hrs.</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="subcontractor">Subcontractor</div>
-                        </div>
-                    </div>
-                    <div>
-                        <div id="menu-details" class="nav-item flex items-center justify-between cursor-pointer">
-                            <div class="flex items-center gap-3">
-                                <i data-lucide="table" class="w-5 h-5"></i>
-                                <span>Details</span>
-                            </div>
-                            <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
-                        </div>
-                        <div id="details-submenu" class="ml-10 mt-1 space-y-1 hidden">
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard-details" data-dashboard-details-subview="data-sheet">Data Sheet</div>
-                            <div class="sub-nav-item nav-item text-sm" data-view="dashboard-details" data-dashboard-details-subview="search-incident">Search Incident</div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="pt-4 border-t border-slate-800/50">
-                    <div data-view="recycle" id="nav-recycle" class="nav-item text-rose-400 hover:bg-rose-500/10">
-                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                        <span>Recycle Bin</span>
-                    </div>
-                </section>
-            </nav>
-
-            <div class="p-6 bg-black border-t border-zinc-900">
-                <div class="flex items-center gap-4">
-                    <div class="relative">
-                        <div class="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white font-bold text-sm">AN</div>
-                        <span class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-zinc-950 rounded-full"></span>
-                    </div>
-                    <div class="overflow-hidden">
-                        <p class="text-xs font-bold text-white truncate">Administrator</p>
-                        <p class="text-[10px] text-slate-500 font-medium">NOC Level 3</p>
-                    </div>
-                </div>
-            </div>
-        </aside>
-        <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
-        <!-- MAIN AREA -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <header class="h-16 md:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-10 shrink-0 z-40 gap-3">
-                <div class="flex items-center flex-1 gap-3 md:gap-4">
-                    <button id="btn-toggle-sidebar" type="button" class="inline-flex items-center gap-2 justify-center min-w-10 h-10 px-2 rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Open menu" title="Open menu">
-                        <span id="sidebar-toggle-icon" class="text-lg leading-none">☰</span>
-                        <span id="sidebar-toggle-label" class="hidden sm:inline text-xs font-semibold">Open menu</span>
-                    </button>
-                    <div class="relative w-full group max-w-2xl hidden sm:block">
-                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-orange-500 transition-colors">
-                            <i data-lucide="search" class="w-5 h-5"></i>
-                        </span>
-                        <input type="text" id="global-search"
-                               class="block w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-orange-500 focus:bg-white outline-none transition-all duration-300">
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-3 md:gap-4">
-                    <div class="app-zoom-toolbar hidden items-center gap-1 border border-slate-200 rounded-xl px-2 py-1 bg-slate-50">
-                        <button id="btn-app-zoom-out" type="button" class="w-8 h-8 rounded-lg text-slate-600 hover:bg-white" title="Zoom out">−</button>
-                        <span id="app-zoom-label" class="text-xs font-semibold text-slate-600 min-w-[52px] text-center">100%</span>
-                        <button id="btn-app-zoom-in" type="button" class="w-8 h-8 rounded-lg text-slate-600 hover:bg-white" title="Zoom in">+</button>
-                        <button id="btn-app-zoom-reset" type="button" class="w-8 h-8 rounded-lg text-slate-600 hover:bg-white" title="Reset zoom">⟲</button>
-                    </div>
-                    <button id="btn-dark-mode" title="Toggle dark mode" aria-label="Toggle dark mode">
-                        <i data-lucide="moon" class="w-4 h-4" id="icon-dark-mode"></i>
-                    </button>
-                    <div class="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-600 rounded-full border border-green-100 hidden md:flex">
-                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest">Online</span>
-                    </div>
-                    <button id="btn-create-alert" class="bg-orange-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold hover:bg-orange-600 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30">
-                        <i data-lucide="plus" class="w-4 h-4"></i><span class="hidden sm:inline">Create Alert</span>
-                    </button>
-                </div>
-            </header>
-                <div class="main-scroll-area flex-1 overflow-y-auto">  
-                <!-- VIEW: DASHBOARD -->
-                                <div id="view-dashboard" class="view-content fade-in space-y-6 md:space-y-8 p-4 md:p-8">
-                    <div class="mb-4">
-                        <h2 class="text-xl font-bold text-slate-800">Assignment Interruption System</h2>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="dashboard-stats-grid">
-                        <!-- Stats injected by JS -->
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="font-bold text-slate-700">Active Jobs</h3>
-                        </div>
-                        <div id="incident-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-                    </div>
-                </div>
-
-                <!-- VIEW: SEARCH RESULTS -->
-                <div id="view-search" class="view-content hidden p-4 md:p-8 fade-in space-y-6">
-                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
-                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3 shrink-0">
-                            <span class="w-1.5 h-8 rounded-full bg-orange-500"></span>
-                            Global Search
-                        </h2>
-                        <div class="relative w-full max-w-2xl">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
-                                <i data-lucide="search" class="w-5 h-5"></i>
-                            </span>
-                            <input type="text" id="view-search-input" placeholder="Search Ticket ID, CID, Node..."
-                                   class="block w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all duration-300 shadow-sm">
-                        </div>
-                    </div>
-                    <!-- Month / Year filter -->
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <select id="search-filter-month" class="border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 bg-white focus:border-orange-400 focus:outline-none">
-                            <option value="">All Months</option>
-                            <option value="01">January</option><option value="02">February</option>
-                            <option value="03">March</option><option value="04">April</option>
-                            <option value="05">May</option><option value="06">June</option>
-                            <option value="07">July</option><option value="08">August</option>
-                            <option value="09">September</option><option value="10">October</option>
-                            <option value="11">November</option><option value="12">December</option>
-                        </select>
-                        <select id="search-filter-year" class="border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 bg-white focus:border-orange-400 focus:outline-none">
-                            <option value="">All Years</option>
-                        </select>
-                        <button id="search-filter-clear" class="text-xs text-slate-400 hover:text-orange-500 font-semibold transition-colors px-2 py-2">Clear filter</button>
-                        <span id="search-filter-count" class="text-xs text-slate-400 font-semibold ml-auto"></span>
-                    </div>
-                    <div id="search-results-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        <div class="col-span-full text-center text-slate-400 py-10">Type in the search box above to see results</div>
-                    </div>
-                    <div id="search-map-section"></div>
-                </div>
-
-                <!-- VIEW: ALERT MONITOR -->
-                <div id="view-alert" class="view-content hidden p-4 md:p-8">
-                <div id="alert-table-container"></div>
-                </div>
-                <!-- VIEW: DASHBOARD DETAILS -->
-                <div id="view-dashboard-details" class="view-content hidden fade-in space-y-6 md:space-y-8 p-4 md:p-8"></div>
-                <!-- VIEW: ALERT DETAIL -->
-                <div id="view-alert-detail" class="view-content hidden p-4 md:p-8 space-y-6 md:space-y-8">
-                <div id="incident-summary"></div>
-                <div id="ticket-table"></div>
-                </div>
-
-                <!-- VIEW: CORRECTIVE -->
-                <div id="view-corrective" class="view-content hidden p-3 md:p-5">
-                    <div id="corrective-container" class="space-y-3"></div>
-                </div>
-
-                <!-- VIEW: SUBCONTRACTOR -->
-                <div id="view-subcontractor" class="view-content hidden fade-in space-y-6 md:space-y-8 p-4 md:p-8">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-slate-800">Subcontractor Hub</h2>
-                        <div class="flex gap-3">
-                            <button class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i> Print PDF</button>
-                        </div>
-                    </div>
-
-                    <!-- Period Filter -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-3 md:px-5 md:py-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 md:gap-4">
-                      <span class="text-xs md:text-sm font-black text-slate-500 uppercase tracking-widest shrink-0">Period</span>
-                      <div id="sub-period-bar" class="flex gap-1 bg-slate-100 p-1 rounded-xl overflow-x-auto">
-                        <button data-sub-period="daily"   class="sub-period-btn px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold text-slate-500 hover:text-slate-800 transition-all whitespace-nowrap shrink-0">📅 Daily</button>
-                        <button data-sub-period="weekly"  class="sub-period-btn px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold text-slate-500 hover:text-slate-800 transition-all whitespace-nowrap shrink-0">🗓️ Weekly</button>
-                        <button data-sub-period="monthly" class="sub-period-btn px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold bg-white text-orange-600 shadow-sm transition-all whitespace-nowrap shrink-0">📆 Monthly</button>
-                        <button data-sub-period="yearly"  class="sub-period-btn px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold text-slate-500 hover:text-slate-800 transition-all whitespace-nowrap shrink-0">🧾 Yearly</button>
-                      </div>
-                      <!-- Sub-selector (dropdown) injected by JS -->
-                      <div id="sub-period-sub"></div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="sub-stats-grid">
-                        <!-- Stats injected by JS -->
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        <div class="lg:col-span-5 glass-card p-8"><h4 class="font-bold mb-6">Cost by Status</h4><div class="h-64"><canvas id="chartStatusSub"></canvas></div></div>
-                        <div class="lg:col-span-7 glass-card p-8"><h4 class="font-bold mb-6">Workload by Subcontractor</h4><div class="h-64"><canvas id="chartWorkload"></canvas></div></div>
-                    </div>
-
-                    <div class="glass-card overflow-hidden shadow-sm">
-                        <div class="p-6 border-b border-slate-100 font-bold bg-white">Subcontractor Performance Summary</div>
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-slate-50/50 text-slate-500 font-bold uppercase text-[10px]">
-                                <tr><th class="px-6 py-4">Name</th><th class="px-6 py-4 text-center">Total Jobs</th><th class="px-6 py-4 text-center">Finish</th><th class="px-6 py-4 text-center">Zone</th></tr>
-                            </thead>
-                            <tbody id="sub-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- VIEW: HISTORY -->
-                <div id="view-history" class="view-content hidden fade-in space-y-6 md:space-y-8 p-4 md:p-8">
-                    <div id="history-grid" class="grid grid-cols-1 gap-4"></div>
-                </div>
-
-                <!-- VIEW: IMPROVEMENT -->
-                <div id="view-improvement" class="view-content hidden fade-in p-4 md:p-8">
-                    <div id="improvement-container"></div>
-                </div>
-
-                <!-- VIEW: RECYCLE -->
-                <div id="view-recycle" class="view-content hidden p-4 md:p-8">
-                    <!-- Dynamic content from RecycleUI -->
-                </div>
-
-                <!-- VIEW: CALENDAR -->
-                <div id="view-calendar" class="view-content hidden fade-in py-6 md:py-8 px-3 md:px-6 space-y-4">
-                     <div id="calendar-container"></div>
-                </div>
-
-            </div>
-        </main>
+    <!-- Header -->
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <img src="symphony-logo.jpg" alt="Symphony">
+      </div>
+      <div class="sidebar-brand">
+        <h1>NOC Incident</h1>
+        <p>Symphony Communication</p>
+      </div>
+      <button id="btn-close-sidebar-mobile" type="button" class="icon-btn lg:hidden" aria-label="Close menu">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     </div>
 
-<!-- STATE -->
+    <!-- Status bar -->
+    <div class="sidebar-status">
+      <span class="pulse"></span>
+      <span>Live · <span class="stat-count" id="sb-active-count">—</span> active</span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav">
+
+      <div>
+        <span class="sidebar-group-label">Main Menu</span>
+        <div data-view="alert" id="nav-alert" class="nav-item active">
+          <i data-lucide="bell" class="w-5 h-5"></i>
+          <span>Alert Monitor</span>
+        </div>
+
+        <!-- Corrective -->
+        <div id="menu-corrective" class="nav-item flex items-center justify-between cursor-pointer">
+          <div class="flex items-center gap-3">
+            <i data-lucide="wrench" class="w-5 h-5"></i>
+            <span>Corrective</span>
+          </div>
+          <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
+        </div>
+        <div id="corrective-submenu" class="ml-9 mt-1 space-y-1 hidden border-l-2 border-stone-800 pl-2">
+          <div class="nav-item text-sm !py-2 transition-colors" data-view="corrective">Fiber</div>
+          <div class="nav-item text-sm !py-2 transition-colors" data-view="corrective">Equipment</div>
+        </div>
+
+        <div data-view="calendar" id="nav-calendar" class="nav-item">
+          <i data-lucide="calendar" class="w-5 h-5"></i>
+          <span>Calendar</span>
+          <span id="nav-calendar-month-count" class="nav-count-badge hidden" title="Jobs this month">0</span>
+          <span id="nav-calendar-today-bell" class="nav-calendar-bell hidden" title="Jobs today">
+            <i data-lucide="bell" class="w-3 h-3"></i>
+          </span>
+        </div>
+
+        <div data-view="improvement" class="nav-item">
+          <i data-lucide="trending-up" class="w-5 h-5"></i>
+          <span>Improvement</span>
+        </div>
+
+        <!-- History -->
+        <div id="menu-history" class="nav-item flex items-center justify-between cursor-pointer">
+          <div class="flex items-center gap-3">
+            <i data-lucide="box" class="w-5 h-5"></i>
+            <span>Incident History</span>
+          </div>
+          <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
+        </div>
+        <div id="history-submenu" class="ml-9 mt-1 space-y-1 hidden border-l-2 border-stone-800 pl-2">
+          <div data-view="history" class="nav-item text-sm !py-2 transition-colors">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i> History
+          </div>
+          <div data-view="search" id="nav-search" class="nav-item text-sm !py-2 transition-colors">
+            <i data-lucide="search" class="w-3.5 h-3.5"></i> Global Search
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="sidebar-group-label">Reports &amp; Archive</span>
+
+        <!-- Dashboard -->
+        <div id="menu-dashboard" class="nav-item flex items-center justify-between cursor-pointer">
+          <div class="flex items-center gap-3">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i>
+            <span>Dashboard</span>
+          </div>
+          <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
+        </div>
+        <div id="dashboard-submenu" class="ml-10 mt-1 space-y-1 hidden">
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="main">Overview</div>
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="report">Live Report</div>
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="region">Region</div>
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="report-main" data-dashboard-sla-hours="3">Report MTTR 3 Hrs.</div>
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="summary" data-dashboard-sla-hours="3">Summary MTTR 3 Hrs.</div>
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="report-main" data-dashboard-sla-hours="4">Report MTTR 4 Hrs.</div>
+          <div class="sub-nav-item" data-view="dashboard" data-dashboard-subview="summary" data-dashboard-sla-hours="4">Summary MTTR 4 Hrs.</div>
+          <div class="sub-nav-item" data-view="subcontractor">Subcontractor</div>
+        </div>
+
+        <!-- Details -->
+        <div id="menu-details" class="nav-item flex items-center justify-between cursor-pointer">
+          <div class="flex items-center gap-3">
+            <i data-lucide="table" class="w-5 h-5"></i>
+            <span>Details</span>
+          </div>
+          <i data-menu-chevron data-lucide="chevron-down" class="w-4 h-4"></i>
+        </div>
+        <div id="details-submenu" class="ml-10 mt-1 space-y-1 hidden">
+          <div class="sub-nav-item" data-view="dashboard-details" data-dashboard-details-subview="data-sheet">Data Sheet</div>
+          <div class="sub-nav-item" data-view="dashboard-details" data-dashboard-details-subview="search-incident">Search Incident</div>
+        </div>
+      </div>
+
+      <div style="padding-top:12px;border-top:1px solid var(--sb-hair)">
+        <div data-view="recycle" id="nav-recycle" class="nav-item" style="color:#f87171">
+          <i data-lucide="trash-2" class="w-5 h-5" style="color:#f87171"></i>
+          <span>Recycle Bin</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- User footer -->
+    <div class="sidebar-user">
+      <div class="avatar">AN</div>
+      <div class="info">
+        <p class="name">Administrator</p>
+        <p class="role">NOC Level 3</p>
+      </div>
+    </div>
+  </aside>
+
+  <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+  <!-- ═══ MAIN ════════════════════════════════════════════════ -->
+  <main class="flex flex-col min-w-0 overflow-hidden" style="height:100vh">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <!-- Left: hamburger + search -->
+      <button id="btn-toggle-sidebar" type="button" class="icon-btn" aria-label="Open menu">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+
+      <div class="topbar-search hidden sm:block" style="flex:1;max-width:480px">
+        <i data-lucide="search"></i>
+        <input type="text" id="global-search" placeholder="Search incidents, nodes, tickets…">
+      </div>
+
+      <!-- Right: zoom + dark toggle + online + create -->
+      <div class="topbar-actions">
+        <!-- Zoom toolbar -->
+        <div class="app-zoom-toolbar zoom-toolbar">
+          <button id="btn-app-zoom-out" title="Zoom out">−</button>
+          <span class="zoom-label" id="app-zoom-label">100%</span>
+          <button id="btn-app-zoom-in" title="Zoom in">+</button>
+          <button id="btn-app-zoom-reset" title="Reset zoom">⟲</button>
+        </div>
+
+        <!-- Dark mode toggle -->
+        <button id="btn-dark-mode" class="icon-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
+          <i data-lucide="moon" class="w-4 h-4" id="icon-dark-mode"></i>
+        </button>
+
+        <!-- Online -->
+        <div class="online-badge hidden md:flex">
+          <span class="dot"></span>
+          Online
+        </div>
+
+        <!-- Create alert -->
+        <button id="btn-create-alert" class="btn btn-accent">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Create Alert</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- View container -->
+    <div class="main-scroll-area flex-1 overflow-y-auto">
+
+      <!-- VIEW: DASHBOARD -->
+      <div id="view-dashboard" class="view-content hidden fade-in p-4 md:p-8 space-y-6 md:space-y-8">
+        <div class="section-head">
+          <h2>Assignment Interruption System</h2>
+        </div>
+        <div class="kpi-grid" id="dashboard-stats-grid"></div>
+        <div class="space-y-4">
+          <h3 style="font-weight:700;color:var(--ink)">Active Jobs</h3>
+          <div id="incident-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+      </div>
+
+      <!-- VIEW: SEARCH RESULTS -->
+      <div id="view-search" class="view-content hidden p-4 md:p-8 fade-in space-y-6">
+        <div class="section-head" style="flex-wrap:wrap;gap:12px">
+          <h2 style="display:flex;align-items:center;gap:10px">
+            <span style="width:4px;height:28px;border-radius:9999px;background:var(--accent);display:inline-block;flex-shrink:0"></span>
+            Global Search
+          </h2>
+          <div class="topbar-search" style="max-width:560px;margin-left:auto">
+            <i data-lucide="search"></i>
+            <input type="text" id="view-search-input" placeholder="Search Ticket ID, CID, Node…">
+          </div>
+        </div>
+        <div class="filters">
+          <select id="search-filter-month" class="select">
+            <option value="">All Months</option>
+            <option value="01">January</option><option value="02">February</option>
+            <option value="03">March</option><option value="04">April</option>
+            <option value="05">May</option><option value="06">June</option>
+            <option value="07">July</option><option value="08">August</option>
+            <option value="09">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+          <select id="search-filter-year" class="select"><option value="">All Years</option></select>
+          <button id="search-filter-clear" class="btn btn-ghost btn-sm">Clear filter</button>
+          <span id="search-filter-count" class="text-dim" style="margin-left:auto;font-size:12px"></span>
+        </div>
+        <div id="search-results-container">
+          <div class="col-span-full empty">Type in the search box above to see results</div>
+        </div>
+        <div id="search-map-section"></div>
+      </div>
+
+      <!-- VIEW: ALERT MONITOR -->
+      <div id="view-alert" class="view-content hidden p-4 md:p-8">
+        <div id="alert-table-container"></div>
+      </div>
+
+      <!-- VIEW: DASHBOARD DETAILS -->
+      <div id="view-dashboard-details" class="view-content hidden fade-in space-y-6 md:space-y-8 p-4 md:p-8"></div>
+
+      <!-- VIEW: ALERT DETAIL -->
+      <div id="view-alert-detail" class="view-content hidden p-4 md:p-8 space-y-6 md:space-y-8">
+        <div id="incident-summary"></div>
+        <div id="ticket-table"></div>
+      </div>
+
+      <!-- VIEW: CORRECTIVE -->
+      <div id="view-corrective" class="view-content hidden p-3 md:p-5">
+        <div id="corrective-container" class="space-y-3"></div>
+      </div>
+
+      <!-- VIEW: SUBCONTRACTOR -->
+      <div id="view-subcontractor" class="view-content hidden fade-in space-y-6 md:space-y-8 p-4 md:p-8">
+        <div class="section-head">
+          <h2>Subcontractor Hub</h2>
+          <div class="section-head-actions">
+            <button class="btn">
+              <i data-lucide="printer" class="w-4 h-4"></i> Print PDF
+            </button>
+          </div>
+        </div>
+        <!-- Period Filter -->
+        <div class="panel">
+          <div class="panel-body" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-muted)">Period</span>
+            <div id="sub-period-bar" class="segmented" style="overflow-x:auto">
+              <button data-sub-period="daily">📅 Daily</button>
+              <button data-sub-period="weekly">🗓️ Weekly</button>
+              <button data-sub-period="monthly" class="active">📆 Monthly</button>
+              <button data-sub-period="yearly">🧾 Yearly</button>
+            </div>
+            <div id="sub-period-sub"></div>
+          </div>
+        </div>
+        <div class="kpi-grid" id="sub-stats-grid"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div class="lg:col-span-5 panel">
+            <div class="panel-head"><h3>Cost by Status</h3></div>
+            <div class="panel-body dashboard-chart-card"><div class="chart-shell"><canvas id="chartStatusSub"></canvas></div></div>
+          </div>
+          <div class="lg:col-span-7 panel">
+            <div class="panel-head"><h3>Workload by Subcontractor</h3></div>
+            <div class="panel-body dashboard-chart-card"><div class="chart-shell"><canvas id="chartWorkload"></canvas></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Subcontractor Performance Summary</h3></div>
+          <table class="data">
+            <thead><tr><th>Name</th><th style="text-align:center">Total Jobs</th><th style="text-align:center">Finish</th><th style="text-align:center">Zone</th></tr></thead>
+            <tbody id="sub-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIEW: HISTORY -->
+      <div id="view-history" class="view-content hidden fade-in space-y-6 md:space-y-8 p-4 md:p-8">
+        <div id="history-grid" class="grid grid-cols-1 gap-4"></div>
+      </div>
+
+      <!-- VIEW: IMPROVEMENT -->
+      <div id="view-improvement" class="view-content hidden fade-in p-4 md:p-8">
+        <div id="improvement-container"></div>
+      </div>
+
+      <!-- VIEW: RECYCLE -->
+      <div id="view-recycle" class="view-content hidden p-4 md:p-8"></div>
+
+      <!-- VIEW: CALENDAR -->
+      <div id="view-calendar" class="view-content hidden fade-in py-6 md:py-8 px-3 md:px-6 space-y-4">
+        <div id="calendar-container"></div>
+      </div>
+
+    </div><!-- /main-scroll-area -->
+  </main>
+</div><!-- /app-shell -->
+
+<!-- Hidden util button -->
+<button onclick="finishIncident('I2503-000123')" class="hidden" id="example-finish-incident-btn">Finish Incident</button>
+
+<!-- ═══ SCRIPTS ══════════════════════════════════════════════ -->
 <script src="scripts/state/store.js?v=2"></script>
 <script src="scripts/utils/date.utils.js?v=2"></script>
 <script src="scripts/utils/export.util.js?v=1"></script>
 
-<!-- REPOSITORIES -->
 <script src="scripts/repositories/incident.repository.js?v=2"></script>
 <script src="scripts/repositories/email.repository.js?v=2"></script>
 
-<!-- PARSERS -->
 <script src="scripts/parsers/email.parser.js?v=2"></script>
 
-<!-- SERVICES -->
 <script src="scripts/services/localdb.service.js?v=3"></script>
 <script src="scripts/services/incident.service.js?v=2"></script>
 <script src="scripts/services/alert.service.js?v=2"></script>
 
-<!-- UI -->
 <script src="scripts/ui/alert.ui.js?v=6"></script>
 <script src="scripts/ui/dashboard.ui.js?v=3"></script>
 <script src="scripts/ui/corrective.ui.js?v=5"></script>
@@ -533,128 +513,120 @@
 <script src="scripts/ui/improvement.ui.js?v=3"></script>
 <script src="scripts/ui/recycle.ui.js?v=2"></script>
 <script src="scripts/ui/alert-detail.ui.js?v=23"></script>
+
 <script>
-function showView(view){
-document.querySelectorAll(".view-content").forEach(v=>{
-v.classList.add("hidden")
-})
-const el = document.getElementById("view-" + view)
-if(el){
-el.classList.remove("hidden")
+/* ── View switching ── */
+function showView(view) {
+  document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+  const el = document.getElementById('view-' + view);
+  if (el) el.classList.remove('hidden');
+  if (view === 'improvement' && window.ImprovementUI) window.ImprovementUI.render();
 }
-if(view === "improvement" && window.ImprovementUI){
-  window.ImprovementUI.render();
+
+/* ── Submenu toggles ── */
+function toggleSubmenu(menuId, submenuId) {
+  const menu    = document.getElementById(menuId);
+  const submenu = document.getElementById(submenuId);
+  if (!menu || !submenu) return;
+  menu.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    submenu.classList.toggle('hidden');
+    const open = !submenu.classList.contains('hidden');
+    menu.setAttribute('aria-expanded', String(open));
+    const icon = menu.querySelector('[data-menu-chevron]');
+    if (icon) { icon.classList.toggle('rotate-180'); icon.classList.toggle('text-white'); }
+  };
 }
-}
+toggleSubmenu('menu-dashboard',  'dashboard-submenu');
+toggleSubmenu('menu-details',    'details-submenu');
+toggleSubmenu('menu-corrective', 'corrective-submenu');
+toggleSubmenu('menu-history',    'history-submenu');
+
+document.querySelectorAll('#corrective-submenu div').forEach(menu => {
+  menu.onclick = () => {
+    const type = menu.innerText.toLowerCase();
+    Store.dispatch(state => ({
+      ...state,
+      ui: { ...state.ui, currentView: 'corrective', activeCorrectiveTab: type }
+    }));
+  };
+});
+
+/* ── Response modal radio options ── */
+document.querySelectorAll('.radio-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    const radio = opt.querySelector('input[type=radio]');
+    if (radio) radio.checked = true;
+  });
+});
 </script>
-<!-- BOOTSTRAP -->
+
+<!-- Bootstrap -->
 <script>window.NOC_VAPID_KEY = "BFT1BrILtvMuvjzGW-6CNoXQkDlFMiayUSO1IW0jNIOGhfJqcwsE2F9cZ-O297gyXCbkBvMVO1WuG4IzJfHJNug";</script>
 <script type="module" src="scripts/services/firebase.service.js"></script>
 <script type="module" src="scripts/services/storage.service.js"></script>
 <script type="module" src="scripts/services/push.service.js"></script>
 <script type="module">
-import(`./scripts/app.js?v=20260313d_${Date.now()}`).catch(e => console.error("app.js module failed:", e));
+import(`./scripts/app.js?v=20260313d_${Date.now()}`).catch(e => console.error('app.js module failed:', e));
 </script>
 
-<!-- PWA Service Worker Registration + Offline Banner -->
+<!-- PWA Service Worker -->
 <script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
     try {
-      await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
-      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      console.log("[SW] Service workers registered");
-    } catch (err) {
-      console.warn("[SW] Registration failed:", err.message);
-    }
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+      await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    } catch (err) { console.warn('[SW] Registration failed:', err.message); }
   });
 }
-
-// Offline/Online banner
 function showOfflineBanner(offline) {
-  const id = "pwa-offline-banner";
+  const id = 'pwa-offline-banner';
   document.getElementById(id)?.remove();
   if (!offline) return;
-  const el = document.createElement("div");
+  const el = document.createElement('div');
   el.id = id;
-  el.style.cssText = "position:fixed;bottom:0;left:0;right:0;z-index:9998;background:#1e293b;color:#f1f5f9;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;border-top:2px solid #f97316;";
-  el.textContent = "⚠️ You are offline — showing cached data";
+  el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9998;background:var(--surface);color:var(--ink);text-align:center;padding:10px 16px;font-size:13px;font-weight:600;border-top:2px solid var(--accent);box-shadow:0 -4px 20px rgba(0,0,0,.12);';
+  el.textContent = '⚠️ You are offline — showing cached data';
   document.body.appendChild(el);
 }
-window.addEventListener("offline", () => showOfflineBanner(true));
-window.addEventListener("online", () => showOfflineBanner(false));
+window.addEventListener('offline', () => showOfflineBanner(true));
+window.addEventListener('online',  () => showOfflineBanner(false));
 </script>
-<script>
-function toggleSubmenu(menuId, submenuId) {
-  const menu = document.getElementById(menuId);
-  const submenu = document.getElementById(submenuId);
-  if (!menu || !submenu) return;
 
-  menu.onclick = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    submenu.classList.toggle("hidden");
-    const isOpen = !submenu.classList.contains("hidden");
-    menu.setAttribute("aria-expanded", String(isOpen));
-    const icon = menu.querySelector("[data-menu-chevron]");
-    if (icon) {
-      icon.classList.toggle("rotate-180");
-      icon.classList.toggle("text-white");
-    }
-  };
-}
-toggleSubmenu("menu-dashboard", "dashboard-submenu");
-toggleSubmenu("menu-details", "details-submenu");
-toggleSubmenu("menu-corrective", "corrective-submenu");
-toggleSubmenu("menu-history", "history-submenu");
+<!-- Init icons -->
+<script>lucide.createIcons();</script>
 
-document.querySelectorAll("#corrective-submenu div").forEach(menu=>{
-
-menu.onclick = ()=>{
-
-const type = menu.innerText.toLowerCase()
-
-Store.dispatch(state=>({
-...state,
-ui:{
-...state.ui,
-currentView:"corrective",
-activeCorrectiveTab:type
-}
-}))
-
-}
-
-})
-</script>
-<script>lucide.createIcons()</script>
+<!-- ── Dark mode toggle ── -->
 <script>
 (function () {
-  const KEY = 'noc-dark-mode';
+  const KEY  = 'noc-dark-mode';
   const html = document.documentElement;
   const btn  = document.getElementById('btn-dark-mode');
   const icon = document.getElementById('icon-dark-mode');
 
   function applyDark(dark) {
     if (dark) {
-      html.classList.add('dark');
+      html.setAttribute('data-theme', 'dark');
       icon.setAttribute('data-lucide', 'sun');
     } else {
-      html.classList.remove('dark');
+      html.removeAttribute('data-theme');
       icon.setAttribute('data-lucide', 'moon');
     }
     lucide.createIcons();
   }
 
-  // Init from localStorage
   applyDark(localStorage.getItem(KEY) === '1');
 
   btn.addEventListener('click', function () {
-    const isDark = html.classList.contains('dark');
+    const isDark = html.getAttribute('data-theme') === 'dark';
     localStorage.setItem(KEY, isDark ? '0' : '1');
     applyDark(!isDark);
   });
 })();
 </script>
+
 </body>
 </html>

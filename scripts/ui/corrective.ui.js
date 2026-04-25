@@ -47,6 +47,52 @@ const CorrectiveUI = {
     other: 1,
   },
   pageSize: 10,
+  _renderPageHeader(state) {
+    const FINISH_STATUSES = new Set(["COMPLETE","CLOSED","FINISHED","RESOLVED","DONE","NS_FINISH","CANCEL","CANCELLED","COMPLETED"]);
+    const isActive = inc => !FINISH_STATUSES.has(String(inc.status || "").trim().toUpperCase());
+    const fiberActive    = (state.corrective.fiber     || []).filter(isActive);
+    const equipActive    = (state.corrective.equipment || []).filter(isActive);
+    const otherActive    = (state.corrective.other     || []).filter(isActive);
+    const totalActive    = fiberActive.length + equipActive.length + otherActive.length;
+
+    const wave = (color) => `<svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:56px;height:32px;opacity:.18" viewBox="0 0 56 32" preserveAspectRatio="none"><path d="M1 24 Q8 8 14 16 Q20 24 28 12 Q36 2 42 14 Q48 24 55 8" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+
+    const wrap = document.createElement("div");
+    wrap.className = "space-y-3 mb-1";
+    wrap.innerHTML = `
+      <div class="panel px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-black tracking-tight" style="color:var(--ink)">Corrective Workbench</h1>
+          <p class="text-[10px] font-bold uppercase tracking-widest mt-0.5" style="color:var(--ink-muted)">งานที่กำลังแก้ไข · In-progress jobs</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="Store.dispatch(s=>({...s,ui:{...s.ui,activeCorrectiveTab:'fiber'}}))" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors hover:opacity-80" style="border:1.5px solid var(--hair);color:var(--ink-muted);background:transparent;cursor:pointer">🔧 Fiber · ${fiberActive.length}</button>
+          <button onclick="Store.dispatch(s=>({...s,ui:{...s.ui,activeCorrectiveTab:'equipment'}}))" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors hover:opacity-80" style="border:1.5px solid var(--hair);color:var(--ink-muted);background:transparent;cursor:pointer">📦 Equipment · ${equipActive.length}</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #ea580c">
+          ${wave("#ea580c")}
+          <div class="text-4xl font-black leading-none mb-1" style="color:#ea580c">${totalActive}</div>
+          <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Active Jobs</div>
+          <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Fiber + Equipment + Other</div>
+        </div>
+        <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #3b82f6">
+          ${wave("#3b82f6")}
+          <div class="text-4xl font-black leading-none mb-1" style="color:#3b82f6">${fiberActive.length}</div>
+          <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Fiber</div>
+          <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Active fiber jobs</div>
+        </div>
+        <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #8b5cf6">
+          ${wave("#8b5cf6")}
+          <div class="text-4xl font-black leading-none mb-1" style="color:#8b5cf6">${equipActive.length}</div>
+          <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Equipment</div>
+          <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Active equipment jobs</div>
+        </div>
+      </div>
+    `;
+    return wrap;
+  },
   render(state) {
     const tab = state.ui.activeCorrectiveTab;
 
@@ -79,13 +125,14 @@ const CorrectiveUI = {
 
     const container = document.createElement("div");
     container.className = "space-y-4";
+    container.appendChild(this._renderPageHeader(state));
 
     if (!incidents.length) {
-      container.innerHTML = `
-        <div class="ops-panel p-12 text-center text-slate-400">
-          No jobs in ${tab} queue
-        </div>
-      `;
+      const empty = document.createElement("div");
+      empty.className = "panel p-12 text-center";
+      empty.style.color = "var(--ink-muted)";
+      empty.textContent = `No jobs in ${tab} queue`;
+      container.appendChild(empty);
       return container;
     }
 
@@ -98,29 +145,51 @@ const CorrectiveUI = {
     const pagedIncidents = incidents.slice(pageStart, pageStart + size);
 
     const controls = document.createElement("div");
-    controls.className = "bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3";
+    controls.className = "panel px-4 py-3 flex flex-wrap items-center justify-between gap-3";
     controls.innerHTML = `
       <div class="flex items-center gap-3">
-        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Showing <span class="text-slate-700 font-bold">${pageStart + 1}–${Math.min(pageStart + pagedIncidents.length, incidents.length)}</span> of <span class="text-slate-700 font-bold">${incidents.length}</span> jobs</div>
-        <button class="corrective-export-btn flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm shadow-emerald-200">
-          <i data-lucide="download" class="w-3 h-3 pointer-events-none"></i> CSV
+        <div class="text-xs font-semibold uppercase tracking-wider" style="color:var(--ink-muted)">Showing <span style="color:var(--ink);font-weight:700">${pageStart + 1}–${Math.min(pageStart + pagedIncidents.length, incidents.length)}</span> of <span style="color:var(--ink);font-weight:700">${incidents.length}</span> jobs</div>
+        <button class="corrective-export-btn btn btn-sm" style="background:#22c55e;color:#fff;border-color:#22c55e">
+          <i data-lucide="download" class="pointer-events-none"></i> CSV
         </button>
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Per page</label>
-        <select class="corrective-page-size bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--ink-muted)">Per page</label>
+        <select class="corrective-page-size form-input" style="height:28px;padding:0 8px;font-size:11.5px">
           <option value="10" ${String(this.pageSize) === "10" ? "selected" : ""}>10</option>
           <option value="20" ${String(this.pageSize) === "20" ? "selected" : ""}>20</option>
           <option value="50" ${String(this.pageSize) === "50" ? "selected" : ""}>50</option>
           <option value="100" ${String(this.pageSize) === "100" ? "selected" : ""}>100</option>
           <option value="all" ${String(this.pageSize) === "all" ? "selected" : ""}>All</option>
         </select>
-        <button class="corrective-page-prev px-4 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-600 transition-colors ${currentPage <= 1 ? "opacity-40 cursor-not-allowed" : ""}" ${currentPage <= 1 ? "disabled" : ""}>Prev</button>
-        <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">${currentPage} / ${totalPages}</span>
-        <button class="corrective-page-next px-4 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-600 transition-colors ${currentPage >= totalPages ? "opacity-40 cursor-not-allowed" : ""}" ${currentPage >= totalPages ? "disabled" : ""}>Next</button>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
+          <button class="corrective-page-prev btn btn-sm btn-ghost ${currentPage <= 1 ? "opacity-40 cursor-not-allowed" : ""}" ${currentPage <= 1 ? "disabled" : ""}>Prev</button>
+          <span class="text-[10px] font-bold px-3 py-1.5 rounded-lg" style="color:var(--ink-muted);background:var(--surface-2);border:1px solid var(--hair-soft);white-space:nowrap">${currentPage} / ${totalPages}</span>
+          <button class="corrective-page-next btn btn-sm btn-ghost ${currentPage >= totalPages ? "opacity-40 cursor-not-allowed" : ""}" ${currentPage >= totalPages ? "disabled" : ""}>Next</button>
+        </div>
       </div>
     `;
     container.appendChild(controls);
+
+    const STATUS_STYLE = {
+      RESPONDED:   { label: "Responded",   dot: "#3b82f6", bg: "rgba(59,130,246,.1)",  color: "#3b82f6" },
+      ASSIGN:      { label: "Assigned",    dot: "#8b5cf6", bg: "rgba(139,92,246,.1)",  color: "#8b5cf6" },
+      ASSIGNED:    { label: "Assigned",    dot: "#8b5cf6", bg: "rgba(139,92,246,.1)",  color: "#8b5cf6" },
+      IN_PROGRESS: { label: "In Progress", dot: "#f97316", bg: "rgba(249,115,22,.1)",  color: "#f97316" },
+      CORRECTIVE:  { label: "In Progress", dot: "#f97316", bg: "rgba(249,115,22,.1)",  color: "#f97316" },
+      PROCESS:     { label: "In Progress", dot: "#f97316", bg: "rgba(249,115,22,.1)",  color: "#f97316" },
+      ACTION:      { label: "In Progress", dot: "#f97316", bg: "rgba(249,115,22,.1)",  color: "#f97316" },
+      ON_SITE:     { label: "ON SITE",     dot: "#ea580c", bg: "rgba(234,88,12,.12)",  color: "#ea580c" },
+      ONSITE:      { label: "ON SITE",     dot: "#ea580c", bg: "rgba(234,88,12,.12)",  color: "#ea580c" },
+      FINALIZING:  { label: "FINALIZING",  dot: "#0d9488", bg: "rgba(13,148,136,.1)", color: "#0d9488" },
+      FINALIZE:    { label: "FINALIZING",  dot: "#0d9488", bg: "rgba(13,148,136,.1)", color: "#0d9488" },
+    };
+    const PROGRESS_MAP = {
+      RESPONDED: 25, ASSIGN: 30, ASSIGNED: 35,
+      IN_PROGRESS: 50, PROCESS: 50, CORRECTIVE: 50, ACTION: 50,
+      ON_SITE: 65, ONSITE: 65,
+      FINALIZING: 80, FINALIZE: 80,
+    };
 
     pagedIncidents.forEach((incident) => {
       const card = document.createElement("article");
@@ -128,10 +197,9 @@ const CorrectiveUI = {
       const isHighlighted = state.ui.highlightIncidentId === incidentKey;
       const isDn  = incident.alertClass === "Dn";
       const isInf = incident.alertClass === "Inf";
-      const borderAccent = isDn  ? "border-l-4 border-l-rose-400"
-                         : isInf ? "border-l-4 border-l-amber-400"
-                                 : "border-l-4 border-l-slate-200";
-      card.className = "bg-white rounded-2xl md:rounded-3xl p-3 md:p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden " + borderAccent + " " + (isHighlighted ? "ring-2 ring-orange-500 bg-orange-50/20" : "");
+      const borderColor = isDn ? "#f87171" : isInf ? "#fb923c" : "#cbd5e1";
+      card.className = "corrective-card hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden" + (isHighlighted ? " corrective-card-highlight" : "");
+      card.style.borderLeft = `4px solid ${borderColor}`;
       card.dataset.correctiveId = incidentKey;
 
       const etaText = incident.eta || "-";
@@ -144,56 +212,85 @@ const CorrectiveUI = {
       const totalDownTime = calculateTotalDownTime(startTime);
       const latestEtr = getLatestETR(incident);
 
+      const statusKey = String(incident.status || "").toUpperCase();
+      const ss = STATUS_STYLE[statusKey] || { label: statusKey || "Active", dot: "#94a3b8", bg: "rgba(148,163,184,.1)", color: "#64748b" };
+      const progress = Number(incident.progress) || PROGRESS_MAP[statusKey] || 40;
+      const progressColor = progress >= 75 ? "#0d9488" : progress >= 50 ? "#ea580c" : "#3b82f6";
+
+      // Team name
+      const updates = incident.updates || [];
+      const lastUpd = updates[updates.length - 1] || {};
+      const subArr = lastUpd.subcontractors || lastUpd.subs || incident.subcontractors || [];
+      const firstSub = Array.isArray(subArr) ? subArr[0] : null;
+      const teamName = (typeof firstSub === "string" ? firstSub : firstSub?.name || firstSub?.company)
+        || lastUpd.subcontractor || lastUpd.team
+        || incident.team || incident.subcontractor || "-";
+
       card.innerHTML = `
-        <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2 mb-2 md:pb-4 md:mb-4">
-          <div class="min-w-0 flex-1">
-            <h3 class="text-sm md:text-lg font-bold text-orange-600 flex items-center gap-1.5"><i data-lucide="wrench" class="w-4 h-4 text-orange-400 shrink-0"></i> <span class="truncate">${incidentKey}</span>${incident.alertClass === "Inf" ? `<span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded text-[9px] font-black uppercase tracking-wider shrink-0">Inf#</span>` : incident.alertClass === "Dn" ? `<span class="px-1.5 py-0.5 bg-rose-100 text-rose-700 border border-rose-200 rounded text-[9px] font-black uppercase tracking-wider shrink-0">Dn</span>` : ""}</h3>
-            <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">${workType} - ${incident.node || "-"}</p>
+        <!-- Top row: ID + badges -->
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="flex items-center gap-2 flex-wrap min-w-0">
+            <span class="font-black text-sm tracking-tight" style="color:var(--ink)">${incidentKey}</span>
+            ${isDn ? `<span class="tag dn shrink-0">Dn</span>` : isInf ? `<span class="tag inf shrink-0">Inf#</span>` : ""}
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold" style="border:1px solid var(--hair);color:var(--ink-muted);background:var(--surface-2)">${workType}</span>
+            <span class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap" style="background:${ss.bg};color:${ss.color}">
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:${ss.dot}"></span>${ss.label}
+            </span>
           </div>
-          <div class="flex flex-col items-end gap-1 shrink-0">
-            <div class="flex gap-1 flex-wrap justify-end">
-              ${latestEtr ? `<span class="px-2 py-0.5 bg-amber-500 text-white rounded-lg text-[9px] md:text-[10px] font-bold whitespace-nowrap">ETR: ${latestEtr}</span>` : ""}
-              <span class="px-2 py-0.5 bg-zinc-900 text-white rounded-lg text-[9px] md:text-[10px] font-bold whitespace-nowrap">ETA: ${etaText}</span>
-            </div>
-            <div class="px-2 py-0.5 bg-rose-50 text-rose-600 rounded-lg text-[9px] md:text-[10px] font-bold border border-rose-100 flex items-center gap-0.5 realtime-downtime" data-start="${startTime}">
-              <i data-lucide="clock" class="w-3 h-3"></i> Down: ${totalDownTime}
+          <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap" style="background:#111827;color:#fff">
+              <i data-lucide="clock" class="w-3 h-3"></i> ETA ${etaText}
+            </span>
+            ${latestEtr ? `<span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap" style="border:1.5px solid #d97706;color:#d97706;background:rgba(217,119,6,.06)">
+              <i data-lucide="flag" class="w-3 h-3"></i> ETR ${latestEtr}
+            </span>` : ""}
+            <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap realtime-downtime" style="background:rgba(220,38,38,.07);border:1.5px solid rgba(220,38,38,.2);color:#dc2626" data-start="${startTime}">
+              <i data-lucide="arrow-down-circle" class="w-3 h-3"></i> Down ${totalDownTime}
+            </span>
+          </div>
+        </div>
+
+        <!-- Node + Alarm -->
+        <div class="mb-4">
+          <h3 class="text-base font-black leading-tight" style="color:var(--ink)">${incident.node || "-"}</h3>
+          <p class="text-sm font-semibold mt-0.5" style="color:var(--sev-dn)">${incident.alarm || "-"}</p>
+        </div>
+
+        <!-- Info row -->
+        <div class="flex items-end gap-6 pt-3 mb-4" style="border-top:1px solid var(--hair-soft)">
+          <div class="shrink-0">
+            <p class="text-[9px] font-bold uppercase tracking-widest mb-0.5" style="color:var(--ink-muted)">Team</p>
+            <p class="text-sm font-bold" style="color:var(--ink)">${teamName}</p>
+          </div>
+          <div class="shrink-0">
+            <p class="text-[9px] font-bold uppercase tracking-widest mb-0.5" style="color:var(--ink-muted)">Tickets</p>
+            <p class="text-sm font-bold" style="color:var(--ink)">${totalTickets} linked</p>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[9px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between" style="color:var(--ink-muted)">
+              <span>Progress</span><span style="color:var(--ink)">${progress}%</span>
+            </p>
+            <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--surface-2)">
+              <div class="h-full rounded-full" style="width:${progress}%;background:${progressColor};transition:width .4s ease"></div>
             </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 py-1 md:py-2">
-          <div class="bg-slate-50/50 p-2 md:p-4 rounded-xl md:rounded-2xl border border-slate-100">
-            <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Node</p>
-            <p class="text-xs md:text-sm font-bold text-slate-700 truncate" title="${incident.node}">${incident.node || "-"}</p>
+        <!-- Actions -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex gap-1.5 flex-wrap">
+            <button class="btn btn-sm btn-ghost btn-corrective-update" data-id="${incidentKey}">
+              <i data-lucide="refresh-cw" class="w-3 h-3 pointer-events-none"></i> Update
+            </button>
+            <button class="btn btn-sm btn-corrective-finish" style="background:#111827;color:#fff;border-color:#111827" data-id="${incidentKey}">
+              <i data-lucide="check" class="w-3 h-3 pointer-events-none"></i> NS Finish
+            </button>
+            <button class="btn btn-sm btn-ghost btn-corrective-detail" data-id="${incidentKey}">
+              <i data-lucide="eye" class="w-3 h-3 pointer-events-none"></i> Details
+            </button>
+            ${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="btn btn-sm btn-ghost btn-corrective-report" data-id="${incidentKey}"><i data-lucide="file-text" class="w-3 h-3 pointer-events-none"></i> Report</button>`}
           </div>
-          <div class="bg-slate-50/50 p-2 md:p-4 rounded-xl md:rounded-2xl border border-slate-100">
-            <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Alarm</p>
-            <p class="text-xs md:text-sm font-bold text-rose-500 truncate" title="${incident.alarm}">${incident.alarm || "-"}</p>
-          </div>
-          <div class="bg-slate-50/50 p-2 md:p-4 rounded-xl md:rounded-2xl border border-slate-100">
-            <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Detail</p>
-            ${(() => {
-              const detail = incident.detail || (incident.updates || []).slice().reverse().find(u => u.message)?.message || "-";
-              return `<p class="text-xs md:text-sm text-slate-600 line-clamp-2 leading-snug" title="${detail}">${detail}</p>`;
-            })()}
-          </div>
-          <div class="bg-slate-50/50 p-2 md:p-4 rounded-xl md:rounded-2xl border border-slate-100">
-            <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Tickets</p>
-            <p class="text-base md:text-xl font-bold text-slate-800 leading-none">${totalTickets}</p>
-          </div>
-        </div>
-
-        <div class="mt-2 pt-2 md:mt-4 md:pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-          <div class="flex gap-1.5">
-            <button class="px-3 py-1.5 md:px-5 md:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] md:text-xs font-bold transition-colors btn-corrective-update" data-id="${incidentKey}">Update</button>
-            <button class="px-3 py-1.5 md:px-5 md:py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 rounded-xl text-[10px] md:text-xs font-bold transition-all btn-corrective-finish" data-id="${incidentKey}">NS Finish</button>
-            <button class="px-3 py-1.5 md:px-5 md:py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-[10px] md:text-xs font-bold transition-colors btn-corrective-cancel" data-id="${incidentKey}">Cancel</button>
-          </div>
-          <div class="flex gap-1.5">
-            <button class="px-2 py-1 text-slate-500 hover:bg-slate-100 rounded-lg text-[9px] md:text-[10px] font-bold transition-colors uppercase btn-corrective-edit-type" data-id="${incidentKey}">Edit Type</button>
-            <button class="px-2 py-1 text-orange-600 hover:bg-orange-50 rounded-lg text-[9px] md:text-[10px] font-bold transition-colors uppercase btn-corrective-detail" data-id="${incidentKey}">Details</button>
-            ${typeof window.renderReportButton === "function" ? window.renderReportButton(incident) : `<button class="px-2 py-1 text-purple-600 hover:bg-purple-50 rounded-lg text-[9px] md:text-[10px] font-bold transition-colors uppercase btn-corrective-report" data-id="${incidentKey}">Report</button>`}
-          </div>
+          <button class="btn btn-sm btn-ghost btn-corrective-cancel" style="color:#dc2626;border-color:transparent" data-id="${incidentKey}">× Cancel</button>
         </div>
       `;
 
@@ -237,7 +334,7 @@ const CorrectiveUI = {
         const startTime = el.dataset.start;
         if (startTime) {
           const newTime = calculateTotalDownTime(startTime);
-          el.innerHTML = `<i data-lucide="clock" class="w-3 h-3"></i> Down: ${newTime}`;
+          el.innerHTML = `<i data-lucide="arrow-down-circle" class="w-3 h-3"></i> Down ${newTime}`;
           if (window.lucide) window.lucide.createIcons();
         }
       });

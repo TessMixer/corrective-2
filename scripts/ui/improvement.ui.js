@@ -232,20 +232,20 @@
         : '-';
       const isFinished = imp.status === 'finished';
       const statusBadge = isFinished
-        ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">✓ เสร็จสิ้น</span>`
-        : `<span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">กำลังดำเนินการ</span>`;
+        ? `<span class="tag ok">✓ เสร็จสิ้น</span>`
+        : `<span class="tag inf">กำลังดำเนินการ</span>`;
       const borderColor = isFinished ? 'border-emerald-200' : 'border-amber-200';
       const hoverBorder = isFinished ? 'hover:border-emerald-400' : 'hover:border-amber-400';
       const gradientColor = isFinished ? 'from-emerald-50/60' : 'from-amber-50/60';
       return `
-        <div class="bg-white border ${borderColor} ${hoverBorder} rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer relative overflow-hidden group"
+        <div class="corrective-card cursor-pointer group border-l-4 ${borderColor} hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden"
              onclick="window.ImprovementUI.openLocationDetail('${key}')">
           <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl ${gradientColor} to-transparent rounded-bl-[3rem] pointer-events-none"></div>
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1 min-w-0">
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Location Improvement</span>
-              <div class="font-black text-slate-800 text-sm truncate mt-0.5 group-hover:text-orange-600 transition-colors">${imp.area || 'Unknown area'}</div>
-              <div class="text-[10px] text-slate-400 mt-0.5">${imp.lat?.toFixed(5)}, ${imp.lng?.toFixed(5)} · รัศมี ${imp.radiusKm} กม.</div>
+              <span class="text-[10px] font-bold uppercase tracking-wide" style="color:var(--ink-muted)">Location Improvement</span>
+              <div class="font-black text-sm truncate mt-0.5 group-hover:text-orange-600 transition-colors" style="color:var(--ink)">${imp.area || 'Unknown area'}</div>
+              <div class="text-[10px] mt-0.5" style="color:var(--ink-muted)">${imp.lat?.toFixed(5)}, ${imp.lng?.toFixed(5)} · รัศมี ${imp.radiusKm} กม.</div>
             </div>
             <div class="flex flex-col items-end gap-1 ml-2 relative z-10">
               <span class="${isFinished ? 'bg-emerald-500' : 'bg-amber-500'} text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">${imp.incidentCount} เหตุการณ์</span>
@@ -253,11 +253,11 @@
             </div>
           </div>
           ${imp.actionNote ? `
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-3 text-xs text-slate-700">
-            <span class="font-bold text-slate-500">การดำเนินการ: </span>${imp.actionNote}
+          <div class="rounded-xl p-3 mb-3 text-xs" style="background:var(--surface-2);border:1px solid var(--hair-soft);color:var(--ink)">
+            <span class="font-bold" style="color:var(--ink-muted)">การดำเนินการ: </span>${imp.actionNote}
           </div>` : ''}
-          <div class="text-[10px] text-slate-400 pt-2 border-t border-slate-50">
-            โดย: <b class="text-slate-600">${imp.resolvedBy || 'NOC'}</b> · ${date}
+          <div class="text-[10px] pt-2" style="color:var(--ink-muted);border-top:1px solid var(--hair-soft)">
+            โดย: <b style="color:var(--ink)">${imp.resolvedBy || 'NOC'}</b> · ${date}
           </div>
         </div>`;
     }).join('');
@@ -265,8 +265,8 @@
     return `
       <div class="mt-8">
         <div class="flex items-center gap-3 mb-4">
-          <h3 class="text-base font-black text-slate-800">Location Improvements</h3>
-          <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full">${entries.length} locations</span>
+          <h3 class="text-base font-black" style="color:var(--ink)">Location Improvements</h3>
+          <span class="tag ok">${entries.length} locations</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           ${cards}
@@ -341,19 +341,19 @@
       const method = d.method || d.repairText || inc.nsFinish?.details?.method || '-';
       const cid    = getIncidentCID(inc);
       return `
-        <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-orange-50 transition-colors">
-          <td class="px-3 py-2 text-xs font-bold text-slate-400">${i + 1}</td>
-          <td class="px-3 py-2 text-xs text-slate-700">${fmtDateShort(downTime)}</td>
+        <tr style="background:${i % 2 === 0 ? 'var(--surface)' : 'var(--surface-2)'}" class="hover:bg-orange-50 transition-colors">
+          <td class="px-3 py-2 text-xs font-bold" style="color:var(--ink-muted)">${i + 1}</td>
+          <td class="px-3 py-2 text-xs" style="color:var(--ink)">${fmtDateShort(downTime)}</td>
           <td class="px-3 py-2 text-xs font-mono text-orange-600">${inc.incidentId || inc.id || '-'}</td>
           <td class="px-3 py-2 text-xs font-semibold text-blue-600">${cid || '-'}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 max-w-[120px] truncate" title="${d.area || ''}">${d.area || '-'}</td>
+          <td class="px-3 py-2 text-xs max-w-[120px] truncate" style="color:var(--ink)" title="${d.area || ''}">${d.area || '-'}</td>
           <td class="px-3 py-2 text-xs">
-            <div class="font-semibold text-slate-700">${d.site || '-'}</div>
+            <div class="font-semibold" style="color:var(--ink)">${d.site || '-'}</div>
             ${d.distance ? `<div class="text-rose-500 font-bold text-[10px]">${d.distance}</div>` : ''}
           </td>
-          <td class="px-3 py-2 text-xs text-slate-600">${cause}</td>
-          <td class="px-3 py-2 text-xs font-bold ${ms > 4 * 3600000 ? 'text-red-600' : 'text-slate-700'}">${duration}</td>
-          <td class="px-3 py-2 text-xs text-slate-500">${method}</td>
+          <td class="px-3 py-2 text-xs" style="color:var(--ink)">${cause}</td>
+          <td class="px-3 py-2 text-xs font-bold ${ms > 4 * 3600000 ? 'text-red-600' : ''}" style="${ms > 4 * 3600000 ? '' : 'color:var(--ink)'}">${duration}</td>
+          <td class="px-3 py-2 text-xs" style="color:var(--ink-muted)">${method}</td>
         </tr>`;
     }).join('');
 
@@ -364,12 +364,12 @@
           <div class="flex items-start gap-2 group" id="loc-note-${i}">
             <span class="mt-1 w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">${i+1}</span>
             <input type="text" value="${item.replace(/"/g,'&quot;')}"
-              class="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:border-orange-400 focus:outline-none"
+              class="form-input flex-1"
               data-loc-note-index="${i}">
             <button onclick="window.ImprovementUI.removeLocNote('${key}', ${i})"
-              class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all text-lg leading-none mt-1">×</button>
+              class="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all text-lg leading-none mt-1" style="color:var(--ink-muted)">×</button>
           </div>`).join('')
-      : `<div class="text-slate-400 text-sm italic">ยังไม่มี Improvement action</div>`;
+      : `<div class="text-sm italic" style="color:var(--ink-muted)">ยังไม่มี Improvement action</div>`;
 
     const patternHtml = patterns.length ? `
       <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
@@ -386,17 +386,17 @@
     container.innerHTML = `
       <!-- Header -->
       <div class="mb-5 flex items-center gap-3 flex-wrap">
-        <button onclick="window.ImprovementUI.render()" class="text-slate-500 hover:text-slate-800 transition-colors p-1.5 hover:bg-slate-100 rounded-lg shrink-0">
+        <button onclick="window.ImprovementUI.render()" class="btn btn-sm btn-ghost shrink-0" style="width:36px;padding:0">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <h2 class="text-xl font-black text-slate-800">${imp.area || 'Unknown area'}</h2>
-            <span class="${isFinished ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} text-xs font-bold px-2 py-0.5 rounded-full border">
+            <h2 class="text-xl font-black" style="color:var(--ink)">${imp.area || 'Unknown area'}</h2>
+            <span class="${isFinished ? 'tag ok' : 'tag inf'}">
               ${isFinished ? '✓ เสร็จสิ้น' : 'กำลังดำเนินการ'}
             </span>
           </div>
-          <p class="text-sm text-slate-400 mt-0.5">${imp.lat?.toFixed(5)}, ${imp.lng?.toFixed(5)} · รัศมี ${imp.radiusKm} กม.</p>
+          <p class="text-sm mt-0.5" style="color:var(--ink-muted)">${imp.lat?.toFixed(5)}, ${imp.lng?.toFixed(5)} · รัศมี ${imp.radiusKm} กม.</p>
         </div>
         <div class="flex gap-2 shrink-0">
           ${isFinished
@@ -410,22 +410,22 @@
 
       <!-- Stats -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+        <div class="panel p-4 text-center">
           <div class="text-3xl font-black text-rose-500">${incidents.length}</div>
-          <div class="text-xs text-slate-500 mt-1">รวม Incident</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">รวม Incident</div>
         </div>
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+        <div class="panel p-4 text-center">
           <div class="text-3xl font-black text-amber-500">${patterns.length}</div>
-          <div class="text-xs text-slate-500 mt-1">Pattern ซ้ำที่พบ</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">Pattern ซ้ำที่พบ</div>
         </div>
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+        <div class="panel p-4 text-center">
           <div class="text-3xl font-black text-blue-500">${cids.length}</div>
-          <div class="text-xs text-slate-500 mt-1">CID ที่เกี่ยวข้อง</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">CID ที่เกี่ยวข้อง</div>
         </div>
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
-          <div class="text-sm font-black text-slate-700">${imp.resolvedBy || 'NOC'}</div>
-          <div class="text-[10px] text-slate-400 mt-0.5">${date}</div>
-          <div class="text-xs text-slate-500 mt-1">ดำเนินการโดย</div>
+        <div class="panel p-4 text-center">
+          <div class="text-sm font-black" style="color:var(--ink)">${imp.resolvedBy || 'NOC'}</div>
+          <div class="text-[10px] mt-0.5" style="color:var(--ink-muted)">${date}</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">ดำเนินการโดย</div>
         </div>
       </div>
 
@@ -460,36 +460,36 @@
       </div>` : ''}
 
       <!-- Incident table -->
-      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-6">
-        <div class="px-4 py-3 border-b border-slate-100 font-bold text-slate-700 text-sm flex items-center gap-2">
+      <div class="panel overflow-hidden mb-6">
+        <div class="px-4 py-3 font-bold text-sm flex items-center gap-2" style="border-bottom:1px solid var(--hair-soft);color:var(--ink)">
           <span>📋</span> ประวัติ Incident ในพื้นที่
         </div>
         ${incidents.length ? `
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="bg-slate-50 text-left">
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">#</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">วันที่</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">Incident ID</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">CID</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">พื้นที่</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">Site → ระยะ</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">สาเหตุ</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">ระยะเวลา Down</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase">วิธีแก้ไข</th>
+              <tr class="text-left" style="background:var(--surface-2)">
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">#</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">วันที่</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Incident ID</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">CID</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">พื้นที่</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Site → ระยะ</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">สาเหตุ</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">ระยะเวลา Down</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase" style="color:var(--ink-muted)">วิธีแก้ไข</th>
               </tr>
             </thead>
             <tbody>${incRows}</tbody>
           </table>
         </div>` : `
-        <div class="p-8 text-center text-slate-400 text-sm">ไม่พบข้อมูล Incident</div>`}
+        <div class="p-8 text-center text-sm" style="color:var(--ink-muted)">ไม่พบข้อมูล Incident</div>`}
       </div>
 
       <!-- Improvement / Action notes -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div class="panel p-5">
         <div class="flex items-center justify-between mb-4">
-          <div class="font-bold text-slate-700 flex items-center gap-2"><span>💡</span> Improvement / Action</div>
+          <div class="font-bold flex items-center gap-2" style="color:var(--ink)"><span>💡</span> Improvement / Action</div>
           <button onclick="window.ImprovementUI.addLocNote('${key}')"
             class="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold rounded-lg transition-colors">
             + เพิ่มรายการ
@@ -497,8 +497,7 @@
         </div>
         <div id="loc-notes-list" class="space-y-2">${noteItems}</div>
         <div class="mt-3 text-right">
-          <button onclick="window.ImprovementUI.saveLocNotes('${key}')"
-            class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl transition-colors">
+          <button onclick="window.ImprovementUI.saveLocNotes('${key}')" class="btn btn-primary">
             💾 บันทึก
           </button>
         </div>
@@ -521,15 +520,30 @@
     const allGroups = [...groups, ...manualOnly];
 
     if (!allGroups.length) {
+      const wave = (color) => `<svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:56px;height:32px;opacity:.18" viewBox="0 0 56 32" preserveAspectRatio="none"><path d="M1 24 Q8 8 14 16 Q20 24 28 12 Q36 2 42 14 Q48 24 55 8" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
       container.innerHTML = `
-        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 text-center max-w-lg mx-auto mt-6">
+        <div class="space-y-3 mb-4">
+          <div class="panel px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-black tracking-tight" style="color:var(--ink)">Improvement</h1>
+              <p class="text-[10px] font-bold uppercase tracking-widest mt-0.5" style="color:var(--ink-muted)">CID ที่ Down มากกว่า ${TRIGGER_COUNT} ครั้ง/เดือน · Repeat-incident tracking</p>
+            </div>
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style="border:1.5px solid var(--hair);color:var(--ink-muted)">📋 Total · 0</span>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #ea580c">${wave("#ea580c")}<div class="text-4xl font-black leading-none mb-1" style="color:#ea580c">0</div><div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Total CID</div></div>
+            <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #dc2626">${wave("#dc2626")}<div class="text-4xl font-black leading-none mb-1" style="color:#dc2626">0</div><div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">In Progress</div></div>
+            <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #0d9488">${wave("#0d9488")}<div class="text-4xl font-black leading-none mb-1" style="color:#0d9488">0</div><div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Finished</div></div>
+          </div>
+        </div>
+        <div class="panel p-12 text-center max-w-lg mx-auto mt-6">
           <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-emerald-100">
             <i data-lucide="shield-check" class="w-8 h-8 text-emerald-500"></i>
           </div>
-          <h3 class="text-lg font-black text-slate-800 mb-1">ระบบปกติ</h3>
-          <p class="text-sm font-semibold text-slate-500 mb-1">ยังไม่มี CID ที่ Down เกิน <span class="text-orange-600 font-black">${TRIGGER_COUNT} ครั้ง</span>/เดือน</p>
-          <p class="text-xs text-slate-400 mt-3 leading-relaxed">เลือก Incident จาก Global Search<br>แล้วกด <span class="font-bold text-orange-500">"เพิ่มใน Improvement"</span> เพื่อติดตามแบบ Manual</p>
-          <div class="mt-6 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          <h3 class="text-lg font-black mb-1" style="color:var(--ink)">ระบบปกติ</h3>
+          <p class="text-sm font-semibold mb-1" style="color:var(--ink-muted)">ยังไม่มี CID ที่ Down เกิน <span class="text-orange-600 font-black">${TRIGGER_COUNT} ครั้ง</span>/เดือน</p>
+          <p class="text-xs mt-3 leading-relaxed" style="color:var(--ink-muted)">เลือก Incident จาก Global Search<br>แล้วกด <span class="font-bold text-orange-500">"เพิ่มใน Improvement"</span> เพื่อติดตามแบบ Manual</p>
+          <div class="mt-6 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">
             <i data-lucide="info" class="w-3 h-3"></i>
             <span>ระบบจะแสดงข้อมูลอัตโนมัติเมื่อพบ Pattern</span>
           </div>
@@ -548,17 +562,15 @@
       const manualBadge = g.isManual
         ? `<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Manual</span>` : "";
       const removeBtn = g.isManual
-        ? `<button onclick="event.stopPropagation();window.ImprovementUI.removeManualGroup('${g.cid}')" class="text-slate-300 hover:text-red-400 text-base leading-none ml-1 transition-colors" title="ลบ">×</button>` : "";
-      const borderColor = isFinished ? 'border-emerald-200 hover:border-emerald-400' : 'border-slate-200 hover:border-orange-200';
-      const gradientColor = isFinished ? 'from-emerald-50/60' : (g.isManual ? 'from-blue-50/60' : 'from-rose-50/60');
+        ? `<button onclick="event.stopPropagation();window.ImprovementUI.removeManualGroup('${g.cid}')" class="hover:text-red-400 text-base leading-none ml-1 transition-colors" style="color:var(--ink-dim)" title="ลบ">×</button>` : "";
+      const borderAccent = isFinished ? 'border-l-4 border-l-emerald-400' : (g.isManual ? 'border-l-4 border-l-blue-400' : '');
       return `
-        <div class="bg-white border ${borderColor} rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group relative overflow-hidden"
+        <div class="corrective-card cursor-pointer group relative overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${borderAccent}"
              onclick="window.ImprovementUI.openDetail('${g.cid}')">
-          <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl ${gradientColor} to-transparent rounded-bl-[3rem] pointer-events-none"></div>
           <div class="flex items-start justify-between mb-3">
             <div class="flex-1 min-w-0">
-              <div class="font-black text-slate-800 text-sm truncate group-hover:text-orange-600 transition-colors">${g.cid}</div>
-              <div class="text-xs text-slate-400 truncate mt-0.5">${g.customer}</div>
+              <div class="font-black text-sm truncate group-hover:text-orange-600 transition-colors" style="color:var(--ink)">${g.cid}</div>
+              <div class="text-xs truncate mt-0.5" style="color:var(--ink-muted)">${g.customer}</div>
             </div>
             <div class="flex flex-col items-end gap-1 ml-2 relative z-10">
               <div class="flex items-center gap-1">
@@ -567,20 +579,20 @@
               </div>
               ${manualBadge}
               ${isFinished
-                ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">✓ เสร็จสิ้น</span>`
+                ? `<span class="tag ok">✓ เสร็จสิ้น</span>`
                 : hasNotes
-                  ? `<span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">มี Action</span>`
-                  : `<span class="bg-slate-100 text-slate-400 text-[10px] px-2 py-0.5 rounded-full">ยังไม่มี Action</span>`
+                  ? `<span class="tag inf">มี Action</span>`
+                  : `<span class="text-[10px] px-2 py-0.5 rounded-full" style="background:var(--surface-2);color:var(--ink-muted)">ยังไม่มี Action</span>`
               }
             </div>
           </div>
           ${worstLabel ? `<div class="text-xs font-semibold text-rose-600 mb-1 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>${worstLabel}</div>` : ""}
           ${repeatLabel ? `<div class="text-xs text-amber-600 mb-1 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>${repeatLabel.replace("⚠️ ", "")}</div>` : ""}
-          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
-            <span class="text-[10px] text-slate-400">ล่าสุด: ${fmtDateShort(g.incidents[0]?.completedAt || g.incidents[0]?.createdAt)}</span>
+          <div class="flex items-center justify-between mt-2 pt-2" style="border-top:1px solid var(--hair-soft)">
+            <span class="text-[10px]" style="color:var(--ink-muted)">ล่าสุด: ${fmtDateShort(g.incidents[0]?.completedAt || g.incidents[0]?.createdAt)}</span>
             ${isFinished
               ? `<button onclick="event.stopPropagation();window.ImprovementUI.reopenGroup('${g.cid}')"
-                  class="text-[10px] font-bold text-slate-400 hover:text-slate-700 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">↩ เปิดใหม่</button>`
+                  class="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors hover:bg-slate-100" style="color:var(--ink-muted)">↩ เปิดใหม่</button>`
               : `<button onclick="event.stopPropagation();window.ImprovementUI.finishGroup('${g.cid}')"
                   class="text-[10px] font-bold text-emerald-600 hover:text-white px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-500 border border-emerald-200 transition-colors">✓ Finish</button>`
             }
@@ -588,13 +600,43 @@
         </div>`;
     };
 
+    const finishedCount = allGroups.filter(g => notes[g.cid]?.status === 'finished').length;
+    const activeCount   = allGroups.length - finishedCount;
+    const wave = (color) => `<svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:56px;height:32px;opacity:.18" viewBox="0 0 56 32" preserveAspectRatio="none"><path d="M1 24 Q8 8 14 16 Q20 24 28 12 Q36 2 42 14 Q48 24 55 8" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+    const manualCount = allGroups.filter(g => g.isManual).length;
+
     container.innerHTML = `
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <h2 class="text-xl font-black text-slate-800">Improvement</h2>
-          <p class="text-sm text-slate-500 mt-0.5">CID ที่ Down มากกว่า ${TRIGGER_COUNT} ครั้งใน 1 เดือน หรือเพิ่มด้วยตนเอง</p>
+      <div class="space-y-3 mb-4">
+        <div class="panel px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 class="text-xl font-black tracking-tight" style="color:var(--ink)">Improvement</h1>
+            <p class="text-[10px] font-bold uppercase tracking-widest mt-0.5" style="color:var(--ink-muted)">CID ที่ Down มากกว่า ${TRIGGER_COUNT} ครั้ง/เดือน · Repeat-incident tracking</p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style="border:1.5px solid var(--hair);color:var(--ink-muted)">📋 Total · ${allGroups.length}</span>
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style="border:1.5px solid var(--hair);color:var(--ink-muted)">✏️ Manual · ${manualCount}</span>
+          </div>
         </div>
-        <span class="bg-red-100 text-red-700 text-xs font-bold px-3 py-1.5 rounded-full">${allGroups.length} CID</span>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #ea580c">
+            ${wave("#ea580c")}
+            <div class="text-4xl font-black leading-none mb-1" style="color:#ea580c">${allGroups.length}</div>
+            <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Total CID</div>
+            <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Repeat incident groups</div>
+          </div>
+          <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #dc2626">
+            ${wave("#dc2626")}
+            <div class="text-4xl font-black leading-none mb-1" style="color:#dc2626">${activeCount}</div>
+            <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">In Progress</div>
+            <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Pending action</div>
+          </div>
+          <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #0d9488">
+            ${wave("#0d9488")}
+            <div class="text-4xl font-black leading-none mb-1" style="color:#0d9488">${finishedCount}</div>
+            <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Finished</div>
+            <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Completed improvement</div>
+          </div>
+        </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         ${allGroups.map(renderCard).join("")}
@@ -622,13 +664,13 @@
       const cause = getCause(inc);
       const method = inc.nsFinish?.details?.method || inc.nsFinish?.details?.repairText || "-";
       return `
-        <tr class="${i % 2 === 0 ? "bg-white" : "bg-slate-50"} hover:bg-orange-50 transition-colors">
-          <td class="px-3 py-2 text-xs font-mono text-slate-600">${i + 1}</td>
-          <td class="px-3 py-2 text-xs text-slate-700">${fmtDateShort(inc.completedAt || inc.createdAt)}</td>
+        <tr class="hover:bg-orange-50 transition-colors" style="border-bottom:1px solid var(--hair-soft)">
+          <td class="px-3 py-2 text-xs font-mono" style="color:var(--ink-muted)">${i + 1}</td>
+          <td class="px-3 py-2 text-xs" style="color:var(--ink)">${fmtDateShort(inc.completedAt || inc.createdAt)}</td>
           <td class="px-3 py-2 text-xs font-semibold text-orange-700">${inc.incidentId || inc.id || "-"}</td>
-          <td class="px-3 py-2 text-xs text-slate-700">${cause}</td>
-          <td class="px-3 py-2 text-xs ${ms && ms > 4*3600000 ? "text-red-600 font-bold" : "text-slate-700"}">${fmtDuration(ms)}</td>
-          <td class="px-3 py-2 text-xs text-slate-600">${method}</td>
+          <td class="px-3 py-2 text-xs" style="color:var(--ink)">${cause}</td>
+          <td class="px-3 py-2 text-xs ${ms && ms > 4*3600000 ? "text-red-600 font-bold" : ""}" style="${ms && ms > 4*3600000 ? "" : "color:var(--ink)"}">${fmtDuration(ms)}</td>
+          <td class="px-3 py-2 text-xs" style="color:var(--ink-muted)">${method}</td>
         </tr>`;
     }).join("");
 
@@ -651,20 +693,20 @@
           <div class="flex items-start gap-2 group" id="imp-item-${i}">
             <span class="mt-1 w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">${i+1}</span>
             <input type="text" value="${item.replace(/"/g,'&quot;')}"
-              class="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:border-orange-400 focus:outline-none"
+              class="form-input flex-1"
               data-note-index="${i}" onchange="window.ImprovementUI.updateNote('${cid}', ${i}, this.value)">
-            <button onclick="window.ImprovementUI.removeNote('${cid}', ${i})" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all text-lg leading-none mt-1">×</button>
+            <button onclick="window.ImprovementUI.removeNote('${cid}', ${i})" class="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all text-lg leading-none mt-1" style="color:var(--ink-muted)">×</button>
           </div>`).join("")
-      : `<div class="text-slate-400 text-sm italic" id="imp-empty">ยังไม่มี Improvement action</div>`;
+      : `<div class="text-sm italic" style="color:var(--ink-muted)" id="imp-empty">ยังไม่มี Improvement action</div>`;
 
     container.innerHTML = `
       <div class="mb-5 flex items-center gap-3">
-        <button onclick="window.ImprovementUI.render()" class="text-slate-500 hover:text-slate-800 transition-colors p-1.5 hover:bg-slate-100 rounded-lg">
+        <button onclick="window.ImprovementUI.render()" class="btn btn-sm btn-ghost p-1.5">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div>
-          <h2 class="text-xl font-black text-slate-800">${cid}</h2>
-          <p class="text-sm text-slate-500">${g.customer}</p>
+          <h2 class="text-xl font-black" style="color:var(--ink)">${cid}</h2>
+          <p class="text-sm" style="color:var(--ink-muted)">${g.customer}</p>
         </div>
         <div class="ml-auto flex gap-2 flex-wrap">
           ${saved.status === 'finished'
@@ -696,37 +738,37 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+        <div class="panel p-4 text-center">
           <div class="text-3xl font-black text-red-500">${g.incidents.length}</div>
-          <div class="text-xs text-slate-500 mt-1">รวม Incidents</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">รวม Incidents</div>
         </div>
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+        <div class="panel p-4 text-center">
           <div class="text-3xl font-black text-orange-500">${g.worstMonth?.count || "-"}</div>
-          <div class="text-xs text-slate-500 mt-1">สูงสุด/เดือน (${g.worstMonth?.month || ""})</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">สูงสุด/เดือน (${g.worstMonth?.month || ""})</div>
         </div>
-        <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+        <div class="panel p-4 text-center">
           <div class="text-3xl font-black text-amber-500">${patterns.length}</div>
-          <div class="text-xs text-slate-500 mt-1">Pattern ซ้ำที่พบ</div>
+          <div class="text-xs mt-1" style="color:var(--ink-muted)">Pattern ซ้ำที่พบ</div>
         </div>
       </div>
 
       ${patternHtml}
 
       <!-- Incident Table -->
-      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-6">
-        <div class="px-4 py-3 border-b border-slate-100 font-bold text-slate-700 text-sm flex items-center gap-2">
+      <div class="panel overflow-hidden mb-6">
+        <div class="px-4 py-3 font-bold text-sm flex items-center gap-2" style="border-bottom:1px solid var(--hair-soft);color:var(--ink)">
           <span>📋</span> ประวัติ Incident
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="bg-slate-50 text-left">
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">#</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">วันที่</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Incident ID</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">สาเหตุ</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">ระยะเวลา Down</th>
-                <th class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">วิธีแก้ไข</th>
+              <tr class="text-left" style="background:var(--surface-2)">
+                <th class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">#</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">วันที่</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">Incident ID</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">สาเหตุ</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">ระยะเวลา Down</th>
+                <th class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style="color:var(--ink-muted)">วิธีแก้ไข</th>
               </tr>
             </thead>
             <tbody>${incRows}</tbody>
@@ -735,11 +777,11 @@
       </div>
 
       <!-- Improvement Notes -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div class="panel p-5">
         <div class="flex items-center justify-between mb-4">
-          <div class="font-bold text-slate-700 flex items-center gap-2"><span>💡</span> Improvement / Action</div>
+          <div class="font-bold flex items-center gap-2" style="color:var(--ink)"><span>💡</span> Improvement / Action</div>
           <button onclick="window.ImprovementUI.addNote('${cid}')"
-            class="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold rounded-lg transition-colors">
+            class="btn btn-sm flex items-center gap-1" style="background:rgba(234,88,12,.1);color:#ea580c;border-color:transparent">
             + เพิ่มรายการ
           </button>
         </div>
@@ -748,7 +790,7 @@
         </div>
         <div class="mt-3 text-right">
           <button onclick="window.ImprovementUI.saveAll('${cid}')"
-            class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl transition-colors">
+            class="btn btn-primary px-4 py-2 text-sm font-bold">
             💾 บันทึก
           </button>
         </div>

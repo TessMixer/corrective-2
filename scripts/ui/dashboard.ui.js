@@ -183,19 +183,19 @@ const DashboardUI = (function () {
 
   function renderKPI(title, value, colorClass = 'text-orange-500', icon = 'activity', badge = '') {
     const card = document.createElement('div');
-    card.className = 'bg-white rounded-xl md:rounded-2xl p-3 md:p-6 shadow-sm border border-slate-100 flex items-center justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group';
+    card.className = 'panel p-3 md:p-6 flex items-center justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group';
     let iconBg = 'bg-slate-50', iconColor = 'text-slate-400';
     if (colorClass.includes('orange'))  { iconBg = 'bg-orange-50';  iconColor = 'text-orange-400'; }
     else if (colorClass.includes('rose'))    { iconBg = 'bg-rose-50';    iconColor = 'text-rose-400'; }
     else if (colorClass.includes('emerald')) { iconBg = 'bg-emerald-50'; iconColor = 'text-emerald-400'; }
     else if (colorClass.includes('sky'))     { iconBg = 'bg-sky-50';     iconColor = 'text-sky-400'; }
     const badgeHtml = badge
-      ? `<span class="inline-block mt-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 uppercase tracking-wide">${badge}</span>`
+      ? `<span class="inline-block mt-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide" style="background:var(--surface-2);color:var(--ink-muted)">${badge}</span>`
       : '';
     card.innerHTML = `
       <div class="absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 ${iconBg} rounded-bl-[3rem] -mr-6 -mt-6 opacity-60 pointer-events-none group-hover:opacity-100 transition-opacity"></div>
       <div class="relative z-10">
-        <p class="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5 md:mb-1">${title}</p>
+        <p class="text-[9px] md:text-xs font-bold uppercase tracking-wider mb-0.5 md:mb-1" style="color:var(--ink-muted)">${title}</p>
         <h3 class="text-2xl md:text-3xl font-black ${colorClass}">${value}</h3>
         ${badgeHtml}
       </div>
@@ -334,96 +334,96 @@ const DashboardUI = (function () {
       const dist     = d.distance ? formatDistance(d.distance) : '-';
       const latlng   = d.latlng  || getIncidentLatlng(inc);
       return `
-        <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-          <td class="px-3 py-2.5 text-center font-bold text-slate-400 text-xs">${i + 1}</td>
+        <tr style="border-bottom:1px solid var(--hair-soft)">
+          <td class="px-3 py-2.5 text-center font-bold text-xs" style="color:var(--ink-muted)">${i + 1}</td>
           <td class="px-3 py-2.5">
-            <div class="font-semibold text-slate-700 text-xs">${fmtDate(downTime)}</div>
-            <div class="text-slate-400 text-[10px]">${fmtTime(downTime)}</div>
+            <div class="font-semibold text-xs" style="color:var(--ink)">${fmtDate(downTime)}</div>
+            <div class="text-[10px]" style="color:var(--ink-muted)">${fmtTime(downTime)}</div>
           </td>
           <td class="px-3 py-2.5">
-            <div class="text-xs font-mono text-orange-600">${fcNo}</div>
-            <div class="text-[10px] text-slate-400">${ticketNo !== '-' ? ticketNo : ''}</div>
+            <div class="text-xs font-mono" style="color:var(--accent)">${fcNo}</div>
+            <div class="text-[10px]" style="color:var(--ink-muted)">${ticketNo !== '-' ? ticketNo : ''}</div>
           </td>
-          <td class="px-3 py-2.5 text-xs text-slate-600 max-w-[120px] truncate" title="${area}">${area}</td>
+          <td class="px-3 py-2.5 text-xs max-w-[120px] truncate" style="color:var(--ink)" title="${area}">${area}</td>
           <td class="px-3 py-2.5">
-            <div class="text-xs font-semibold text-slate-700">${site}</div>
-            <div class="text-xs text-rose-500 font-bold">${dist !== '-' ? dist : ''}</div>
+            <div class="text-xs font-semibold" style="color:var(--ink)">${site}</div>
+            <div class="text-xs font-bold" style="color:var(--sev-dn)">${dist !== '-' ? dist : ''}</div>
           </td>
-          <td class="px-3 py-2.5 text-xs text-slate-600 max-w-[120px] truncate" title="${cause}">${cause}</td>
-          <td class="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">${fmtDate(upTime)} ${fmtTime(upTime)}</td>
+          <td class="px-3 py-2.5 text-xs max-w-[120px] truncate" style="color:var(--ink)" title="${cause}">${cause}</td>
+          <td class="px-3 py-2.5 text-xs whitespace-nowrap" style="color:var(--ink-muted)">${fmtDate(upTime)} ${fmtTime(upTime)}</td>
           <td class="px-3 py-2.5 text-center">
-            <span class="text-xs font-bold ${fmtDuration(downTime, upTime) !== '-' ? 'text-blue-600' : 'text-slate-300'}">${fmtDuration(downTime, upTime)}</span>
+            <span class="text-xs font-bold" style="color:${fmtDuration(downTime, upTime) !== '-' ? '#3b82f6' : 'var(--ink-dim)'}">${fmtDuration(downTime, upTime)}</span>
           </td>
-          <td class="px-3 py-2.5 text-[10px] text-slate-400">${latlng}</td>
+          <td class="px-3 py-2.5 text-[10px]" style="color:var(--ink-muted)">${latlng}</td>
         </tr>`;
     }).join('');
 
     const siteInfo = topSite
-      ? `<span class="ml-3 text-xs text-slate-400">Site: <b class="text-slate-600">${topSite}</b>${topDist ? ` · <b class="text-rose-500">${formatDistance(topDist)}</b>` : ''}</span>`
+      ? `<span class="ml-3 text-xs" style="color:var(--ink-muted)">Site: <b style="color:var(--ink)">${topSite}</b>${topDist ? ` · <b style="color:var(--sev-dn)">${formatDistance(topDist)}</b>` : ''}</span>`
       : '';
 
     const modal = document.createElement('div');
     modal.className = 'modal-backdrop flex items-center justify-center p-4';
     modal.style.zIndex = '200';
     modal.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[88vh] overflow-hidden">
+      <div class="rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[88vh] overflow-hidden" style="background:var(--surface)">
         <!-- Header -->
-        <div class="px-6 py-4 border-b border-slate-100 flex items-start justify-between shrink-0 bg-slate-50/50">
+        <div class="px-6 py-4 flex items-start justify-between shrink-0" style="border-bottom:1px solid var(--hair-soft);background:var(--surface-2)">
           <div>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Hotspot Detail · #${idx + 1}</p>
-            <h3 class="text-base font-black text-slate-800">${topArea}</h3>
+            <p class="text-[10px] font-bold uppercase tracking-widest mb-0.5" style="color:var(--ink-muted)">Hotspot Detail · #${idx + 1}</p>
+            <h3 class="text-base font-black" style="color:var(--ink)">${topArea}</h3>
             <div class="flex items-center gap-2 mt-1">
-              <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-600">
+              <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(220,38,38,.1);color:var(--sev-dn)">
                 <span>${count} incidents</span>
               </span>
               ${siteInfo}
             </div>
           </div>
-          <button id="hotspot-modal-close" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
-            <i data-lucide="x" class="w-4 h-4 text-slate-500"></i>
+          <button id="hotspot-modal-close" class="icon-btn">
+            <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
         <!-- Table -->
         <div class="overflow-auto flex-1">
           <table class="w-full text-sm">
-            <thead class="bg-slate-50 sticky top-0 z-10">
+            <thead class="sticky top-0 z-10" style="background:var(--surface-2)">
               <tr>
-                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase">#</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Down Time</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">FC / Ticket</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Area</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Site → ระยะ</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Cause</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Up Time</th>
-                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase">Duration</th>
-                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Lat/Long</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold uppercase" style="color:var(--ink-muted)">#</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Down Time</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">FC / Ticket</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Area</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Site → ระยะ</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Cause</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Up Time</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Duration</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Lat/Long</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
         <!-- Footer -->
-        <div class="px-6 py-3 border-t border-slate-100 shrink-0 bg-slate-50/50 flex items-center justify-between">
-          <span class="text-xs text-slate-400">Cluster centroid: ${cluster.centroid.lat.toFixed(5)}, ${cluster.centroid.lng.toFixed(5)} · radius 1 km</span>
-          <button id="hotspot-mark-btn" class="text-xs font-bold px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-1.5">
+        <div class="px-6 py-3 shrink-0 flex items-center justify-between" style="border-top:1px solid var(--hair-soft);background:var(--surface-2)">
+          <span class="text-xs" style="color:var(--ink-muted)">Cluster centroid: ${cluster.centroid.lat.toFixed(5)}, ${cluster.centroid.lng.toFixed(5)} · radius 1 km</span>
+          <button id="hotspot-mark-btn" class="btn btn-sm flex items-center gap-1.5" style="background:#22c55e;color:#fff;border-color:#22c55e">
             <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Mark as Improved
           </button>
         </div>
-        <div id="hotspot-improve-form" class="hidden px-6 py-4 border-t border-emerald-200 bg-emerald-50/50 shrink-0">
-          <p class="text-xs font-bold text-emerald-700 mb-3 uppercase tracking-wide">Mark Location as Improved</p>
+        <div id="hotspot-improve-form" class="hidden px-6 py-4 shrink-0" style="border-top:1px solid rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+          <p class="text-xs font-bold uppercase tracking-wide mb-3" style="color:#16a34a">Mark Location as Improved</p>
           <div class="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label class="text-xs font-semibold text-slate-600 block mb-1">Action taken</label>
-              <textarea id="hotspot-action-note" rows="2" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 resize-none" placeholder="เช่น ฝังสายใหม่, เปลี่ยนท่อร้อยสาย..."></textarea>
+              <label class="text-xs font-semibold block mb-1" style="color:var(--ink)">Action taken</label>
+              <textarea id="hotspot-action-note" rows="2" class="form-input w-full resize-none" placeholder="เช่น ฝังสายใหม่, เปลี่ยนท่อร้อยสาย..."></textarea>
             </div>
             <div>
-              <label class="text-xs font-semibold text-slate-600 block mb-1">Resolved by</label>
-              <input id="hotspot-resolved-by" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-400" placeholder="ชื่อผู้ดำเนินการ">
+              <label class="text-xs font-semibold block mb-1" style="color:var(--ink)">Resolved by</label>
+              <input id="hotspot-resolved-by" type="text" class="form-input w-full" placeholder="ชื่อผู้ดำเนินการ">
             </div>
           </div>
           <div class="flex gap-2 justify-end">
-            <button id="hotspot-form-cancel" class="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
-            <button id="hotspot-form-confirm" class="text-xs font-bold px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">✓ Confirm Improvement</button>
+            <button id="hotspot-form-cancel" class="btn btn-sm btn-ghost">Cancel</button>
+            <button id="hotspot-form-confirm" class="btn btn-sm" style="background:#22c55e;color:#fff;border-color:#22c55e">✓ Confirm Improvement</button>
           </div>
         </div>
       </div>
@@ -433,7 +433,7 @@ const DashboardUI = (function () {
     if (window.lucide) window.lucide.createIcons();
 
     const close = () => { try { document.body.removeChild(modal); } catch (_) {} };
-    const innerCard = modal.querySelector('.bg-white.rounded-2xl');
+    const innerCard = modal.querySelector('.rounded-2xl');
     innerCard?.addEventListener('click', e => e.stopPropagation());
     modal.addEventListener('click', close);
     modal.querySelector('#hotspot-modal-close').addEventListener('click', e => { e.stopPropagation(); close(); });
@@ -565,8 +565,8 @@ const DashboardUI = (function () {
 
     if (!hasLatlng) {
       hotspotEl.innerHTML = `
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center text-slate-400">
-          <i data-lucide="map-pin-off" class="w-10 h-10 mx-auto mb-3 text-slate-300"></i>
+        <div class="panel p-6 text-center" style="color:var(--ink-muted)">
+          <i data-lucide="map-pin-off" class="w-10 h-10 mx-auto mb-3" style="color:var(--ink-dim)"></i>
           <p class="font-bold text-sm">No location data in this period</p>
           <p class="text-xs mt-1">Fill in Lat/Long during NS Finish to enable hotspot analysis</p>
         </div>`;
@@ -574,22 +574,21 @@ const DashboardUI = (function () {
       return;
     }
 
-    const BADGE_COLORS = { 2: 'bg-yellow-100 text-yellow-700', 3: 'bg-orange-100 text-orange-700', 4: 'bg-red-100 text-red-700' };
     const countBadge = count => {
       const cls = count >= 6 ? 'bg-red-600 text-white' : count >= 4 ? 'bg-red-100 text-red-700' : count >= 3 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700';
       return `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black ${cls}">${count}</span>`;
     };
 
     hotspotEl.innerHTML = `
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-100">
+      <div class="panel overflow-hidden">
+        <div class="flex items-center justify-between px-4 md:px-6 py-4" style="border-bottom:1px solid var(--hair-soft)">
           <div>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hotspot Analysis · ${periodLabel} · radius 1 km</p>
-            <h4 class="text-sm font-black text-slate-800">Locations with Repeated Incidents</h4>
+            <p class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--ink-muted)">Hotspot Analysis · ${periodLabel} · radius 1 km</p>
+            <h4 class="text-sm font-black" style="color:var(--ink)">Locations with Repeated Incidents</h4>
           </div>
           <div class="flex items-center gap-2">
-            <label class="text-xs font-semibold text-slate-500">Min. count</label>
-            <select id="dash-hotspot-min" class="text-sm font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-orange-400">
+            <label class="text-xs font-semibold" style="color:var(--ink-muted)">Min. count</label>
+            <select id="dash-hotspot-min" class="form-input text-sm font-semibold" style="height:32px;padding:0 8px">
               <option value="2" ${minCount === 2 ? 'selected' : ''}>≥ 2</option>
               <option value="3" ${minCount === 3 ? 'selected' : ''}>≥ 3</option>
               <option value="5" ${minCount === 5 ? 'selected' : ''}>≥ 5</option>
@@ -601,24 +600,24 @@ const DashboardUI = (function () {
         </div>
 
         ${clusters.length === 0 ? `
-          <div class="p-10 text-center text-slate-400">
-            <i data-lucide="map-pin" class="w-10 h-10 mx-auto mb-3 text-slate-300"></i>
+          <div class="p-10 text-center" style="color:var(--ink-muted)">
+            <i data-lucide="map-pin" class="w-10 h-10 mx-auto mb-3" style="color:var(--ink-dim)"></i>
             <p class="font-bold text-sm">No hotspots found</p>
             <p class="text-xs mt-1">No location has ≥ ${minCount} incidents within 1 km in this period</p>
           </div>` : `
         <div class="grid grid-cols-1 lg:grid-cols-5 min-h-[360px]">
 
           <!-- Table -->
-          <div class="lg:col-span-2 overflow-auto border-r border-slate-100">
+          <div class="lg:col-span-2 overflow-auto" style="border-right:1px solid var(--hair-soft)">
             <table class="w-full text-sm">
-              <thead class="bg-slate-50 sticky top-0 z-10">
+              <thead class="sticky top-0 z-10" style="background:var(--surface-2)">
                 <tr>
-                  <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">#</th>
-                  <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Count</th>
-                  <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Area</th>
-                  <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Site → ระยะ</th>
-                  <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Cause</th>
-                  <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Last</th>
+                  <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">#</th>
+                  <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Count</th>
+                  <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Area</th>
+                  <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Site → ระยะ</th>
+                  <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Cause</th>
+                  <th class="px-3 py-2 text-left text-[10px] font-bold uppercase" style="color:var(--ink-muted)">Last</th>
                 </tr>
               </thead>
               <tbody>
@@ -631,19 +630,19 @@ const DashboardUI = (function () {
                   const lastDate = dates.length ? new Date(Math.max(...dates)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '-';
                   const { topSite: rowSite, topDist: rowDist, formatted: rowSiteDist } = getSiteDistText(c.incidents);
                   const siteCell = rowSite
-                    ? `<div class="font-semibold text-slate-700 truncate">${rowSite}</div>${rowDist ? `<div class="text-rose-500 font-bold">${formatDistance(rowDist)}</div>` : ''}`
-                    : `<span class="text-slate-300">-</span>`;
+                    ? `<div class="font-semibold truncate" style="color:var(--ink)">${rowSite}</div>${rowDist ? `<div class="font-bold" style="color:var(--sev-dn)">${formatDistance(rowDist)}</div>` : ''}`
+                    : `<span style="color:var(--ink-dim)">-</span>`;
                   const impStatus = getClusterImpStatus(c.centroid);
                   const inProgressBadge = impStatus === 'in_progress'
                     ? `<span class="ml-1 text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">กำลังดำเนินการ</span>`
                     : '';
-                  return `<tr id="hotspot-row-${idx}" class="hotspot-tr border-b border-slate-50 hover:bg-orange-50 transition-colors">
-                    <td class="px-3 py-2.5 font-bold text-slate-500">${idx + 1}</td>
+                  return `<tr id="hotspot-row-${idx}" class="hotspot-tr hover:bg-orange-50 transition-colors" style="border-bottom:1px solid var(--hair-soft)">
+                    <td class="px-3 py-2.5 font-bold" style="color:var(--ink-muted)">${idx + 1}</td>
                     <td class="px-3 py-2.5">${countBadge(c.incidents.length)}</td>
-                    <td class="px-3 py-2.5 font-semibold text-slate-700 max-w-[120px]" title="${topArea}"><span class="truncate block">${topArea}</span>${inProgressBadge}</td>
+                    <td class="px-3 py-2.5 font-semibold max-w-[120px]" style="color:var(--ink)" title="${topArea}"><span class="truncate block">${topArea}</span>${inProgressBadge}</td>
                     <td class="px-3 py-2.5 text-xs max-w-[120px]" title="${rowSiteDist}">${siteCell}</td>
-                    <td class="px-3 py-2.5 text-slate-500 text-xs max-w-[100px] truncate" title="${topCause}">${topCause}</td>
-                    <td class="px-3 py-2.5 text-slate-400 text-xs whitespace-nowrap">${lastDate}</td>
+                    <td class="px-3 py-2.5 text-xs max-w-[100px] truncate" style="color:var(--ink-muted)" title="${topCause}">${topCause}</td>
+                    <td class="px-3 py-2.5 text-xs whitespace-nowrap" style="color:var(--ink-muted)">${lastDate}</td>
                   </tr>`;
                 }).join('')}
               </tbody>
@@ -726,11 +725,11 @@ const DashboardUI = (function () {
     const filterBar = document.createElement('div');
     filterBar.className = 'flex items-center gap-2 flex-wrap';
     filterBar.innerHTML = `
-      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Period:</span>
-      <select id="dash-filter-year" class="text-sm font-semibold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400">
+      <span class="text-xs font-bold uppercase tracking-wider" style="color:var(--ink-muted)">Period:</span>
+      <select id="dash-filter-year" class="form-input text-sm font-semibold" style="height:34px;padding:0 10px">
         ${years.map(yr => `<option value="${yr}" ${yr === y ? 'selected' : ''}>${yr}</option>`).join('')}
       </select>
-      <select id="dash-filter-month" class="text-sm font-semibold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400">
+      <select id="dash-filter-month" class="form-input text-sm font-semibold" style="height:34px;padding:0 10px">
         <option value="0" ${m === 0 ? 'selected' : ''}>All Months</option>
         ${MONTH_NAMES.map((name, i) => `<option value="${i+1}" ${m === i+1 ? 'selected' : ''}>${name}</option>`).join('')}
       </select>
@@ -750,11 +749,11 @@ const DashboardUI = (function () {
     const chartsRow = document.createElement('div');
     chartsRow.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
     chartsRow.innerHTML = `
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
+      <div class="panel p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Closed · ${periodLabel}</p>
-            <h4 class="text-sm font-black text-slate-800">Fiber vs Equipment</h4>
+            <p class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--ink-muted)">Closed · ${periodLabel}</p>
+            <h4 class="text-sm font-black" style="color:var(--ink)">Fiber vs Equipment</h4>
           </div>
           <div class="w-8 h-8 bg-orange-50 rounded-xl flex items-center justify-center">
             <i data-lucide="pie-chart" class="w-4 h-4 text-orange-400"></i>
@@ -762,15 +761,15 @@ const DashboardUI = (function () {
         </div>
         <div class="h-48 md:h-56 flex items-center justify-center">
           ${donutTotal === 0
-            ? `<div class="text-center text-slate-300"><i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2"></i><p class="text-xs font-bold">No data for this period</p></div>`
+            ? `<div class="text-center" style="color:var(--ink-dim)"><i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2"></i><p class="text-xs font-bold">No data for this period</p></div>`
             : `<canvas id="dash-chart-type"></canvas>`}
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
+      <div class="panel p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trend · ${y}${m !== 0 ? ' · ' + MONTH_NAMES[m-1] : ''}</p>
-            <h4 class="text-sm font-black text-slate-800">Fiber Closed per Month</h4>
+            <p class="text-[10px] font-bold uppercase tracking-widest" style="color:var(--ink-muted)">Trend · ${y}${m !== 0 ? ' · ' + MONTH_NAMES[m-1] : ''}</p>
+            <h4 class="text-sm font-black" style="color:var(--ink)">Fiber Closed per Month</h4>
           </div>
           <div class="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
             <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-400"></i>

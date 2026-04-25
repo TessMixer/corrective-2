@@ -1,29 +1,105 @@
-:root {
-  /* Colors */
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
+/* ============================================================
+   NOC Incident — Design Tokens (Warm Stone Palette)
+   ============================================================ */
 
-  --color-primary: #0f766e;
-  --color-info: #0284c7;
-  --color-success: #16a34a;
-  --color-warning: #f59e0b;
-  --color-danger: #dc2626;
+:root {
+  /* Brand accent */
+  --accent:       #ea580c;
+  --accent-soft:  #fff7ed;
+  --accent-ink:   #9a3412;
+
+  /* Secondary (teal – success / clear) */
+  --ok:           #0d9488;
+  --ok-soft:      #f0fdfa;
+  --ok-ink:       #134e4a;
+
+  /* Severity */
+  --sev-dn:       #dc2626;
+  --sev-dn-soft:  #fef2f2;
+  --sev-inf:      #d97706;
+  --sev-inf-soft: #fffbeb;
+
+  /* Neutrals – warm stone (light mode) */
+  --canvas:    #fafaf9;
+  --surface:   #ffffff;
+  --surface-2: #f5f5f4;
+  --surface-3: #e7e5e4;
+  --hair:      #e7e5e4;
+  --hair-soft: #f0efec;
 
   /* Text */
-  --text-main: #0f172a;
-  --text-muted: #64748b;
+  --ink:       #1c1917;
+  --ink-muted: #57534e;
+  --ink-dim:   #a8a29e;
 
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
+  /* Sidebar */
+  --sb-bg:        #0c0a09;
+  --sb-bg-2:      #1c1917;
+  --sb-ink:       #a8a29e;
+  --sb-ink-active:#fafaf9;
+  --sb-hair:      #292524;
+
+  /* Shadows */
+  --sh-xs: 0 1px 0 rgba(28,25,23,.04);
+  --sh-sm: 0 1px 2px rgba(28,25,23,.06), 0 0 0 1px rgba(28,25,23,.04);
+  --sh-md: 0 4px 14px -4px rgba(28,25,23,.10), 0 0 0 1px rgba(28,25,23,.04);
+  --sh-lg: 0 20px 40px -20px rgba(28,25,23,.22), 0 0 0 1px rgba(28,25,23,.04);
 
   /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-xl: 16px;
 
-  /* Shadow */
-  --shadow-sm: 0 2px 6px rgba(0,0,0,.05);
+  /* Typography */
+  --f-ui:  'Inter', 'Prompt', -apple-system, system-ui, sans-serif;
+  --f-th:  'Prompt', 'Inter', system-ui, sans-serif;
+  --f-mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Legacy aliases (for backward compat with old CSS) */
+  --color-bg:      var(--canvas);
+  --color-surface: var(--surface);
+  --color-border:  var(--hair);
+  --text-main:     var(--ink);
+  --text-muted:    var(--ink-muted);
+  --sidebar-bg:    var(--sb-bg);
+  --main-bg:       var(--canvas);
+  --shadow-sm:     var(--sh-sm);
+}
+
+/* ── Dark Mode ───────────────────────────────────────────── */
+html[data-theme="dark"] {
+  --canvas:    #0c0a09;
+  --surface:   #1c1917;
+  --surface-2: #292524;
+  --surface-3: #44403c;
+  --hair:      #292524;
+  --hair-soft: #1f1c1a;
+
+  --ink:       #fafaf9;
+  --ink-muted: #a8a29e;
+  --ink-dim:   #78716c;
+
+  --sb-bg:   #000000;
+  --sb-bg-2: #0c0a09;
+  --sb-hair: #1c1917;
+
+  --accent-soft:  #2a1609;
+  --ok-soft:      #0a2826;
+  --sev-dn-soft:  #2a0d0d;
+  --sev-inf-soft: #271a07;
+
+  --sh-xs: 0 1px 0 rgba(0,0,0,.6);
+  --sh-sm: 0 1px 2px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
+  --sh-md: 0 4px 14px -4px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.05);
+  --sh-lg: 0 20px 40px -20px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.06);
+
+  /* Legacy alias overrides */
+  --color-bg:      var(--canvas);
+  --color-surface: var(--surface);
+  --color-border:  var(--hair);
+  --text-main:     var(--ink);
+  --text-muted:    var(--ink-muted);
+  --main-bg:       var(--canvas);
 }
