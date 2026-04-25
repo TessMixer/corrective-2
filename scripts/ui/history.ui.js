@@ -432,24 +432,59 @@ const HistoryUI = (function () {
 
       content.querySelectorAll(".hist-row-nav").forEach(row => {
         const id = row.dataset.id;
-        // Row click → alert-detail view
+        // Resolve item from closure — no secondary state lookup needed
+        const item = pageItems.find(i => getIncidentKey(i) === id);
+        if (!item) return;
+
+        // Row click → alert-detail full page (picture 2)
         row.onclick = (e) => {
           if (e.target.closest("button")) return;
-          if (window.openHistoryIncidentDetail) openHistoryIncidentDetail(id);
+          const baseFields = {
+            incident: getIncidentKey(item),
+            incidentId: getIncidentKey(item),
+            alarm: item.alarm || "Network Alert",
+            detail: item.detail || item.latestUpdateMessage || "-",
+            nocBy: item.nocBy || "System",
+            createdAt: item.createdAt || new Date().toISOString(),
+            status: item.status,
+            workType: item.workType,
+          };
+          const nodeList = String(item.node || "").split(",").map(s => s.trim()).filter(Boolean);
+          const allTickets = item.tickets || [];
+          let selectedAlerts;
+          if (Array.isArray(item.nodeDetails) && item.nodeDetails.length) {
+            selectedAlerts = item.nodeDetails.map(nd => ({
+              ...baseFields, node: nd.node || "-", alarm: nd.alarm || baseFields.alarm,
+              detail: nd.detail || baseFields.detail, tickets: nd.tickets || [],
+            }));
+          } else {
+            selectedAlerts = nodeList.length
+              ? nodeList.map(nodeName => ({ ...baseFields, node: nodeName, tickets: allTickets }))
+              : [{ ...baseFields, node: item.node || "-", tickets: allTickets }];
+          }
+          Store.dispatch(s => ({
+            ...s,
+            ui: { ...s.ui, currentView: "alert-detail", alertDetailReturnView: "history", selectedAlerts, selectedIncident: null }
+          }));
         };
-        // Details button → modal (View Detail)
+
+        // Details button → View Detail modal (TYPE, NODE, SUB CONTRACTOR, TIMELINE)
         const detailBtn = row.querySelector(".hist-btn-detail");
         if (detailBtn) detailBtn.onclick = (e) => {
           e.stopPropagation();
-          if (window.openCorrectiveDetailModal) openCorrectiveDetailModal(id);
+          if (window.openCorrectiveDetailModalDirect) {
+            openCorrectiveDetailModalDirect(item, typeInfo.key);
+          } else if (window.openCorrectiveDetailModal) {
+            openCorrectiveDetailModal(id);
+          }
         };
-        // Report button → NS finish report modal
+
+        // Report button → NS Finish Report modal
         const reportBtn = row.querySelector(".hist-btn-report");
         if (reportBtn) reportBtn.onclick = (e) => {
           e.stopPropagation();
-          const found = window.getCorrectiveIncidentById ? getCorrectiveIncidentById(id) : null;
-          if (found && window.openNsFinishReportModal && window.buildNsReportInputFromIncident) {
-            openNsFinishReportModal(buildNsReportInputFromIncident(found.incident, found.tab));
+          if (window.openNsFinishReportModal && window.buildNsReportInputFromIncident) {
+            openNsFinishReportModal(buildNsReportInputFromIncident(item, typeInfo.key));
           }
         };
       });

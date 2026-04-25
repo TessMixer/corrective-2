@@ -4529,14 +4529,32 @@ function exportCorrectiveDetailPDF() {
   win.document.close();
 }
 
+function openCorrectiveDetailModalDirect(incident, tab) {
+  if (!incident) return;
+  _renderCorrectiveDetailModal(incident, tab || incident.workType?.toLowerCase() || "fiber");
+}
+window.openCorrectiveDetailModalDirect = openCorrectiveDetailModalDirect;
+
 function openCorrectiveDetailModal(incidentId) {
   const found = getCorrectiveIncidentById(incidentId);
   if (!found) {
+    // Try searching in completed history items as fallback
+    const state = Store.getState();
+    for (const tab of ["fiber", "equipment", "other"]) {
+      const inc = (state.corrective[tab] || []).find(i =>
+        (i.incident || i.incidentId || i.id || "") === incidentId
+      );
+      if (inc) { _renderCorrectiveDetailModal(inc, tab); return; }
+    }
     alert("Warning: Incident ID [ " + incidentId + " ] details not found.");
     return;
   }
 
   const { incident, tab } = found;
+  _renderCorrectiveDetailModal(incident, tab);
+}
+
+function _renderCorrectiveDetailModal(incident, tab) {
   window._corrDetailData = { incident, tab }; // stored for PDF export
   const latestUpdate = (incident.updates || []).slice(-1)[0] || {};
   const finish = incident.nsFinish || {};
