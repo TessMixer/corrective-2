@@ -595,8 +595,34 @@ function updateTopbarBreadcrumb(view) {
   if (titleEl) titleEl.textContent = meta.title;
 }
 
+const FINISHED_STATUSES = new Set(["COMPLETE","CLOSED","FINISHED","RESOLVED","DONE","NS_FINISH","CANCEL","CANCELLED","COMPLETED"]);
+
+function updateSidebarBadges(state) {
+  const alertCount = (state.alerts || []).filter(
+    a => !["CANCEL","CANCELLED","DELETED"].includes(String(a.status||"").toUpperCase())
+  ).length;
+
+  const isActive = inc => !FINISHED_STATUSES.has(String(inc.status||"").trim().toUpperCase());
+  const fiberCount  = (state.corrective?.fiber     || []).filter(isActive).length;
+  const equipCount  = (state.corrective?.equipment || []).filter(isActive).length;
+  const totalCount  = fiberCount + equipCount;
+
+  function setBadge(id, n) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = n;
+    el.classList.toggle("hidden", n === 0);
+  }
+
+  setBadge("nav-badge-alert",      alertCount);
+  setBadge("nav-badge-corrective", totalCount);
+  setBadge("nav-badge-fiber",      fiberCount);
+  setBadge("nav-badge-equipment",  equipCount);
+}
+
 function render(state) {
   updateCalendarTodayBell(state);
+  updateSidebarBadges(state);
   updateTopbarBreadcrumb(state.ui.currentView);
   if (window.updateNotifBadge) window.updateNotifBadge();
   document.querySelectorAll(".view-content").forEach((view) => {
@@ -722,9 +748,9 @@ function render(state) {
     const parent = document.getElementById("menu-corrective");
     if (parent) parent.classList.add("active");
 
-    const tabs = document.querySelectorAll("#corrective-submenu .nav-item");
+    const tabs = document.querySelectorAll("#corrective-submenu [data-corrective-tab]");
     tabs.forEach(tab => {
-      if (tab.innerText.toLowerCase() === state.ui.activeCorrectiveTab) {
+      if (tab.dataset.correctiveTab === state.ui.activeCorrectiveTab) {
         tab.classList.add("active");
       }
     });
@@ -2942,9 +2968,9 @@ if (saveResponse) {
 }
 
 // ===== CORRECTIVE MENU =====␊
-document.querySelectorAll("#corrective-submenu div").forEach((menu) => {
+document.querySelectorAll("#corrective-submenu [data-corrective-tab]").forEach((menu) => {
   menu.onclick = () => {
-    const type = menu.innerText.toLowerCase();
+    const type = menu.dataset.correctiveTab;
 
     Store.dispatch((state) => ({
       ...state,

@@ -312,14 +312,12 @@ const CalendarUI = (function () {
       all: allEvents.length,
       fiber: allEvents.filter(e => String(e.workType||"").toLowerCase() === "fiber").length,
       equipment: allEvents.filter(e => String(e.workType||"").toLowerCase() === "equipment").length,
-      other: allEvents.filter(e => !["fiber","equipment"].includes(String(e.workType||"").toLowerCase())).length,
     };
 
     const chipColors = {
       all:       { active: "#f97316", bg: "#fff7ed", text: "#ea580c" },
       fiber:     { active: "#3b82f6", bg: "#eff6ff", text: "#2563eb" },
       equipment: { active: "#f59e0b", bg: "#fffbeb", text: "#d97706" },
-      other:     { active: "#8b5cf6", bg: "#f5f3ff", text: "#7c3aed" },
     };
 
     function filterChip(key, label) {
@@ -388,7 +386,6 @@ const CalendarUI = (function () {
           ${filterChip("all", "All types")}
           ${filterChip("fiber", "Fiber")}
           ${filterChip("equipment", "Equipment")}
-          ${filterChip("other", "Other")}
         </div>
 
         <!-- Calendar body -->

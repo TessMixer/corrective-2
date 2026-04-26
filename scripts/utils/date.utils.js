@@ -8,7 +8,14 @@
     parseDate(dateStr) {
       if (!dateStr) return null;
       if (dateStr instanceof Date) return dateStr;
-      
+
+      // Firestore client Timestamp: has toDate() method
+      if (typeof dateStr.toDate === "function") return dateStr.toDate();
+
+      // Firestore Timestamp serialized: { seconds, nanoseconds } or { _seconds }
+      const secs = dateStr.seconds ?? dateStr._seconds;
+      if (typeof secs === "number") return new Date(secs * 1000);
+
       // Standard parse
       let d = new Date(dateStr);
       if (!Number.isNaN(d.getTime())) return d;

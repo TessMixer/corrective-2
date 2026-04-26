@@ -26,10 +26,29 @@ const AlertUI = (function () {
     });
   }
 
+  function parseDate(v) {
+    if (!v) return null;
+    if (v instanceof Date) return v;
+    if (typeof v.toDate === "function") return v.toDate();
+    const secs = v.seconds ?? v._seconds;
+    if (typeof secs === "number") return new Date(secs * 1000);
+    if (window.DateUtils) return window.DateUtils.parseDate(v);
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatDownTime(dateValue) {
+    if (!dateValue) return "-";
+    const d = parseDate(dateValue);
+    if (!d) return "-";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}<br><span style="opacity:.7">${pad(d.getHours())}:${pad(d.getMinutes())}</span>`;
+  }
+
   function formatElapsed(dateValue) {
     if (!dateValue) return "-";
-    const start = new Date(dateValue);
-    if (Number.isNaN(start.getTime())) return "-";
+    const start = parseDate(dateValue);
+    if (!start) return "-";
     const totalMins = Math.max(0, Math.floor((Date.now() - start.getTime()) / 60000));
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
@@ -180,7 +199,8 @@ const AlertUI = (function () {
             const isDn  = alert.alertClass === "Dn";
             const isInf = alert.alertClass === "Inf";
             const accentColor = isDn ? "var(--sev-dn)" : isInf ? "var(--sev-inf)" : "var(--accent)";
-            const elapsed = formatElapsed(alert.tickets?.[0]?.downTime || alert.createdAt);
+            const mobileDownSrc = alert.tickets?.[0]?.downTime || alert.createdAt;
+            const mobileDownTime = formatDownTime(mobileDownSrc);
             return `
               <div data-detail="${alertId}" class="corrective-card cursor-pointer active:scale-[0.99] overflow-hidden group w-full"
                    style="border-left:3px solid ${accentColor};padding:0">
@@ -190,7 +210,7 @@ const AlertUI = (function () {
                     <h3 class="text-xs font-black truncate font-mono" style="color:var(--accent)">${normalizeIncidentId(alertId)}</h3>
                   </div>
                   ${renderAlertClassBadge(alert.alertClass)}
-                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" style="background:var(--surface-2);color:var(--ink-muted)">${elapsed}</span>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" style="background:var(--surface-2);color:var(--ink-muted)">${mobileDownTime.replace("<br>", " ")}</span>
                 </div>
                 <div class="px-3 pb-2 space-y-1">
                   <div class="flex gap-2">
@@ -226,7 +246,7 @@ const AlertUI = (function () {
                 <th class="px-5 py-3 text-left text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted);white-space:nowrap">Node Name</th>
                 <th class="px-5 py-3 text-left text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted);white-space:nowrap">Alarm</th>
                 <th class="px-5 py-3 text-left text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted)">Detail</th>
-                <th class="px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted);white-space:nowrap">Down</th>
+                <th class="px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted);white-space:nowrap">Down Time</th>
                 <th class="px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted);white-space:nowrap">Tix</th>
                 <th class="px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider" style="color:var(--ink-muted)">Action</th>
               </tr>
@@ -239,8 +259,9 @@ const AlertUI = (function () {
                 const sideColor = isDn  ? "var(--sev-dn)"
                                 : isInf ? "var(--sev-inf)"
                                         : "transparent";
-                const elapsed = formatElapsed(alert.tickets?.[0]?.downTime || alert.createdAt);
-                const elapsedMs = Date.now() - new Date(alert.tickets?.[0]?.downTime || alert.createdAt || 0).getTime();
+                const downTimeSrc = alert.tickets?.[0]?.downTime || alert.createdAt;
+                const downTimeDisplay = formatDownTime(downTimeSrc);
+                const elapsedMs = (() => { const d = parseDate(downTimeSrc); return d ? Date.now() - d.getTime() : 0; })();
                 const isLong = elapsedMs > 4 * 3600000;
                 return `
                   <tr data-detail="${alertId}" class="cursor-pointer group"
@@ -263,7 +284,7 @@ const AlertUI = (function () {
                             title="${escapeHtml(alert.detail)}">${escapeHtml(alert.detail) || "-"}</span>
                     </td>
                     <td class="px-4 py-3 text-center whitespace-nowrap">
-                      <span class="font-black font-mono text-[13px]" style="color:${isLong ? "var(--sev-dn)" : "var(--ink)"}">${elapsed}</span>
+                      <span class="font-semibold text-[11px] leading-tight" style="color:${isLong ? "var(--sev-dn)" : "var(--ink-muted)"}">${downTimeDisplay}</span>
                     </td>
                     <td class="px-4 py-3 text-center">
                       <span class="inline-flex items-center justify-center w-7 h-7 rounded-full font-black text-xs"

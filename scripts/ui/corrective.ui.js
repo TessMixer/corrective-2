@@ -44,7 +44,6 @@ const CorrectiveUI = {
   pageByTab: {
     fiber: 1,
     equipment: 1,
-    other: 1,
   },
   pageSize: 10,
   _renderPageHeader(state) {
@@ -52,8 +51,7 @@ const CorrectiveUI = {
     const isActive = inc => !FINISH_STATUSES.has(String(inc.status || "").trim().toUpperCase());
     const fiberActive    = (state.corrective.fiber     || []).filter(isActive);
     const equipActive    = (state.corrective.equipment || []).filter(isActive);
-    const otherActive    = (state.corrective.other     || []).filter(isActive);
-    const totalActive    = fiberActive.length + equipActive.length + otherActive.length;
+    const totalActive    = fiberActive.length + equipActive.length;
 
     const wave = (color) => `<svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:56px;height:32px;opacity:.18" viewBox="0 0 56 32" preserveAspectRatio="none"><path d="M1 24 Q8 8 14 16 Q20 24 28 12 Q36 2 42 14 Q48 24 55 8" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
 
@@ -75,7 +73,7 @@ const CorrectiveUI = {
           ${wave("#ea580c")}
           <div class="text-4xl font-black leading-none mb-1" style="color:#ea580c">${totalActive}</div>
           <div class="text-[10px] font-bold uppercase tracking-widest mt-1" style="color:var(--ink-muted)">Active Jobs</div>
-          <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Fiber + Equipment + Other</div>
+          <div class="text-[9px] mt-0.5" style="color:var(--ink-dim)">Fiber + Equipment</div>
         </div>
         <div class="panel p-5 overflow-hidden relative" style="border-top:2px solid #3b82f6">
           ${wave("#3b82f6")}
@@ -97,7 +95,7 @@ const CorrectiveUI = {
     const tab = state.ui.activeCorrectiveTab;
 
     // Collect primary incidents + cross-tab incidents where workTypes includes this tab
-    const TAB_TYPE = { fiber: "Fiber", equipment: "Equipment", other: "Other" };
+    const TAB_TYPE = { fiber: "Fiber", equipment: "Equipment" };
     const currentTabType = TAB_TYPE[tab] || tab;
     const seen = new Set();
     const allIncidents = [];
@@ -105,7 +103,7 @@ const CorrectiveUI = {
       const id = getIncidentKey(inc);
       if (!seen.has(id)) { seen.add(id); allIncidents.push(inc); }
     });
-    ["fiber", "equipment", "other"].filter(t => t !== tab).forEach(otherTab => {
+    ["fiber", "equipment"].filter(t => t !== tab).forEach(otherTab => {
       (state.corrective[otherTab] || []).forEach(inc => {
         const id = getIncidentKey(inc);
         if (!seen.has(id) && Array.isArray(inc.workTypes) && inc.workTypes.includes(currentTabType)) {
