@@ -131,7 +131,7 @@ body.sidebar-collapsed #app-sidebar {
 .btn-action-primary { background: linear-gradient(135deg, #f97316, #ea580c); }
 .btn-action-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
 .btn-action-danger  { background: linear-gradient(135deg, #ef4444, #dc2626); }
-.btn-action-purple  { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+.btn-action-purple  { background: linear-gradient(135deg, #f97316, #ea580c); }
 .btn-action-orange  { background: linear-gradient(135deg, #f59e0b, #ea580c); }
 
 /* Badge */

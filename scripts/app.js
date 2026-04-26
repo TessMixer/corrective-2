@@ -573,8 +573,32 @@ function renderHistoryView(container, state) {
 }
 
 
+const TOPBAR_META = {
+  "alert":            { crumb: "Alert Monitor",           title: "Alert Monitor" },
+  "alert-detail":     { crumb: "Alert Monitor",           title: "Incident Detail" },
+  "corrective":       { crumb: "Operations · Workbench",  title: "Corrective" },
+  "calendar":         { crumb: "Operations",              title: "Calendar" },
+  "improvement":      { crumb: "Operations",              title: "Improvement" },
+  "history":          { crumb: "Reports · Archive",       title: "History" },
+  "search":           { crumb: "Reports · Archive",       title: "Global Search" },
+  "dashboard":        { crumb: "Reports · Archive",       title: "Dashboard" },
+  "dashboard-details":{ crumb: "Reports · Archive",       title: "Details" },
+  "subcontractor":    { crumb: "Reports · Archive",       title: "Subcontractor" },
+  "recycle":          { crumb: "System · Trash",          title: "Recycle Bin" },
+};
+
+function updateTopbarBreadcrumb(view) {
+  const meta = TOPBAR_META[view] || { crumb: "", title: "" };
+  const crumbEl = document.getElementById("topbar-crumb-text");
+  const titleEl = document.getElementById("topbar-page-title");
+  if (crumbEl) crumbEl.textContent = meta.crumb;
+  if (titleEl) titleEl.textContent = meta.title;
+}
+
 function render(state) {
   updateCalendarTodayBell(state);
+  updateTopbarBreadcrumb(state.ui.currentView);
+  if (window.updateNotifBadge) window.updateNotifBadge();
   document.querySelectorAll(".view-content").forEach((view) => {
     view.classList.add("hidden");
     view.style.display = "none";
@@ -4161,6 +4185,8 @@ function renderReportButton(item = {}) {
   return `<button class="btn-action btn-action-orange btn-corrective-report" data-id="${incidentId}">Report</button>`;
 }
 window.renderReportButton = renderReportButton;
+window.openNsFinishReportModal = openNsFinishReportModal;
+window.buildNsReportInputFromIncident = buildNsReportInputFromIncident;
 
 function buildNsReportInputFromIncident(incident = {}, tab = "") {
   const firstTicket = (incident.tickets || [])[0] || {};
@@ -7903,11 +7929,17 @@ function bindGlobalSearchEvents() {
       if (inputNav && inputNav !== e.target) inputNav.value = val;
       if (inputView && inputView !== e.target) inputView.value = val;
 
-      const currentView = Store.getState().ui.currentView;
+      const state = Store.getState();
+      const currentView = state.ui.currentView;
 
-      // Auto-switch to search view if user types something and not currently inside search view.
       if (val.trim().length > 0 && currentView !== "search") {
-        Store.dispatch(s => ({ ...s, ui: { ...s.ui, currentView: "search" } }));
+        // Save current view before switching to search
+        Store.dispatch(s => ({ ...s, ui: { ...s.ui, currentView: "search", searchReturnView: currentView } }));
+      } else if (val.trim().length === 0 && currentView === "search") {
+        // Clear search → return to previous view
+        const returnTo = state.ui.searchReturnView || "alert";
+        Store.dispatch(s => ({ ...s, ui: { ...s.ui, currentView: returnTo } }));
+        return;
       }
 
       executeGlobalSearch(val);
