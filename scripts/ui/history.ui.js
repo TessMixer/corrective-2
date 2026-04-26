@@ -479,7 +479,7 @@ const HistoryUI = (function () {
           }
         };
 
-        // Report button → NS Finish Report modal
+        // Report button → NS Finish Report popup modal
         const reportBtn = row.querySelector(".hist-btn-report");
         if (reportBtn) reportBtn.onclick = (e) => {
           e.stopPropagation();

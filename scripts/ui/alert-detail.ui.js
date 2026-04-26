@@ -57,7 +57,7 @@ const AlertDetailUI = (function () {
             <p style="margin:2px 0 0;font-size:12px;color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${incident.alarm || "Network Alert"}</p>
           </div>
           ${hideResp
-            ? `<span class="tag ok" style="flex-shrink:0;display:inline-flex;align-items:center;gap:4px"><i data-lucide="check-circle-2" class="w-3 h-3 pointer-events-none"></i> Responded</span>`
+            ? `<span style="flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;background:#0d9488;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.02em"><i data-lucide="check-circle-2" class="w-3 h-3 pointer-events-none"></i> Responded</span>`
             : `<button class="btn-response btn btn-sm btn-action-purple" data-id="${incident.id}" style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px">
                 <i data-lucide="send" class="w-3 h-3 pointer-events-none"></i> Response
                </button>`
@@ -320,7 +320,7 @@ const AlertDetailUI = (function () {
               <p style="margin:2px 0 0;font-size:12px;color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${alarm}</p>
             </div>
             ${hideResp
-              ? `<span class="tag ok" style="flex-shrink:0;display:inline-flex;align-items:center;gap:4px"><i data-lucide="check-circle-2" class="w-3 h-3 pointer-events-none"></i> Responded</span>`
+              ? `<span style="flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;background:#0d9488;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.02em"><i data-lucide="check-circle-2" class="w-3 h-3 pointer-events-none"></i> Responded</span>`
               : `<button class="btn-response btn btn-sm btn-action-purple" data-id="${incidentId}" style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px">
                   <i data-lucide="send" class="w-3 h-3 pointer-events-none"></i> Response
                  </button>`
