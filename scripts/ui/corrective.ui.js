@@ -265,12 +265,12 @@ const CorrectiveUI = {
             <p class="text-sm font-bold" style="color:var(--ink)">${totalTickets} linked</p>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-[9px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-between" style="color:var(--ink-muted)">
-              <span>Progress</span><span style="color:var(--ink)">${progress}%</span>
+            <p class="text-[9px] font-bold uppercase tracking-widest mb-1" style="color:var(--ink-muted)">
+              Latest Update${updates.length > 0 ? ` · #${updates.length}` : ""}
             </p>
-            <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--surface-2)">
-              <div class="h-full rounded-full" style="width:${progress}%;background:${progressColor};transition:width .4s ease"></div>
-            </div>
+            <p class="text-[11px] leading-snug" style="color:var(--ink-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+              ${lastUpd.message || incident.latestUpdateMessage || "<span style='color:var(--ink-dim)'>ยังไม่มีข้อมูล Update</span>"}
+            </p>
           </div>
         </div>
 

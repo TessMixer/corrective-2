@@ -5473,86 +5473,155 @@ function ensureEquipmentUpdateModal() {
   if (document.getElementById("modal-corrective-update-equipment")) return;
 
   document.body.insertAdjacentHTML("beforeend", `
-      <div id="modal-corrective-update-equipment" class="modal-backdrop hidden">
-        <div class="bg-white rounded-2xl w-full max-w-3xl p-6 max-h-[92vh] overflow-y-auto space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 id="equipment-update-title" class="text-4 font-bold text-slate-800">NS Update Equipment</h3>
-            <button id="btn-close-equipment-update" class="px-3 py-2 bg-slate-100 rounded-lg">ปิด</button>
-          </div>
+    <style id="style-eq-upd-modal">
+    #modal-corrective-update-equipment{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:1100;padding:16px}
+    #modal-corrective-update-equipment.hidden{display:none}
+    #modal-corrective-update-equipment .equ-card{background:var(--canvas);border-radius:24px;width:100%;max-width:600px;display:flex;flex-direction:column;max-height:95vh;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.28)}
+    #modal-corrective-update-equipment .equ-body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+    #modal-corrective-update-equipment .equ-slabel{font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    #modal-corrective-update-equipment .equ-flabel{font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+    #modal-corrective-update-equipment .equ-inp{width:100%;height:40px;padding:0 12px;background:var(--surface-2,#f5f5f4);border:1px solid var(--hair);border-radius:8px;font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+    #modal-corrective-update-equipment .equ-inp:focus{border-color:var(--ok,#10b981)}
+    #modal-corrective-update-equipment .equ-btn-cam{display:flex;align-items:center;justify-content:center;gap:6px;flex:1;height:40px;background:var(--ink);color:var(--canvas);border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+    #modal-corrective-update-equipment .equ-btn-file{display:flex;align-items:center;justify-content:center;gap:6px;flex:1;height:40px;background:transparent;color:var(--ink);border:1px solid var(--hair);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+    #modal-corrective-update-equipment .equ-dropzone{border:2px dashed var(--hair);border-radius:10px;padding:16px;text-align:center;color:var(--ink-muted);background:var(--surface-2)}
+    #modal-corrective-update-equipment .equ-btn-gen{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:12px;background:var(--warn,#f97316);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    #modal-corrective-update-equipment .equ-btn-gen:hover{opacity:.88}
+    #modal-corrective-update-equipment .equ-btn-ghost{padding:8px 20px;background:transparent;border:1px solid var(--hair);border-radius:10px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+    #modal-corrective-update-equipment .equ-btn-ghost:hover{background:var(--surface-2)}
+    #modal-corrective-update-equipment .equ-btn-save{display:flex;align-items:center;gap:6px;padding:8px 22px;background:var(--ink);color:var(--canvas);border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    #modal-corrective-update-equipment .equ-btn-save:hover{opacity:.8}
+    </style>
+    <div id="modal-corrective-update-equipment" class="hidden">
+      <div class="equ-card">
 
-          <div class="text-slate-700 font-semibold">รายละเอียด Update (Equipment)</div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700">สถานะปัจจุบัน:</label>
-            <select id="eq-upd-status" class="w-full bg-slate-100 rounded-lg px-3 py-2">
-              <option value="">-- เลือกสถานะ --</option>
-              <option>เดินทางถึงลูกค้าแล้ว</option>
-              <option>ตรวจสอบพบ</option>
-            </select>
-          </div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700">สิ่งที่ตรวจสอบพบ:</label>
-            <select id="eq-upd-finding" class="w-full bg-slate-100 rounded-lg px-3 py-2">
-              <option value="">-- เลือกสิ่งที่ตรวจพบ --</option>
-              <option>อุปกรณ์ Hang</option>
-              <option>SFP Hang/เสีย</option>
-              <option>Rectifier Fail</option>
-              <option>พัดลมเสีย/ดัง</option>
-              <option>Card Fail</option>
-              <option>Port เสีย</option>
-              <option>Config มีปัญหา</option>
-              <option>Adapter เสีย</option>
-              <option>UPS มีปัญหา</option>
-              <option>สาย LAN หลวม</option>
-              <option>Patch Cord มีปัญหา</option>
-              <option>สายไฟหลวม</option>
-              <option>สาย Fiber หลวม</option>
-              <option>ระบบไฟฟ้าที่ลูกค้ามีปัญหา</option>
-              <option>อื่นๆ</option>
-            </select>
-            <div id="eq-upd-finding-other-wrap" class="hidden">
-              <input
-                id="eq-upd-finding-other"
-                class="w-full bg-slate-100 rounded-lg px-3 py-2"
-                placeholder="ระบุสิ่งที่ตรวจสอบพบ"
-              >
+        <!-- HEADER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--hair);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;background:var(--ink);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i data-lucide="server" style="width:20px;height:20px;color:var(--canvas)"></i>
+            </div>
+            <div>
+              <p style="font-size:10px;font-weight:700;color:var(--warn,#f97316);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">NS UPDATE · EQUIPMENT</p>
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2 id="equipment-update-title" style="font-size:18px;font-weight:900;color:var(--ink);line-height:1">NS Update</h2>
+                <span id="eq-upd-incident-badge" style="padding:2px 10px;background:var(--surface-2);border:1px solid var(--hair);border-radius:6px;font-size:12px;font-weight:600;color:var(--ink-muted)"></span>
+              </div>
             </div>
           </div>
-
-          <div>
-            <label class="text-sm text-slate-600">Circuit ID + Customer (ไม่บังคับ):</label>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
-              <select id="eq-upd-originate" class="w-full bg-slate-100 rounded-lg px-3 py-2"></select>
-              <select id="eq-upd-terminate" class="w-full bg-slate-100 rounded-lg px-3 py-2"></select>
-            </div>
-          </div>
-
-          <div class="border rounded-xl p-3 bg-slate-50">
-            <div class="font-semibold text-violet-600 mb-2">📷 รูปภาพประกอบ</div>
-            <input id="eq-upd-camera-input" type="file" accept="image/*" capture="environment" class="hidden">
-            <input id="eq-upd-file-input" type="file" multiple class="hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <label for="eq-upd-camera-input" class="cursor-pointer px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-center text-sm transition-colors">📸 ถ่ายภาพ</label>
-              <label for="eq-upd-file-input" class="cursor-pointer px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-center text-sm transition-colors">📎 แนบไฟล์</label>
-            </div>
-            <div id="eq-upd-attachments-preview" class="text-xs text-slate-500 mt-2">ยังไม่ได้เลือกไฟล์</div>
-          </div>
-
-          <button id="btn-generate-eq-update" class="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white font-bold rounded-xl shadow-[0_4px_15px_-3px_rgba(249,115,22,0.4)] transform hover:-translate-y-0.5 transition-all outline-none">✨ สร้างสรุป Update</button>
-
-          <div>
-            <label class="text-sm font-semibold text-slate-700">ข้อความอัปเดต:</label>
-            <textarea id="eq-upd-message" rows="5" class="mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="สรุปปรากฏการณ์..."></textarea>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
-            <button id="btn-cancel-equipment-update" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">ยกเลิก</button>
-            <button id="btn-save-equipment-update" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl shadow-md transition-all">บันทึก</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="eq-upd-status-badge" style="display:none;align-items:center;gap:5px;padding:5px 12px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:20px;font-size:12px;font-weight:700;color:#059669">
+              <span style="width:7px;height:7px;border-radius:50%;background:#059669;display:inline-block"></span>
+              <span id="eq-upd-status-badge-text"></span>
+            </span>
+            <button id="btn-close-equipment-update" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--hair);border-radius:8px;background:transparent;cursor:pointer">
+              <i data-lucide="x" style="width:16px;height:16px;color:var(--ink-muted)"></i>
+            </button>
           </div>
         </div>
+
+        <!-- BODY -->
+        <div class="equ-body">
+
+          <!-- Section label -->
+          <p class="equ-slabel"><i data-lucide="activity" style="width:12px;height:12px"></i> รายละเอียด UPDATE (EQUIPMENT)</p>
+
+          <!-- Status + Finding -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <p class="equ-flabel">สถานะปัจจุบัน <span style="color:#ef4444;font-size:11px">*</span></p>
+              <select id="eq-upd-status" class="equ-inp" style="padding:0 10px">
+                <option value="">— เลือกสถานะ —</option>
+                <option>Investigating</option>
+                <option>เดินทางถึงลูกค้าแล้ว</option>
+                <option>ตรวจสอบพบ</option>
+                <option>กำลังแก้ไข</option>
+                <option>รอ Spare</option>
+                <option>แก้ไขเสร็จ</option>
+              </select>
+            </div>
+            <div>
+              <p class="equ-flabel">สิ่งที่ตรวจสอบพบ <span style="color:#ef4444;font-size:11px">*</span></p>
+              <select id="eq-upd-finding" class="equ-inp" style="padding:0 10px">
+                <option value="">— เลือกสิ่งที่ตรวจพบ —</option>
+                <option>อุปกรณ์ Hang</option><option>SFP Hang/เสีย</option><option>Rectifier Fail</option>
+                <option>พัดลมเสีย/ดัง</option><option>Card Fail</option><option>Port เสีย</option>
+                <option>Config มีปัญหา</option><option>Adapter เสีย</option><option>UPS มีปัญหา</option>
+                <option>สาย LAN หลวม</option><option>Patch Cord มีปัญหา</option><option>สายไฟหลวม</option>
+                <option>สาย Fiber หลวม</option><option>ระบบไฟฟ้าที่ลูกค้ามีปัญหา</option><option>อื่นๆ</option>
+              </select>
+              <div id="eq-upd-finding-other-wrap" class="hidden" style="margin-top:5px">
+                <input id="eq-upd-finding-other" class="equ-inp" placeholder="ระบุสิ่งที่ตรวจสอบพบ">
+              </div>
+            </div>
+          </div>
+
+          <!-- Circuit ID -->
+          <div>
+            <p class="equ-flabel">Circuit ID + Customer <span style="font-size:9px;font-weight:400;text-transform:none;opacity:.6">(ไม่บังคับ)</span></p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <select id="eq-upd-originate" class="equ-inp" style="padding:0 10px"></select>
+              <select id="eq-upd-terminate" class="equ-inp" style="padding:0 10px"></select>
+            </div>
+          </div>
+
+          <!-- Photos -->
+          <div>
+            <p class="equ-slabel"><i data-lucide="image" style="width:12px;height:12px"></i> รูปภาพประกอบ</p>
+            <input id="eq-upd-camera-input" type="file" accept="image/*" capture="environment" class="hidden">
+            <input id="eq-upd-file-input" type="file" multiple class="hidden">
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <label for="eq-upd-camera-input" class="equ-btn-cam" style="cursor:pointer">
+                <i data-lucide="camera" style="width:15px;height:15px"></i> ถ่ายภาพ
+              </label>
+              <label for="eq-upd-file-input" class="equ-btn-file" style="cursor:pointer">
+                <i data-lucide="paperclip" style="width:14px;height:14px"></i> แนบไฟล์
+              </label>
+            </div>
+            <div class="equ-dropzone">
+              <i data-lucide="upload-cloud" style="width:22px;height:22px;margin:0 auto 6px;color:var(--ink-dim)"></i>
+              <p style="font-size:12px;font-weight:600;color:var(--ink-muted)">ลากวางหรือคลิกเพื่อแนบไฟล์</p>
+              <p style="font-size:10px;color:var(--ink-dim);margin-top:2px">JPG, PNG, PDF — สูงสุด 20 MB</p>
+            </div>
+            <div id="eq-upd-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:0"></div>
+          </div>
+
+          <!-- Generate -->
+          <button id="btn-generate-eq-update" class="equ-btn-gen">
+            <i data-lucide="sparkles" style="width:15px;height:15px"></i> สร้างสรุป Update
+          </button>
+
+          <!-- Message -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <p class="equ-flabel" style="margin-bottom:0">ข้อความอัปเดต <span style="font-size:9px;font-weight:400;text-transform:none;opacity:.6">(สรุปปรากฏการณ์)</span></p>
+              <button id="btn-eq-upd-copy" style="font-size:9px;font-weight:700;color:var(--ink-muted);background:var(--surface-2);border:1px solid var(--hair);border-radius:5px;padding:2px 8px;cursor:pointer">COPY</button>
+            </div>
+            <textarea id="eq-upd-message" rows="4" style="width:100%;padding:8px 10px;background:var(--canvas);border:1px solid var(--hair);border-radius:8px;font-size:12px;color:var(--ink);resize:vertical;outline:none" placeholder="สรุปปรากฏการณ์..."></textarea>
+          </div>
+
+        </div><!-- /equ-body -->
+
+        <!-- FOOTER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--hair);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:12px">
+            <i data-lucide="user" style="width:13px;height:13px"></i>
+            <span id="eq-upd-footer-user" style="font-weight:600">—</span>
+            <span style="opacity:.35">·</span>
+            <i data-lucide="clock" style="width:12px;height:12px"></i>
+            <span id="eq-upd-footer-time" style="color:var(--ink-dim)">—</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="btn-cancel-equipment-update" class="equ-btn-ghost">ยกเลิก</button>
+            <button id="btn-save-equipment-update" class="equ-btn-save">
+              <i data-lucide="save" style="width:14px;height:14px"></i> บันทึก
+            </button>
+          </div>
+        </div>
+
       </div>
-    `);
+    </div>
+  `);
 
   const modal = document.getElementById("modal-corrective-update-equipment");
   document.getElementById("btn-close-equipment-update").onclick = () => closeModal(modal);
@@ -5563,15 +5632,27 @@ function ensureEquipmentUpdateModal() {
   const preview = document.getElementById("eq-upd-attachments-preview");
 
   function renderPreview() {
-    const names = [
-      ...Array.from(camInput.files || []).map((f) => f.name),
-      ...Array.from(fileInput.files || []).map((f) => f.name),
+    const files = [
+      ...Array.from(camInput.files || []),
+      ...Array.from(fileInput.files || []),
     ];
-    preview.textContent = names.length ? `ไฟล์ที่เลือก: ${names.join(", ")}` : "ยังไม่ได้เลือกไฟล์";
+    if (!files.length) { preview.innerHTML = ""; return; }
+    preview.innerHTML = files.map(f => {
+      const isImg = f.type.startsWith("image/");
+      const url = isImg ? URL.createObjectURL(f) : "";
+      return isImg
+        ? `<div style="width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid var(--hair)"><img src="${url}" style="width:100%;height:100%;object-fit:cover"></div>`
+        : `<div style="width:56px;height:56px;border-radius:8px;background:var(--surface-2);border:1px solid var(--hair);display:flex;align-items:center;justify-content:center;font-size:20px">📄</div>`;
+    }).join("");
   }
 
   camInput.onchange = renderPreview;
   fileInput.onchange = renderPreview;
+
+  document.getElementById("btn-eq-upd-copy")?.addEventListener("click", () => {
+    const txt = document.getElementById("eq-upd-message")?.value || "";
+    if (txt) navigator.clipboard.writeText(txt).catch(() => {});
+  });
 
   const findingSelect = document.getElementById("eq-upd-finding");
   const otherWrap = document.getElementById("eq-upd-finding-other-wrap");
@@ -5581,6 +5662,8 @@ function ensureEquipmentUpdateModal() {
     otherWrap.classList.toggle("hidden", !isOther);
     if (!isOther) otherInput.value = "";
   };
+
+  if (window.lucide) lucide.createIcons();
 }
 
 function openEquipmentUpdateModal(incidentId) {
@@ -5591,7 +5674,22 @@ function openEquipmentUpdateModal(incidentId) {
   const modal = document.getElementById("modal-corrective-update-equipment");
   const { incident, tab } = found;
 
-  document.getElementById("equipment-update-title").textContent = `NS Update ${incident.incidentId}`;
+  const equBadge = document.getElementById("eq-upd-incident-badge");
+  if (equBadge) equBadge.textContent = incident.incidentId || "";
+  const equFooterUser = document.getElementById("eq-upd-footer-user");
+  if (equFooterUser) equFooterUser.textContent = incident.respondedBy || incident.createdBy || "—";
+  const equFooterTime = document.getElementById("eq-upd-footer-time");
+  if (equFooterTime) {
+    const now = new Date();
+    equFooterTime.textContent = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")} · ${now.getDate().toString().padStart(2,"0")} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()]} ${now.getFullYear()}`;
+  }
+  const curStatus = String(incident.status || "").toUpperCase();
+  const equStatusBadge = document.getElementById("eq-upd-status-badge");
+  const equStatusText = document.getElementById("eq-upd-status-badge-text");
+  if (equStatusBadge && equStatusText && curStatus) {
+    equStatusText.textContent = `Status ${curStatus}`;
+    equStatusBadge.style.display = "flex";
+  }
 
   const firstTicket = getFirstSymphonyTicket(incident);
 
@@ -5608,7 +5706,8 @@ function openEquipmentUpdateModal(incidentId) {
   document.getElementById("eq-upd-message").value = "";
   document.getElementById("eq-upd-camera-input").value = "";
   document.getElementById("eq-upd-file-input").value = "";
-  document.getElementById("eq-upd-attachments-preview").textContent = "ยังไม่ได้เลือกไฟล์";
+  const prevEl = document.getElementById("eq-upd-attachments-preview");
+  if (prevEl) prevEl.innerHTML = "";
   document.getElementById("btn-generate-eq-update").onclick = () => {
     const updateNo = ((incident.updates || []).length || 0) + 1;
     const status = document.getElementById("eq-upd-status").value || "";
@@ -5616,17 +5715,29 @@ function openEquipmentUpdateModal(incidentId) {
     const findingOther = document.getElementById("eq-upd-finding-other").value.trim();
     const finding = findingRaw === "อื่นๆ" ? (findingOther || "อื่นๆ") : findingRaw;
 
+    const incidentAlarm = incident.alarm || "Equipment";
+    const node = incident.node || incident.incidentId || "-";
+    if (status === "Investigating") {
+      document.getElementById("eq-upd-message").value = `Update#${updateNo}: Equipment ${incidentAlarm} at ${node} · Investigating · Engineer dispatched ETA 30 min`;
+      return;
+    }
     if (status === "เดินทางถึงลูกค้าแล้ว") {
       document.getElementById("eq-upd-message").value = `Update#${updateNo} เดินทางถึงแล้วครับ`;
       return;
     }
-
     if (status === "ตรวจสอบพบ") {
       const findingText = finding || "-";
       document.getElementById("eq-upd-message").value = `Update#${updateNo} ตรวจสอบพบ ${findingText} กำลังเร่งดำเนินการแก้ไข`;
       return;
     }
-
+    if (status === "รอ Spare") {
+      document.getElementById("eq-upd-message").value = `Update#${updateNo} รอ Spare อุปกรณ์ ${finding || incidentAlarm} · กำลังดำเนินการจัดหา`;
+      return;
+    }
+    if (status === "แก้ไขเสร็จ") {
+      document.getElementById("eq-upd-message").value = `Update#${updateNo} แก้ไขเสร็จเรียบร้อย · ${finding || incidentAlarm} · ระบบกลับมาปกติแล้ว`;
+      return;
+    }
     document.getElementById("eq-upd-message").value = `Update#${updateNo} กำลังเร่งดำเนินการแก้ไข`;
 
   };
@@ -5733,128 +5844,184 @@ function ensureEquipmentFinishModal() {
   if (document.getElementById("modal-corrective-finish-equipment")) return;
 
   document.body.insertAdjacentHTML("beforeend", `
-      <div id="modal-corrective-finish-equipment" class="modal-backdrop hidden fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-        <div class="bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[92vh]">
-          <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-orange-50 to-white shrink-0">
-            <h3 id="equipment-finish-title" class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-               <span class="w-1.5 h-6 rounded-full bg-orange-500"></span> 
-               NS Finish Equipment
-            </h3>
-            <button id="btn-close-equipment-finish" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors text-lg font-bold">✕</button>
+    <style id="style-eq-finish-modal">
+    #modal-corrective-finish-equipment{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:1100;padding:16px}
+    #modal-corrective-finish-equipment.hidden{display:none}
+    #modal-corrective-finish-equipment .eqf-card{background:var(--canvas);border-radius:24px;width:100%;max-width:680px;display:flex;flex-direction:column;max-height:95vh;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.28)}
+    #modal-corrective-finish-equipment .eqf-body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+    #modal-corrective-finish-equipment .eqf-slabel{font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    #modal-corrective-finish-equipment .eqf-flabel{font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+    #modal-corrective-finish-equipment .eqf-inp{width:100%;height:36px;padding:0 10px;background:var(--surface-2,#f5f5f4);border:1px solid var(--hair);border-radius:8px;font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+    #modal-corrective-finish-equipment .eqf-inp:focus{border-color:var(--ok,#10b981)}
+    #modal-corrective-finish-equipment .eqf-time-inp{width:100%;height:36px;padding:0 8px;background:var(--canvas);border:1px solid var(--hair);border-radius:8px;font-size:12px;color:var(--ink);outline:none}
+    #modal-corrective-finish-equipment .eqf-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+    #modal-corrective-finish-equipment .eqf-dmg-lbl{display:flex;align-items:center;gap:7px;padding:5px 12px;border:1px solid var(--hair);border-radius:8px;cursor:pointer;background:var(--canvas);color:var(--ink);font-size:12px;font-weight:500;transition:all .15s;user-select:none}
+    #modal-corrective-finish-equipment .eqf-dmg-lbl:has(input:checked){background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+    #modal-corrective-finish-equipment .eqf-dmg-lbl input{width:13px;height:13px;accent-color:var(--canvas);pointer-events:none;flex-shrink:0}
+    #modal-corrective-finish-equipment .eqf-btn-ghost{padding:8px 20px;background:transparent;border:1px solid var(--hair);border-radius:10px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+    #modal-corrective-finish-equipment .eqf-btn-ghost:hover{background:var(--surface-2)}
+    #modal-corrective-finish-equipment .eqf-btn-save{display:flex;align-items:center;gap:6px;padding:8px 22px;background:var(--ok,#10b981);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    #modal-corrective-finish-equipment .eqf-btn-save:hover{opacity:.88}
+    </style>
+    <div id="modal-corrective-finish-equipment" class="hidden">
+      <div class="eqf-card">
+
+        <!-- HEADER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--hair);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;background:var(--ok,#10b981);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i data-lucide="check" style="width:20px;height:20px;color:#fff;stroke-width:3"></i>
+            </div>
+            <div>
+              <p style="font-size:10px;font-weight:700;color:var(--warn,#f97316);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">NS FINISH · EQUIPMENT</p>
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2 id="equipment-finish-title" style="font-size:18px;font-weight:900;color:var(--ink);line-height:1">NS Finish Equipment</h2>
+                <span id="eq-finish-incident-badge" style="padding:2px 10px;background:var(--surface-2);border:1px solid var(--hair);border-radius:6px;font-size:12px;font-weight:600;color:var(--ink-muted)"></span>
+              </div>
+            </div>
           </div>
-
-          <div class="p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/30">
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="flex flex-col">
-                <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Incident Number:</label></div>
-                <input id="eq-finish-incident" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none" readonly>
-              </div>
-              <div class="flex flex-col">
-                <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Circuit ID + Customer:</label></div>
-                <input id="eq-finish-node" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none" readonly>
-              </div>
-              <div class="md:col-span-2 flex flex-col">
-                 <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Device Type:</label></div>
-                 <input id="eq-finish-device" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none" placeholder="เช่น Router">
-              </div>
-              <div class="md:col-span-2 flex flex-col">
-                 <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Alarm/Problem:</label></div>
-                 <textarea id="eq-finish-problem" rows="2" class="w-full bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 py-3 text-sm outline-none custom-scrollbar"></textarea>
-              </div>
-            </div>
-
-            <div class="border-t border-slate-200 pt-6">
-              <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-orange-500"></i> เวลาต่างๆ</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-2">
-                 <div class="flex flex-col">
-                    <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Down Time:</label></div>
-                    <input id="eq-finish-down" type="datetime-local" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none">
-                 </div>
-                 <div class="flex flex-col">
-                    <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Up Time:</label></div>
-                    <input id="eq-finish-up" type="datetime-local" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none">
-                 </div>
-                 <div class="flex flex-col">
-                    <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">NS Response:</label></div>
-                    <input id="eq-finish-response" type="datetime-local" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none">
-                 </div>
-                 <div class="flex flex-col">
-                    <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">Arrival Time:</label></div>
-                    <input id="eq-finish-arrive" type="datetime-local" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none">
-                 </div>
-              </div>
-            </div>
-
-            <div class="border-t border-slate-200 pt-6">
-              <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5 text-orange-500"></i> สาเหตุและรายละเอียด</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex flex-col">
-                  <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">สาเหตุ:</label></div>
-                  <select id="eq-finish-cause" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none">
-                    <option value="">เลือกสาเหตุ</option>
-                    <option>Hardware Failure</option>
-                    <option>Software/Config Issue</option>
-                    <option>Power Issue (Internal)</option>
-                    <option>Power Issue (External)</option>
-                    <option>Unknown</option>
-                  </select>
-                </div>
-                
-                <div class="flex flex-col">
-                  <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">การแก้ไข:</label></div>
-                  <select id="eq-finish-fix" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 text-sm outline-none">
-                    <option value="">เลือกการแก้ไข</option>
-                    <option>Reboot</option><option>Replace</option><option>Reseat</option><option>Config Change</option><option>Firmware Upgrade</option>
-                  </select>
-                </div>
-
-                <div class="md:col-span-2 flex flex-col">
-                  <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">ส่วนที่เสีย:</label></div>
-                  <div id="eq-finish-damaged-wrap" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 rounded-xl border border-slate-200 bg-white shadow-sm p-4 text-sm">
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Router"> Router</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Switch"> Switch</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="SFP/Transceiver"> SFP/Transceiver</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Rectifier/Power Supply"> Power Supply</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Fan"> Fan</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Card/Module"> Card/Module</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="UPS"> UPS</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Controller"> Controller</label>
-                    <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600 transition-colors"><input type="checkbox" class="eq-finish-damaged-item w-4 h-4 text-orange-500 bg-slate-100" value="Adapter"> Adapter</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="border-t border-slate-200 pt-6">
-              <div class="flex flex-col">
-                 <div class="flex items-center justify-between h-5 mb-1.5 min-h-[20px]"><label class="text-sm font-semibold text-slate-700">สรุปการดำเนินการเพิ่มเติม:</label></div>
-                 <textarea id="eq-finish-summary" rows="3" class="w-full bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-xl px-4 py-3 text-sm outline-none custom-scrollbar" placeholder="เช่น ตรวจสอบพบ SFP Hang แก้ไขโดยการ Reset SFP ใหม่..."></textarea>
-              </div>
-            </div>
-
-            <div class="border-t border-slate-200 pt-6">
-              <div class="flex items-center justify-between mb-3">
-                <label class="text-sm font-bold text-slate-800 flex items-center gap-2"><i data-lucide="replace" class="w-5 h-5 text-orange-500"></i> เปลี่ยนอุปกรณ์ (S/N เดิม / S/N ใหม่)</label>
-                <button id="btn-eq-add-sn-row" type="button" class="px-4 py-1.5 text-xs font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg transition-colors shadow-sm">เพิ่มรายการ</button>
-              </div>
-              <div id="eq-finish-sn-rows" class="space-y-3">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 eq-finish-sn-row p-3 bg-white border border-slate-200 rounded-xl">
-                  <input class="eq-finish-old-sn w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none" placeholder="S/N เดิม">
-                  <input class="eq-finish-new-sn w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none" placeholder="S/N ใหม่">
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="px-6 py-4 border-t border-slate-100 flex justify-between gap-3 bg-white shrink-0">
-            <button id="btn-cancel-equipment-finish" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">ยกเลิก</button>
-            <button id="btn-save-equipment-finish" class="flex-1 px-6 py-2.5 bg-slate-900 border border-transparent shadow-md hover:shadow-lg text-white font-bold rounded-xl transform hover:-translate-y-0.5 transition-all outline-none flex items-center justify-center gap-2">✅ ปิดงาน (NS Finish)</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="eq-finish-mttr-badge" style="display:none;align-items:center;gap:5px;padding:5px 12px;background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.3);border-radius:20px;font-size:12px;font-weight:700;color:#0d9488">
+              <i data-lucide="clock" style="width:13px;height:13px"></i>
+              <span id="eq-finish-mttr-text"></span>
+            </span>
+            <button id="btn-close-equipment-finish" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--hair);border-radius:8px;background:transparent;cursor:pointer">
+              <i data-lucide="x" style="width:16px;height:16px;color:var(--ink-muted)"></i>
+            </button>
           </div>
         </div>
+
+        <!-- BODY -->
+        <div class="eqf-body">
+
+          <!-- Incident + Circuit + Device + Alarm -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <p class="eqf-flabel">Incident Number</p>
+              <input id="eq-finish-incident" class="eqf-inp" readonly>
+            </div>
+            <div>
+              <p class="eqf-flabel">Circuit ID · Customer</p>
+              <input id="eq-finish-node" class="eqf-inp" readonly>
+            </div>
+            <div>
+              <p class="eqf-flabel">Device Type <span style="color:#ef4444;font-size:11px">*</span></p>
+              <select id="eq-finish-device" class="eqf-inp" style="padding:0 8px">
+                <option value="">เลือกประเภท</option>
+                <option>Router</option><option>Switch</option><option>OLT</option><option>ONT/CPE</option>
+                <option>Media Converter</option><option>UPS</option><option>Server</option><option>Other</option>
+              </select>
+            </div>
+            <div>
+              <p class="eqf-flabel">Alarm / Problem <span style="color:#ef4444;font-size:11px">*</span></p>
+              <input id="eq-finish-problem" class="eqf-inp" placeholder="เช่น Charger unmanage">
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          <div style="border-top:1px solid var(--hair);padding-top:14px">
+            <p class="eqf-slabel"><i data-lucide="clock" style="width:12px;height:12px"></i> เวลาต่างๆ · TIMELINE</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <p class="eqf-flabel" style="display:flex;align-items:center;gap:5px"><span class="eqf-dot" style="background:#ef4444"></span> Down time</p>
+                <input id="eq-finish-down" type="datetime-local" class="eqf-time-inp">
+              </div>
+              <div>
+                <p class="eqf-flabel" style="display:flex;align-items:center;gap:5px"><span class="eqf-dot" style="background:#f59e0b"></span> NS response</p>
+                <input id="eq-finish-response" type="datetime-local" class="eqf-time-inp">
+              </div>
+              <div>
+                <p class="eqf-flabel" style="display:flex;align-items:center;gap:5px"><span class="eqf-dot" style="background:#6366f1"></span> Arrival time</p>
+                <input id="eq-finish-arrive" type="datetime-local" class="eqf-time-inp">
+              </div>
+              <div>
+                <p class="eqf-flabel" style="display:flex;align-items:center;gap:5px"><span class="eqf-dot" style="background:var(--hair)"></span> Up time</p>
+                <input id="eq-finish-up" type="datetime-local" class="eqf-time-inp">
+              </div>
+            </div>
+          </div>
+
+          <!-- Cause & Details -->
+          <div style="border-top:1px solid var(--hair);padding-top:14px">
+            <p class="eqf-slabel"><i data-lucide="wrench" style="width:12px;height:12px"></i> สาเหตุและรายละเอียด</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+              <div>
+                <p class="eqf-flabel">สาเหตุ</p>
+                <select id="eq-finish-cause" class="eqf-inp" style="padding:0 8px">
+                  <option value="">เลือกสาเหตุ</option>
+                  <option>Hardware failure</option><option>Software/Config Issue</option>
+                  <option>Power Issue (Internal)</option><option>Power Issue (External)</option><option>Unknown</option>
+                </select>
+              </div>
+              <div>
+                <p class="eqf-flabel">การแก้ไข</p>
+                <select id="eq-finish-fix" class="eqf-inp" style="padding:0 8px">
+                  <option value="">เลือกการแก้ไข</option>
+                  <option>เปลี่ยนอุปกรณ์</option><option>Reboot</option><option>Replace</option>
+                  <option>Reseat</option><option>Config Change</option><option>Firmware Upgrade</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <p class="eqf-flabel" style="margin-bottom:8px">ส่วนที่เสีย <span style="font-size:9px;font-weight:400;text-transform:none;opacity:.6">(เลือกได้หลายชิ้น)</span></p>
+              <div id="eq-finish-damaged-wrap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Router"> Router</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Switch"> Switch</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="SFP/Transceiver"> SFP/Transceiver</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Rectifier/Power Supply"> Power Supply</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Fan"> Fan</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Card/Module"> Card/Module</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="UPS"> UPS</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Controller"> Controller</label>
+                <label class="eqf-dmg-lbl"><input type="checkbox" class="eq-finish-damaged-item" value="Adapter"> Adapter</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div style="border-top:1px solid var(--hair);padding-top:14px">
+            <p class="eqf-flabel" style="margin-bottom:6px">สรุปการดำเนินการเพิ่มเติม</p>
+            <textarea id="eq-finish-summary" rows="3" style="width:100%;padding:8px 10px;background:var(--canvas);border:1px solid var(--hair);border-radius:8px;font-size:12px;color:var(--ink);resize:vertical;outline:none" placeholder="เช่น ตรวจสอบพบ SFP Hang แก้ไขโดยการ Reset SFP ใหม่..."></textarea>
+          </div>
+
+          <!-- S/N Section -->
+          <div style="border-top:1px solid var(--hair);padding-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <p class="eqf-slabel" style="margin-bottom:0"><i data-lucide="arrow-right-left" style="width:12px;height:12px"></i> เปลี่ยนอุปกรณ์ (S/N เดิม → S/N ใหม่)</p>
+              <button id="btn-eq-add-sn-row" type="button" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-2);border:1px solid var(--hair);border-radius:7px;font-size:11px;font-weight:700;color:var(--ink-muted);cursor:pointer">
+                <i data-lucide="plus" style="width:11px;height:11px"></i> เพิ่ม
+              </button>
+            </div>
+            <div id="eq-finish-sn-rows" style="display:flex;flex-direction:column;gap:8px">
+              <div class="eq-finish-sn-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <input class="eq-finish-old-sn eqf-inp" placeholder="S/N เดิม">
+                <input class="eq-finish-new-sn eqf-inp" placeholder="S/N ใหม่">
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /eqf-body -->
+
+        <!-- FOOTER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--hair);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:12px">
+            <i data-lucide="user" style="width:13px;height:13px"></i>
+            <span id="eq-finish-footer-user" style="font-weight:600">—</span>
+            <span style="opacity:.35">·</span>
+            <i data-lucide="clock" style="width:12px;height:12px"></i>
+            <span id="eq-finish-footer-time" style="color:var(--ink-dim)">—</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="btn-cancel-equipment-finish" class="eqf-btn-ghost">ยกเลิก</button>
+            <button id="btn-save-equipment-finish" class="eqf-btn-save">
+              <i data-lucide="check-circle" style="width:15px;height:15px"></i> ปิดงาน (NS Finish)
+            </button>
+          </div>
+        </div>
+
       </div>
-    `);
+    </div>
+  `);
 
   const modal = document.getElementById("modal-corrective-finish-equipment");
   document.getElementById("btn-close-equipment-finish").onclick = () => closeModal(modal);
@@ -5863,12 +6030,13 @@ function ensureEquipmentFinishModal() {
     const rows = document.getElementById("eq-finish-sn-rows");
     rows.insertAdjacentHTML(
       "beforeend",
-      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3 eq-finish-sn-row">
-          <input class="eq-finish-old-sn mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="S/N เดิม">
-          <input class="eq-finish-new-sn mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="S/N ใหม่">
+      `<div class="eq-finish-sn-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input class="eq-finish-old-sn eqf-inp" placeholder="S/N เดิม">
+          <input class="eq-finish-new-sn eqf-inp" placeholder="S/N ใหม่">
         </div>`
     );
   };
+  if (window.lucide) lucide.createIcons();
 }
 
 function openEquipmentFinishModal(incidentId) {
@@ -5879,7 +6047,15 @@ function openEquipmentFinishModal(incidentId) {
   const { incident, tab } = found;
   const modal = document.getElementById("modal-corrective-finish-equipment");
 
-  document.getElementById("equipment-finish-title").textContent = `NS Finish Equipment ${incident.incidentId}`;
+  const eqBadge = document.getElementById("eq-finish-incident-badge");
+  if (eqBadge) eqBadge.textContent = incident.incidentId || "";
+  const eqFooterUser = document.getElementById("eq-finish-footer-user");
+  if (eqFooterUser) eqFooterUser.textContent = incident.respondedBy || incident.createdBy || "—";
+  const eqFooterTime = document.getElementById("eq-finish-footer-time");
+  if (eqFooterTime) {
+    const now = new Date();
+    eqFooterTime.textContent = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")} · ${now.getDate().toString().padStart(2,"0")} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()]} ${now.getFullYear()}`;
+  }
   document.getElementById("eq-finish-incident").value = incident.incidentId || "";
   document.getElementById("eq-finish-node").value = incident.node || "";
   document.getElementById("eq-finish-problem").value = incident.alarm || "";
@@ -5913,9 +6089,9 @@ function openEquipmentFinishModal(incidentId) {
     const rowsToRender = pairs.length ? pairs : [{ oldSn: "", newSn: "" }];
     snRows.innerHTML = rowsToRender
       .map(
-        (pair) => `<div class="grid grid-cols-1 md:grid-cols-2 gap-3 eq-finish-sn-row">
-            <input class="eq-finish-old-sn mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="S/N เดิม" value="${pair.oldSn || ""}">
-            <input class="eq-finish-new-sn mt-1 w-full bg-slate-100 rounded-lg px-3 py-2" placeholder="S/N ใหม่" value="${pair.newSn || ""}">
+        (pair) => `<div class="eq-finish-sn-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input class="eq-finish-old-sn eqf-inp" placeholder="S/N เดิม" value="${pair.oldSn || ""}">
+            <input class="eq-finish-new-sn eqf-inp" placeholder="S/N ใหม่" value="${pair.newSn || ""}">
           </div>`
       )
       .join("");
@@ -5926,6 +6102,30 @@ function openEquipmentFinishModal(incidentId) {
   document.querySelectorAll(".eq-finish-damaged-item").forEach((el) => {
     el.checked = selectedDamagedParts.includes(el.value);
   });
+
+  function _calcEqMttr() {
+    const downVal = document.getElementById("eq-finish-down")?.value;
+    const upVal = document.getElementById("eq-finish-up")?.value;
+    const badge = document.getElementById("eq-finish-mttr-badge");
+    const text = document.getElementById("eq-finish-mttr-text");
+    if (!badge || !text || !downVal || !upVal) { if (badge) badge.style.display = "none"; return; }
+    const diffMs = new Date(upVal) - new Date(downVal);
+    if (diffMs <= 0) { badge.style.display = "none"; return; }
+    const totalMin = Math.floor(diffMs / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const slaOk = h < 3 || (h === 3 && m === 0);
+    text.textContent = `MTTR ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")} · ${slaOk ? "SLA met" : "SLA miss"}`;
+    badge.style.background = slaOk ? "rgba(13,148,136,.1)" : "rgba(239,68,68,.1)";
+    badge.style.border = slaOk ? "1px solid rgba(13,148,136,.3)" : "1px solid rgba(239,68,68,.3)";
+    badge.style.color = slaOk ? "#0d9488" : "#ef4444";
+    badge.style.display = "flex";
+  }
+  document.getElementById("eq-finish-down")?.addEventListener("change", _calcEqMttr);
+  document.getElementById("eq-finish-up")?.addEventListener("change", _calcEqMttr);
+  _calcEqMttr();
+  if (window.lucide) lucide.createIcons();
+  openModal(modal);
 
   document.getElementById("btn-save-equipment-finish").onclick = async () => {
     const current = Store.getState();
@@ -6476,225 +6676,344 @@ function ensureFinishModal() {
   if (document.getElementById("modal-corrective-finish")) return;
 
   document.body.insertAdjacentHTML("beforeend", `
-      <div id="modal-corrective-finish" class="modal-backdrop hidden">
-        <div class="bg-white rounded-2xl w-full max-w-6xl p-3 md:p-6 max-h-[92vh] overflow-y-auto">
-          <div class="flex items-center justify-between mb-3">
-            <h3 id="finish-title" class="text-base md:text-2xl font-bold text-slate-800 truncate mr-2">NS Finish</h3>
-            <button id="btn-close-finish" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm shrink-0">ปิด</button>
-          </div>
+    <style id="style-finish-modal">
+    #modal-corrective-finish{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:1100;padding:16px}
+    #modal-corrective-finish.hidden{display:none}
+    #modal-corrective-finish .fin-card{background:var(--canvas);border-radius:24px;width:100%;max-width:1060px;display:flex;flex-direction:column;max-height:95vh;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.28)}
+    #modal-corrective-finish .fin-body{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;min-height:0}
+    #modal-corrective-finish .fin-left{padding:20px 22px;border-right:1px solid var(--hair);display:flex;flex-direction:column;gap:16px}
+    #modal-corrective-finish .fin-right{padding:20px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+    #modal-corrective-finish .fin-slabel{font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    #modal-corrective-finish .fin-flabel{font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block}
+    #modal-corrective-finish .fin-inp{width:100%;height:36px;padding:0 10px;background:var(--surface-2,#f5f5f4);border:1px solid var(--hair);border-radius:8px;font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+    #modal-corrective-finish .fin-inp:focus{border-color:var(--ok,#10b981)}
+    #modal-corrective-finish .fin-sub-lbl{display:flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--hair);border-radius:8px;cursor:pointer;background:var(--canvas);color:var(--ink);font-size:12px;font-weight:500;transition:all .15s;user-select:none}
+    #modal-corrective-finish .fin-sub-lbl:has(input:checked){background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+    #modal-corrective-finish .fin-sub-lbl input{width:13px;height:13px;accent-color:var(--canvas);pointer-events:none;flex-shrink:0}
+    #modal-corrective-finish .fin-time-inp{width:100%;height:36px;padding:0 8px;background:var(--canvas);border:1px solid var(--hair);border-radius:8px;font-size:12px;color:var(--ink);outline:none}
+    #modal-corrective-finish .fin-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+    #modal-corrective-finish .fin-gps{padding:0 14px;height:36px;background:var(--warn,#f97316);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px}
+    #modal-corrective-finish .fin-btn-gen{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;background:var(--warn,#f97316);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    #modal-corrective-finish .fin-btn-gen:hover{opacity:.88}
+    #modal-corrective-finish .fin-btn-ghost{padding:8px 20px;background:transparent;border:1px solid var(--hair);border-radius:10px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+    #modal-corrective-finish .fin-btn-ghost:hover{background:var(--surface-2)}
+    #modal-corrective-finish .fin-btn-save{display:flex;align-items:center;gap:6px;padding:8px 20px;background:var(--ok,#10b981);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    #modal-corrective-finish .fin-btn-save:hover{opacity:.88}
+    </style>
+    <div id="modal-corrective-finish" class="hidden">
+      <div class="fin-card">
 
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label class="text-sm font-semibold text-slate-700">Incident Number:</label>
-                <input id="finish-incident" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-              </div>
-              <div>
-                <label class="text-sm font-semibold text-slate-700">Circuit ID + Customer:</label>
-                <input id="finish-circuit" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-              </div>
+        <!-- HEADER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--hair);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;background:var(--ok,#10b981);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i data-lucide="check" style="width:20px;height:20px;color:#fff;stroke-width:3"></i>
             </div>
-
-            <div class="border rounded-xl p-3 bg-slate-50/60">
-              <label class="text-sm font-semibold text-slate-700">Sub Contractor (เลือกได้หลายเจ้า):</label>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="TAS (Zone1)"> TAS (Zone1)</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="BAN"> BAN</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="TAS (Zone2)"> TAS (Zone2)</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="JL"> JL</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="ATG"> ATG</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="TP"> TP</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="NPY"> NPY</label>
-                <label class="finish-sub-card"><input type="checkbox" class="finish-sub" value="JJ&A"> JJ&A</label>
+            <div>
+              <p style="font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">NS FINISH · CLOSE INCIDENT</p>
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2 id="finish-title" style="font-size:20px;font-weight:900;color:var(--ink);line-height:1">NS Finish</h2>
+                <span id="finish-incident-id-badge" style="padding:2px 10px;background:var(--surface-2);border:1px solid var(--hair);border-radius:6px;font-size:12px;font-weight:600;color:var(--ink-muted)"></span>
               </div>
-            </div>
-
-            <div class="border-t pt-3">
-              <h4 class="font-bold text-slate-800 mb-2">เวลาต่างๆ</h4>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Down Time</label><input id="finish-down-time" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">NOC Alert</label><input id="finish-noc-alert" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">NS Response</label><input id="finish-ns-response" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">เรียก Sub</label><input id="finish-call-sub" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sub มาถึง</label><input id="finish-sub-arrive" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">เริ่มแก้ไข</label><input id="finish-start-fix" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Up Time</label><input id="finish-up-time" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-                <div><label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">เก็บหัวต่อ</label><input id="finish-store-connector" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm"></div>
-              </div>
-            </div>
-
-            <div id="finish-clock-section" class="border-t pt-3 hidden">
-              <h4 class="font-bold text-slate-800 mb-2">Stop clock - Start clock</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><label class="text-sm text-slate-700">Stop Clock:</label><input id="finish-stop-clock" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></div>
-                <div><label class="text-sm text-slate-700">Start Clock:</label><input id="finish-start-clock" type="datetime-local" class="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"></div>
-              </div>
-            </div>
-
-            <div class="border-t pt-3">
-              <h4 class="font-bold text-slate-800 mb-2">รายละเอียดงาน</h4>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div class="flex flex-col">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">OFC Type</label>
-                  <select id="finish-ofc-type" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none"><option value="">เลือกประเภท</option><option>หลายเส้น</option><option>Flat type 2 Core</option><option>4 Core ADSS</option><option>12 Core ADSS</option><option>24 Core ADSS</option><option>48 Core ADSS</option><option>60 Core ADSS</option><option>144 Core ADSS</option><option>216 Core ADSS</option><option>312 Core ADSS</option><option>12 Core Armour</option><option>48 Core Armour</option><option>60 Core Armour</option><option>144 Core Armour</option></select>
-                  <div id="finish-multi-ofc-summary-wrap" class="hidden mt-2 p-3 rounded-lg border border-orange-200 bg-orange-50/50">
-                    <div class="font-semibold text-slate-800 text-xs">ข้อมูล OFC ที่เลือก:</div>
-                    <div id="finish-multi-ofc-summary" class="text-orange-900 text-sm mt-1"></div>
-                  </div>
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Network Type</label>
-                  <select id="finish-network-type" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none"><option value="">-</option><option value="Backbone">Backbone</option><option value="Access">Access</option></select>
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">ระยะห่างจาก Site (เมตร)</label>
-                  <input id="finish-distance" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none" placeholder="เช่น 90">
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">ชื่อ Site</label>
-                  <input id="finish-site" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none" placeholder="เช่น BTS Tower">
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">สาเหตุ</label>
-                  <select id="finish-cause" class="w-full h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none"><option value="">เลือกสาเหตุ</option><option>Animal gnawing</option><option>High loss/Crack</option><option>Cut by Unknown agency</option><option>Cut trees</option><option>Cut by MEA/PEA agency</option><option>Car accident</option><option>Electrical Surge</option><option>Electrical pole was broken by accident</option><option>Electrical pole was broken by Natural Disaster</option><option>Electric Authority remove pole</option><option>Road Construction</option><option>BTS Construction</option><option>Fire damanged</option><option>Natural Disaster</option><option>Equipment at Node</option><option>Equipment at customer</option><option>Bullet</option></select>
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">บริเวณ</label>
-                  <div class="flex gap-2">
-                    <input id="finish-area" class="flex-1 h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none" placeholder="เช่น ถ.กัลปพฤกษ์">
-                    <button id="btn-finish-map" class="px-3 h-10 bg-slate-800 hover:bg-slate-900 shadow-sm text-white rounded-lg text-sm transition-colors whitespace-nowrap">🗺️</button>
-                  </div>
-                </div>
-                <div class="flex flex-col md:col-span-3">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">พิกัด (Lat, Long)</label>
-                  <div class="flex gap-2">
-                    <input id="finish-latlng" class="flex-1 h-10 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg px-3 text-sm outline-none" placeholder="13.7054778, 100.5026162">
-                    <button id="btn-finish-gps" class="px-4 h-10 bg-slate-800 hover:bg-slate-900 shadow-sm text-white rounded-lg text-sm transition-colors whitespace-nowrap">📍 GPS</button>
-                  </div>
-                </div>
-
-                <!-- รูปภาพบังคับ 5 หมวด -->
-                <div class="flex flex-col md:col-span-3">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">📷 รูปภาพประกอบ (บังคับ)</label>
-                  <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
-                    ${[
-                      { id: "finish-photo-before",     label: "รูปก่อนดำเนินการ" },
-                      { id: "finish-photo-damage",     label: "รูปแผล" },
-                      { id: "finish-photo-unable",     label: "รูปกรณีปฏิบัติไม่ได้" },
-                      { id: "finish-photo-connector",  label: "รูปเก็บหัวต่อ" },
-                      { id: "finish-photo-sticker",    label: "รูปติดสติกเกอร์" },
-                    ].map(p => `
-                      <div class="border rounded-lg p-2 bg-white space-y-1.5">
-                        <p class="text-[10px] font-semibold text-slate-600 text-center leading-tight">${p.label}</p>
-                        <input id="${p.id}-file" type="file" accept="image/*,.pdf" multiple class="hidden">
-                        <label for="${p.id}-file" class="cursor-pointer flex items-center justify-center gap-1 bg-slate-100 hover:bg-orange-100 border rounded px-2 py-2 text-center text-[10px] font-medium transition-colors w-full">📷 ถ่าย / แนบรูป</label>
-                        <div id="${p.id}-preview" class="flex flex-wrap gap-1 justify-center min-h-[20px]"><span class="text-[9px] text-slate-400">ยังไม่มีรูป</span></div>
-                      </div>
-                    `).join("")}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="border rounded-xl p-3 bg-slate-100 solution-builder grid grid-cols-2 md:grid-cols-4 gap-3">
-
-              <div id="finish-method-row" class="space-y-1 col-span-2 md:col-span-4">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">วิธีการ</label>
-                <select id="finish-method" class="w-full bg-white border border-teal-500 rounded-lg px-3 py-2">
-                  <option value="">เลือกวิธีการ</option>
-                  <option value="ลากคร่อม">ลากคร่อม</option>
-                  <option value="ร่นลูป">ร่นลูป</option>
-                  <option value="โยก Core">โยก Core</option>
-                  <option value="ตัดต่อใหม่">ตัดต่อใหม่</option>
-                  <option value="ค่าเร่งด่วน">ค่าเร่งด่วน</option>
-                </select>
-              </div>
-
-              <div id="finish-distance-row" class="space-y-1 col-span-2 md:col-span-4">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">ระยะ</label>
-                <div class="flex gap-2 items-center">
-                  <input id="finish-method-distance" class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="เมตร">
-                  <span class="text-sm text-slate-500">เมตร</span>
-                </div>
-              </div>
-
-              <div id="finish-cut-core-row" class="grid grid-cols-2 gap-3 col-span-2 md:col-span-2">
-                <div class="space-y-1">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">ตัดต่อใหม่</label>
-                  <input id="finish-cutpoint" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="จุด">
-                </div>
-                <div class="space-y-1">
-                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">จุดละ</label>
-                  <input id="finish-core-point" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="Core">
-                </div>
-                <div id="finish-multi-point-wrap" class="hidden col-span-2 border rounded-xl p-3 bg-white/70 space-y-2">
-                  <div class="font-semibold text-slate-800">รายละเอียดแต่ละจุด (เมื่อ ตัดต่อใหม่ มากกว่า 1 จุด)</div>
-                  <div id="finish-multi-point-rows" class="space-y-3"></div>
-                </div>
-              </div>
-
-              <div id="finish-connector-wrap" class="space-y-1">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">ตัวเลือก: หัวต่อ</label>
-                <select id="finish-connector-choice" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2">
-                  <option>ใช้หัวต่อ</option>
-                  <option>ไม่ใช้หัวต่อ</option>
-                </select>
-              </div>
-
-              <div id="finish-head-joint-wrap" class="space-y-1">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">หัวต่อ</label>
-                <input id="finish-head-joint" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2" placeholder="หัว">
-              </div>
-
-              <div id="finish-method-yoke-detail" class="hidden border rounded-xl p-4 bg-teal-50 border-teal-400 space-y-3 col-span-2 md:col-span-4">
-                <div class="font-bold text-teal-900 text-xl">📝 รายละเอียดการโยก Core</div>
-                <div class="grid grid-cols-2 gap-3">
-                  <div class="space-y-1">
-                    <label class="text-teal-900 font-semibold text-sm">จุดที่ 1:</label>
-                    <input id="finish-yoke-loc-a" class="w-full bg-lime-50 border border-lime-300 rounded-lg px-3 py-2" placeholder="ใส่ชื่อจุดที่ด้านบน...">
-                  </div>
-                  <div class="space-y-1">
-                    <label class="text-teal-900 font-semibold text-sm">จุดที่ 2:</label>
-                    <input id="finish-yoke-loc-b" class="w-full bg-lime-50 border border-lime-300 rounded-lg px-3 py-2" placeholder="ใส่ชื่อจุดที่ด้านบน...">
-                  </div>
-                </div>
-                <div id="finish-yoke-circuit-rows" class="space-y-3"></div>
-                <button id="btn-add-yoke-circuit" class="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold">+ เพิ่มลูกค้า/Circuit</button>
-              </div>
-
-              <div id="finish-urgent-row" class="space-y-1 md:col-span-2">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">ค่าเร่งด่วน</label>
-                <select id="finish-urgent-level" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2">
-                  <option>มีค่าเร่งด่วน</option>
-                  <option>ไม่มีค่าเร่งด่วน</option>
-                </select>
-              </div>
-
-              <div class="space-y-1 md:col-span-2">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">ปรับ/ไม่ปรับ</label>
-                <select id="finish-patch-status" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2">
-                  <option>ไม่ปรับ</option>
-                  <option>ปรับ</option>
-                </select>
-              </div>
-
-              <button id="btn-generate-repair" class="col-span-2 md:col-span-4 w-full px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white rounded-xl font-bold shadow-md shadow-orange-500/20 transform hover:-translate-y-0.5 transition-all outline-none">✨ สร้างคำอธิบายอัตโนมัติ</button>
-
-              <div id="finish-multi-repair-wrap" class="hidden border rounded-xl p-4 bg-cyan-50 border-cyan-300 space-y-3 col-span-2 md:col-span-4">
-                <div class="font-bold text-cyan-900">🧩 รายละเอียดการแก้ไขแต่ละเส้น</div>
-                <div id="finish-multi-repair-rows" class="space-y-3"></div>
-              </div>
-              <textarea id="solution" class="col-span-2 md:col-span-4 w-full bg-white border border-slate-300 rounded-xl px-3 py-2 h-24" placeholder="คำอธิบายจะสร้างอัตโนมัติ หรือใส่ข้อมูลเอง"></textarea>
             </div>
           </div>
-
-          <div class="flex justify-end gap-3 mt-5 pt-4 border-t border-slate-100">
-            <button id="btn-cancel-finish" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">ยกเลิก</button>
-            <button id="btn-save-finish" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl shadow-md transition-all">บันทึก</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="finish-mttr-badge" style="display:none;align-items:center;gap:5px;padding:5px 12px;background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.3);border-radius:20px;font-size:12px;font-weight:700;color:#0d9488">
+              <i data-lucide="clock" style="width:13px;height:13px"></i>
+              <span id="finish-mttr-text"></span>
+            </span>
+            <button id="btn-close-finish" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--hair);border-radius:8px;background:transparent;cursor:pointer">
+              <i data-lucide="x" style="width:16px;height:16px;color:var(--ink-muted)"></i>
+            </button>
           </div>
         </div>
+
+        <!-- BODY -->
+        <div class="fin-body">
+
+          <!-- LEFT COLUMN -->
+          <div class="fin-left">
+
+            <!-- Incident + Circuit -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <span class="fin-flabel">Incident Number</span>
+                <input id="finish-incident" class="fin-inp" placeholder="I2604-000000">
+              </div>
+              <div>
+                <span class="fin-flabel">Circuit ID · Customer</span>
+                <input id="finish-circuit" class="fin-inp" placeholder="ML43907 GigabitEthernet6/0/16">
+              </div>
+            </div>
+
+            <!-- Sub Contractor -->
+            <div>
+              <p class="fin-slabel"><i data-lucide="users" style="width:12px;height:12px"></i> Sub Contractor <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.65">(เลือกได้หลายเจ้า)</span></p>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="TAS (Zone1)"> TAS (Zone1)</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="BAN"> BAN</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="TAS (Zone2)"> TAS (Zone2)</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="JL"> JL</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="ATG"> ATG</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="TP"> TP</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="NPY"> NPY</label>
+                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="JJ&A"> JJ&A</label>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div>
+              <p class="fin-slabel"><i data-lucide="clock" style="width:12px;height:12px"></i> เวลาต่างๆ · TIMELINE</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:#ef4444"></span> Down time</span>
+                  <input id="finish-down-time" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:#f59e0b"></span> NOC alert</span>
+                  <input id="finish-noc-alert" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:#3b82f6"></span> NS response</span>
+                  <input id="finish-ns-response" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:#f59e0b"></span> เรียก SUB</span>
+                  <input id="finish-call-sub" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:#6366f1"></span> SUB มาถึง</span>
+                  <input id="finish-sub-arrive" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:#10b981"></span> เริ่มแก้ไข</span>
+                  <input id="finish-start-fix" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:var(--hair)"></span> Up time</span>
+                  <input id="finish-up-time" type="datetime-local" class="fin-time-inp">
+                </div>
+                <div>
+                  <span class="fin-flabel" style="display:flex;align-items:center;gap:5px"><span class="fin-dot" style="background:var(--hair)"></span> เก็บหัวต่อ</span>
+                  <input id="finish-store-connector" type="datetime-local" class="fin-time-inp">
+                </div>
+              </div>
+            </div>
+
+            <!-- Stop/Start Clock (hidden) -->
+            <div id="finish-clock-section" class="hidden" style="border-top:1px solid var(--hair);padding-top:12px">
+              <p class="fin-slabel">Stop clock · Start clock</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div><span class="fin-flabel">Stop Clock</span><input id="finish-stop-clock" type="datetime-local" class="fin-time-inp"></div>
+                <div><span class="fin-flabel">Start Clock</span><input id="finish-start-clock" type="datetime-local" class="fin-time-inp"></div>
+              </div>
+            </div>
+
+            <!-- Photos -->
+            <div>
+              <p class="fin-slabel"><i data-lucide="image" style="width:12px;height:12px"></i> รูปภาพประกอบ <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.65">(บังคับ)</span></p>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px">
+                ${[
+                  { id: "finish-photo-before",    label: "รูปก่อน<br>ดำเนินการ" },
+                  { id: "finish-photo-damage",     label: "รูปแผล" },
+                  { id: "finish-photo-unable",     label: "รูปปฏิบัติ<br>ไม่ได้" },
+                  { id: "finish-photo-connector",  label: "รูปเก็บ<br>หัวต่อ" },
+                  { id: "finish-photo-sticker",    label: "รูปติด<br>สติกเกอร์" },
+                ].map(p => `
+                  <div style="border:1px solid var(--hair);border-radius:10px;padding:7px 5px;background:var(--canvas);display:flex;flex-direction:column;align-items:center;gap:5px">
+                    <p style="font-size:9px;font-weight:600;color:var(--ink);text-align:center;line-height:1.35">${p.label}</p>
+                    <input id="${p.id}-file" type="file" accept="image/*,.pdf" multiple class="hidden">
+                    <label for="${p.id}-file" style="cursor:pointer;display:flex;align-items:center;gap:3px;background:var(--surface-2);border:1px solid var(--hair);border-radius:6px;padding:4px 5px;font-size:9px;font-weight:600;color:var(--ink-muted);width:100%;justify-content:center">
+                      <i data-lucide="camera" style="width:10px;height:10px"></i> ถ่าย / แนบรูป
+                    </label>
+                    <div id="${p.id}-preview" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:14px">
+                      <span style="font-size:8px;color:var(--ink-dim)">ยังไม่มีรูป</span>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+
+          </div><!-- /fin-left -->
+
+          <!-- RIGHT COLUMN -->
+          <div class="fin-right">
+
+            <!-- JOB DETAILS -->
+            <div>
+              <p class="fin-slabel"><i data-lucide="clipboard-list" style="width:12px;height:12px"></i> รายละเอียดงาน · JOB DETAILS</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                <div>
+                  <span class="fin-flabel">OFC Type</span>
+                  <select id="finish-ofc-type" class="fin-inp" style="padding:0 8px">
+                    <option value="">เลือกประเภท</option>
+                    <option>หลายเส้น</option><option>Flat type 2 Core</option><option>4 Core ADSS</option><option>12 Core ADSS</option><option>24 Core ADSS</option><option>48 Core ADSS</option><option>60 Core ADSS</option><option>144 Core ADSS</option><option>216 Core ADSS</option><option>312 Core ADSS</option><option>12 Core Armour</option><option>48 Core Armour</option><option>60 Core Armour</option><option>144 Core Armour</option>
+                  </select>
+                  <div id="finish-multi-ofc-summary-wrap" class="hidden" style="margin-top:5px;padding:7px;border-radius:7px;border:1px solid var(--warn,#f97316);background:rgba(249,115,22,.05)">
+                    <p style="font-size:10px;font-weight:700;color:var(--ink)">ข้อมูล OFC ที่เลือก:</p>
+                    <div id="finish-multi-ofc-summary" style="font-size:11px;color:var(--warn,#f97316);margin-top:3px"></div>
+                  </div>
+                </div>
+                <div>
+                  <span class="fin-flabel">Network Type</span>
+                  <select id="finish-network-type" class="fin-inp" style="padding:0 8px">
+                    <option value="">-</option><option value="Backbone">Backbone</option><option value="Access">Access</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="fin-flabel">ระยะห่างจาก Site (เมตร)</span>
+                  <input id="finish-distance" class="fin-inp" placeholder="เช่น 120">
+                </div>
+                <div>
+                  <span class="fin-flabel">ชื่อ Site</span>
+                  <input id="finish-site" class="fin-inp" placeholder="เช่น CHM-N04">
+                </div>
+                <div>
+                  <span class="fin-flabel">สาเหตุ</span>
+                  <select id="finish-cause" class="fin-inp" style="padding:0 8px">
+                    <option value="">เลือกสาเหตุ</option><option>Animal gnawing</option><option>High loss/Crack</option><option>Cut by Unknown agency</option><option>Cut trees</option><option>Cut by MEA/PEA agency</option><option>Car accident</option><option>Electrical Surge</option><option>Electrical pole was broken by accident</option><option>Electrical pole was broken by Natural Disaster</option><option>Electric Authority remove pole</option><option>Road Construction</option><option>BTS Construction</option><option>Fire damanged</option><option>Natural Disaster</option><option>Equipment at Node</option><option>Equipment at customer</option><option>Bullet</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="fin-flabel">บริเวณ</span>
+                  <div style="display:flex;gap:5px">
+                    <input id="finish-area" class="fin-inp" placeholder="เช่น หน้าซอย 12" style="flex:1">
+                    <button id="btn-finish-map" style="padding:0 10px;height:36px;background:var(--surface-2);border:1px solid var(--hair);border-radius:8px;cursor:pointer;font-size:14px">🗺️</button>
+                  </div>
+                </div>
+                <div style="grid-column:1/-1">
+                  <span class="fin-flabel">พิกัด (Lat, Long)</span>
+                  <div style="display:flex;gap:5px">
+                    <input id="finish-latlng" class="fin-inp" placeholder="13.7054778, 100.5026162" style="flex:1">
+                    <button id="btn-finish-gps" class="fin-gps"><i data-lucide="map-pin" style="width:13px;height:13px"></i> GPS</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- METHOD -->
+            <div style="border-top:1px solid var(--hair);padding-top:14px">
+              <p class="fin-slabel"><i data-lucide="wrench" style="width:12px;height:12px"></i> วิธีการแก้ไข · METHOD</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+                <div id="finish-method-row" style="grid-column:1/-1">
+                  <span class="fin-flabel">วิธีการ</span>
+                  <select id="finish-method" class="fin-inp" style="padding:0 8px">
+                    <option value="">เลือกวิธีการ</option>
+                    <option value="ลากคร่อม">ลากคร่อม</option>
+                    <option value="ร่นลูป">ร่นลูป</option>
+                    <option value="โยก Core">โยก Core</option>
+                    <option value="ตัดต่อใหม่">ตัดต่อใหม่</option>
+                    <option value="ค่าเร่งด่วน">ค่าเร่งด่วน</option>
+                  </select>
+                </div>
+
+                <div id="finish-distance-row" style="grid-column:1/-1">
+                  <span class="fin-flabel">ระยะ</span>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <input id="finish-method-distance" class="fin-inp" placeholder="เมตร" style="flex:1">
+                    <span style="font-size:12px;color:var(--ink-muted)">ม.</span>
+                  </div>
+                </div>
+
+                <div id="finish-cut-core-row" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <span class="fin-flabel">ตัดต่อใหม่</span>
+                    <input id="finish-cutpoint" class="fin-inp" placeholder="จุด">
+                  </div>
+                  <div>
+                    <span class="fin-flabel">จุดละ</span>
+                    <input id="finish-core-point" class="fin-inp" placeholder="Core">
+                  </div>
+                  <div id="finish-multi-point-wrap" class="hidden" style="grid-column:1/-1;border:1px solid var(--hair);border-radius:10px;padding:10px;background:var(--surface-2)">
+                    <p style="font-weight:700;color:var(--ink);font-size:12px;margin-bottom:8px">รายละเอียดแต่ละจุด</p>
+                    <div id="finish-multi-point-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+                  </div>
+                </div>
+
+                <div id="finish-connector-wrap">
+                  <span class="fin-flabel">ตัวเลือก: หัวต่อ</span>
+                  <select id="finish-connector-choice" class="fin-inp" style="padding:0 8px">
+                    <option>ใช้หัวต่อ</option>
+                    <option>ไม่ใช้หัวต่อ</option>
+                  </select>
+                </div>
+
+                <div id="finish-head-joint-wrap">
+                  <span class="fin-flabel">หัวต่อ</span>
+                  <input id="finish-head-joint" class="fin-inp" placeholder="หัว">
+                </div>
+
+                <div id="finish-method-yoke-detail" class="hidden" style="grid-column:1/-1;border:1px solid rgba(13,148,136,.4);border-radius:10px;padding:12px;background:rgba(13,148,136,.05)">
+                  <p style="font-size:13px;font-weight:800;color:#0d9488;margin-bottom:10px">📝 รายละเอียดการโยก Core</p>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                    <div><span class="fin-flabel" style="color:#0d9488">จุดที่ 1</span><input id="finish-yoke-loc-a" class="fin-inp" placeholder="ชื่อจุดที่ด้านบน..."></div>
+                    <div><span class="fin-flabel" style="color:#0d9488">จุดที่ 2</span><input id="finish-yoke-loc-b" class="fin-inp" placeholder="ชื่อจุดที่ด้านบน..."></div>
+                  </div>
+                  <div id="finish-yoke-circuit-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+                  <button id="btn-add-yoke-circuit" style="width:100%;margin-top:8px;padding:8px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">+ เพิ่มลูกค้า/Circuit</button>
+                </div>
+
+                <div id="finish-urgent-row">
+                  <span class="fin-flabel">ค่าเร่งด่วน</span>
+                  <select id="finish-urgent-level" class="fin-inp" style="padding:0 8px">
+                    <option>มีค่าเร่งด่วน</option>
+                    <option>ไม่มีค่าเร่งด่วน</option>
+                  </select>
+                </div>
+                <div>
+                  <span class="fin-flabel">ปรับ / ไม่ปรับ</span>
+                  <select id="finish-patch-status" class="fin-inp" style="padding:0 8px">
+                    <option>ไม่ปรับ</option>
+                    <option>ปรับ</option>
+                  </select>
+                </div>
+
+                <div style="grid-column:1/-1">
+                  <button id="btn-generate-repair" class="fin-btn-gen">
+                    <i data-lucide="sparkles" style="width:14px;height:14px"></i> สร้างคำอธิบายอัตโนมัติ
+                  </button>
+                </div>
+
+                <div id="finish-multi-repair-wrap" class="hidden" style="grid-column:1/-1;border:1px solid var(--hair);border-radius:10px;padding:10px;background:var(--surface-2)">
+                  <p style="font-weight:700;color:var(--ink);font-size:12px;margin-bottom:8px">🧩 รายละเอียดการแก้ไขแต่ละเส้น</p>
+                  <div id="finish-multi-repair-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+                </div>
+
+                <div style="grid-column:1/-1">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <span class="fin-flabel" style="margin-bottom:0">คำอธิบายงาน <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">(สร้างอัตโนมัติ หรือใส่เอง)</span></span>
+                    <button id="btn-finish-copy-solution" style="font-size:9px;font-weight:700;color:var(--ink-muted);background:var(--surface-2);border:1px solid var(--hair);border-radius:5px;padding:2px 8px;cursor:pointer">COPY</button>
+                  </div>
+                  <textarea id="solution" style="width:100%;min-height:80px;padding:8px 10px;background:var(--canvas);border:1px solid var(--hair);border-radius:8px;font-size:12px;color:var(--ink);resize:vertical;outline:none" placeholder="คำอธิบายจะสร้างอัตโนมัติ หรือใส่ข้อมูลเอง"></textarea>
+                </div>
+
+              </div>
+            </div>
+
+          </div><!-- /fin-right -->
+        </div><!-- /fin-body -->
+
+        <!-- FOOTER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--hair);flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:12px">
+            <i data-lucide="user" style="width:13px;height:13px"></i>
+            <span id="finish-footer-user" style="font-weight:600">—</span>
+            <span style="opacity:.35">·</span>
+            <i data-lucide="clock" style="width:12px;height:12px"></i>
+            <span id="finish-footer-time" style="color:var(--ink-dim)">—</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="btn-cancel-finish" class="fin-btn-ghost">ยกเลิก</button>
+            <button id="btn-save-finish" class="fin-btn-save">
+              <i data-lucide="check-circle" style="width:15px;height:15px"></i> บันทึก &amp; ปิดเคส
+            </button>
+          </div>
+        </div>
+
       </div>
-    `);
+    </div>
+  `);
 
   let modal = document.getElementById("modal-corrective-finish");
   if (!document.getElementById("finish-connector-choice") || !document.getElementById("finish-head-joint")) {
@@ -6706,16 +7025,39 @@ function ensureFinishModal() {
   document.getElementById("btn-close-finish").onclick = () => closeModal(modal);
   document.getElementById("btn-cancel-finish").onclick = () => closeModal(modal);
 
-  document.querySelectorAll(".finish-sub-card").forEach((el) => {
-    el.classList.add("flex", "items-center", "gap-2", "px-3", "py-2", "bg-white", "border", "rounded-lg");
+  document.getElementById("btn-finish-copy-solution")?.addEventListener("click", () => {
+    const txt = document.getElementById("solution")?.value || "";
+    if (txt) navigator.clipboard.writeText(txt).catch(() => {});
   });
 
+  window._updateFinishMttr = function _updateFinishMttr() {
+    const downVal = document.getElementById("finish-down-time")?.value;
+    const upVal = document.getElementById("finish-up-time")?.value;
+    const badge = document.getElementById("finish-mttr-badge");
+    const text = document.getElementById("finish-mttr-text");
+    if (!badge || !text) return;
+    if (!downVal || !upVal) { badge.style.display = "none"; return; }
+    const diffMs = new Date(upVal) - new Date(downVal);
+    if (diffMs <= 0) { badge.style.display = "none"; return; }
+    const totalMin = Math.floor(diffMs / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const mttrStr = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+    const slaOk = h < 3 || (h === 3 && m === 0);
+    text.textContent = `MTTR ${mttrStr} · ${slaOk ? "SLA met" : "SLA miss"}`;
+    badge.style.background = slaOk ? "rgba(13,148,136,.1)" : "rgba(239,68,68,.1)";
+    badge.style.border = slaOk ? "1px solid rgba(13,148,136,.3)" : "1px solid rgba(239,68,68,.3)";
+    badge.style.color = slaOk ? "#0d9488" : "#ef4444";
+    badge.style.display = "flex";
+  }
   document.getElementById("finish-up-time")?.addEventListener("change", () => {
     const up = document.getElementById("finish-up-time")?.value;
     if (!up) return;
     const storeEl = document.getElementById("finish-store-connector");
     if (storeEl) storeEl.value = formatDateTimeInput(addMinutes(up, 10));
+    window._updateFinishMttr();
   });
+  document.getElementById("finish-down-time")?.addEventListener("change", () => window._updateFinishMttr());
 
   document.getElementById("finish-method")?.addEventListener("change", (e) => {
     toggleSolutionFields(e.target.value);
@@ -6765,7 +7107,7 @@ function ensureFinishModal() {
     const connectorWrap = document.getElementById("finish-connector-wrap");
     const useJoint = choice === "ใช้หัวต่อ";
     if (wrap) wrap.classList.toggle("hidden", !useJoint);
-    if (connectorWrap) connectorWrap.classList.toggle("md:col-span-2", !useJoint);
+    if (connectorWrap) connectorWrap.style.gridColumn = !useJoint ? "1/-1" : "";
   }
   document.getElementById("finish-connector-choice")?.addEventListener("change", applyConnectorToggle);
   applyConnectorToggle();
@@ -6794,6 +7136,8 @@ function ensureFinishModal() {
     toggleSolutionFields();
     syncMultiLineYokeSectionState();
   });
+
+  if (window.lucide) lucide.createIcons();
 }
 
 function toggleSolutionFields(selectedMethod = "") {
@@ -7422,7 +7766,15 @@ function openCorrectiveFinishModal(incidentId) {
     if (prev) prev.innerHTML = '<span class="text-[9px] text-slate-400">ยังไม่มีรูป</span>';
     delete modal?.dataset[id.replace(/-/g, "_")];
   });
-  document.getElementById("finish-title").textContent = `NS Finish (${incident.incidentId})`;
+  const finIdBadge = document.getElementById("finish-incident-id-badge");
+  if (finIdBadge) finIdBadge.textContent = incident.incidentId || "";
+  const finFooterUser = document.getElementById("finish-footer-user");
+  if (finFooterUser) finFooterUser.textContent = incident.respondedBy || incident.createdBy || "—";
+  const finFooterTime = document.getElementById("finish-footer-time");
+  if (finFooterTime) {
+    const now = new Date();
+    finFooterTime.textContent = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")} · ${now.getDate().toString().padStart(2,"0")} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()]} ${now.getFullYear()}`;
+  }
   const _updArr = incident.updates || [];
   const latestUpdate = _updArr[_updArr.length - 1] || {};
   const firstTicket = (incident.tickets || [])[0] || {};
@@ -7512,6 +7864,7 @@ function openCorrectiveFinishModal(incidentId) {
   setFieldValue("finish-start-fix", formatDateTimeInput(savedTimes.startFix || defaultStartFix));
   setFieldValue("finish-up-time", formatDateTimeInput(savedTimes.upTime));
   setFieldValue("finish-store-connector", formatDateTimeInput(savedTimes.storeConnector));
+  if (typeof window._updateFinishMttr === "function") window._updateFinishMttr();
   bindAutoSolutionGenerator();
 
   document.getElementById("btn-save-finish").onclick = async () => {
