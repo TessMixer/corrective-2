@@ -530,7 +530,7 @@ window.AlertService = {
     }
   },
 
-  async responseAlert(incidentId, eta, workType) {
+  async responseAlert(incidentId, eta, workType, assignedTeam = "", responseNote = "") {
     markRecentWrite(incidentId);
     const state = Store.getState();
     const incidentAlerts = state.alerts.filter((item) => getIncidentKey(item) === incidentId);
@@ -544,10 +544,12 @@ window.AlertService = {
 
     const allCorrective = Object.values(state.corrective || {}).flat();
     const existingCard = allCorrective.find((item) => getIncidentKey(item) === incidentId);
-    
+
     // Create combined corrective card but also update individual statuses
     const correctiveCard = buildCorrectiveCard(incidentAlerts, selectedType, eta, existingCard);
-    correctiveCard.status = "CORRECTIVE"; 
+    correctiveCard.status = "CORRECTIVE";
+    if (assignedTeam) correctiveCard.assignedTeam = assignedTeam;
+    if (responseNote) correctiveCard.responseNote = responseNote; 
 
     const updatedAlerts = state.alerts.filter((item) => getIncidentKey(item) !== incidentId);
     const updatedCorrective = {

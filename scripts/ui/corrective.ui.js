@@ -222,7 +222,7 @@ const CorrectiveUI = {
       const firstSub = Array.isArray(subArr) ? subArr[0] : null;
       const teamName = (typeof firstSub === "string" ? firstSub : firstSub?.name || firstSub?.company)
         || lastUpd.subcontractor || lastUpd.team
-        || incident.team || incident.subcontractor || "-";
+        || incident.assignedTeam || incident.team || incident.subcontractor || "-";
 
       card.innerHTML = `
         <!-- Top row: ID + badges -->

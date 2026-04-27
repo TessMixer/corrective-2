@@ -2923,6 +2923,10 @@ document.addEventListener("click", (event) => {
     responseWorkType.value = alert?.workType || "";
   }
   document.querySelectorAll('input[name="eta"]').forEach((el) => { el.checked = false; });
+  const teamSel = document.getElementById("response-assigned-team");
+  if (teamSel) teamSel.value = "";
+  const noteEl = document.getElementById("response-note");
+  if (noteEl) noteEl.value = "";
   openModal(responseModal);
 });
 
@@ -2948,7 +2952,9 @@ if (saveResponse) {
     }
 
     const workType = responseWorkType.value;
-    AlertService.responseAlert(responseIncidentId, eta.value, workType);
+    const assignedTeam = document.getElementById("response-assigned-team")?.value || "";
+    const responseNote = document.getElementById("response-note")?.value?.trim() || "";
+    AlertService.responseAlert(responseIncidentId, eta.value, workType, assignedTeam, responseNote);
     closeModal(responseModal);
 
     // Navigate to corrective card
