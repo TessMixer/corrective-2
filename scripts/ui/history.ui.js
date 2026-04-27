@@ -45,7 +45,7 @@ const HistoryUI = (function () {
 
   function getCompletedByType(state, typeKey) {
     // Include completed incidents from other tabs where workTypes includes this typeKey
-    const TAB_TYPE = { fiber: "Fiber", equipment: "Equipment", other: "Other" };
+    const TAB_TYPE = { fiber: "Fiber", equipment: "Equipment" };
     const currentTabType = TAB_TYPE[typeKey] || typeKey;
     const seen = new Set();
     const list = [];
@@ -53,7 +53,7 @@ const HistoryUI = (function () {
       const id = item?.incident || item?.incidentId || item?.id;
       if (!seen.has(id)) { seen.add(id); list.push(item); }
     });
-    ["fiber", "equipment", "other"].filter(t => t !== typeKey).forEach(otherTab => {
+    ["fiber", "equipment"].filter(t => t !== typeKey).forEach(otherTab => {
       (state.corrective[otherTab] || []).forEach(item => {
         const id = item?.incident || item?.incidentId || item?.id;
         if (!seen.has(id) && Array.isArray(item.workTypes) && item.workTypes.includes(currentTabType)) {

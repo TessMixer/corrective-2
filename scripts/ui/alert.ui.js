@@ -165,7 +165,7 @@ const AlertUI = (function () {
         </div>
         <div class="flex items-center gap-3">
           <span id="am-updated-text" class="text-[10px] font-semibold hidden md:block" style="color:var(--ink-dim)">${updatedAgoText()}</span>
-          <button class="am-export-btn btn btn-sm" style="background:#10b981;border-color:#10b981;color:#fff;gap:4px">
+          <button class="am-export-btn btn btn-sm" style="background:var(--ok);border-color:var(--ok);color:#fff;gap:4px">
             <i data-lucide="download" class="w-3 h-3 pointer-events-none"></i> CSV
           </button>
         </div>

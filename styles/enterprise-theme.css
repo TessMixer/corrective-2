@@ -522,3 +522,24 @@ html[data-theme="dark"] input:focus,
 html[data-theme="dark"] button:focus-visible {
   outline: 2px solid rgba(234,88,12,.45); outline-offset: 2px;
 }
+
+/* Calendar event month-chips — light pastel → dark muted in dark mode */
+html[data-theme="dark"] .bg-blue-50    { background-color: rgba(59,130,246,.12) !important; }
+html[data-theme="dark"] .text-blue-700 { color: #93c5fd !important; }
+html[data-theme="dark"] .border-blue-200 { border-color: rgba(59,130,246,.25) !important; }
+html[data-theme="dark"] .hover\:bg-blue-100:hover { background-color: rgba(59,130,246,.2) !important; }
+
+html[data-theme="dark"] .bg-amber-50    { background-color: rgba(245,158,11,.1) !important; }
+html[data-theme="dark"] .text-amber-700 { color: #fcd34d !important; }
+html[data-theme="dark"] .border-amber-200 { border-color: rgba(245,158,11,.25) !important; }
+html[data-theme="dark"] .hover\:bg-amber-100:hover { background-color: rgba(245,158,11,.2) !important; }
+
+html[data-theme="dark"] .bg-violet-50    { background-color: rgba(139,92,246,.1) !important; }
+html[data-theme="dark"] .text-violet-700 { color: #c4b5fd !important; }
+html[data-theme="dark"] .border-violet-200 { border-color: rgba(139,92,246,.25) !important; }
+html[data-theme="dark"] .hover\:bg-violet-100:hover { background-color: rgba(139,92,246,.2) !important; }
+
+html[data-theme="dark"] .bg-emerald-50    { background-color: rgba(16,185,129,.1) !important; }
+html[data-theme="dark"] .text-emerald-700 { color: #6ee7b7 !important; }
+html[data-theme="dark"] .border-emerald-200 { border-color: rgba(16,185,129,.25) !important; }
+html[data-theme="dark"] .hover\:bg-emerald-100:hover { background-color: rgba(16,185,129,.2) !important; }

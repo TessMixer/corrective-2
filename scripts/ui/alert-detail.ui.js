@@ -143,7 +143,7 @@ const AlertDetailUI = (function () {
         <div class="ticket-desktop-view" style="overflow-x:auto">
           <table class="w-full text-xs" style="border-collapse:collapse">
             <thead>
-              <tr style="background:var(--sb-bg);color:var(--sb-ink-active);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em">
+              <tr style="background:var(--surface-2);color:var(--ink-muted);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--hair-soft)">
                 <th class="px-4 py-3" style="text-align:left;white-space:nowrap">#</th>
                 <th class="px-4 py-3" style="text-align:left;white-space:nowrap">Symphony Ticket</th>
                 <th class="px-4 py-3" style="text-align:left;white-space:nowrap">Symphony CID</th>

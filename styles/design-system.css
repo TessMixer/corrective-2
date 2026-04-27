@@ -82,7 +82,7 @@ button { font: inherit; cursor: pointer; }
 }
 .sidebar-brand p {
   margin: 2px 0 0; font-size: 10px;
-  color: #78716c; font-weight: 600;
+  color: var(--sb-ink); font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase;
 }
 
@@ -92,21 +92,21 @@ button { font: inherit; cursor: pointer; }
   display: flex; align-items: center; gap: 10px;
   font-size: 11px;
   border-bottom: 1px solid var(--sb-hair);
-  color: #78716c;
+  color: var(--sb-ink);
   flex-shrink: 0;
 }
 .sidebar-status .pulse {
-  width: 8px; height: 8px; border-radius: 999px; background: #10b981;
-  box-shadow: 0 0 0 0 rgba(16,185,129,.6);
+  width: 8px; height: 8px; border-radius: 999px; background: var(--ok);
+  box-shadow: 0 0 0 0 rgba(13,148,136,.6);
   animation: sb-pulse 2s infinite;
   flex-shrink: 0;
 }
 @keyframes sb-pulse {
-  0%   { box-shadow: 0 0 0 0   rgba(16,185,129,.6); }
-  70%  { box-shadow: 0 0 0 6px rgba(16,185,129,0);  }
-  100% { box-shadow: 0 0 0 0   rgba(16,185,129,0);  }
+  0%   { box-shadow: 0 0 0 0   rgba(13,148,136,.6); }
+  70%  { box-shadow: 0 0 0 6px rgba(13,148,136,0);  }
+  100% { box-shadow: 0 0 0 0   rgba(13,148,136,0);  }
 }
-.sidebar-status .stat-count { color: #fafaf9; font-weight: 700; }
+.sidebar-status .stat-count { color: var(--sb-ink-active); font-weight: 700; }
 
 /* Nav */
 .sidebar-nav {
@@ -117,7 +117,7 @@ button { font: inherit; cursor: pointer; }
 .sidebar-group-label {
   font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.1em;
-  color: #57534e;
+  color: var(--sb-ink);
   padding: 6px 10px 4px;
 }
 .sidebar-item {
@@ -132,7 +132,7 @@ button { font: inherit; cursor: pointer; }
   position: relative;
 }
 .sidebar-item svg,
-.sidebar-item [data-lucide] { width: 16px; height: 16px; color: #78716c; flex-shrink: 0; }
+.sidebar-item [data-lucide] { width: 16px; height: 16px; color: var(--sb-ink); flex-shrink: 0; }
 .sidebar-item:hover { background: var(--sb-bg-2); color: var(--sb-ink-active); }
 .sidebar-item:hover svg,
 .sidebar-item:hover [data-lucide] { color: #d6d3d1; }

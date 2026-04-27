@@ -147,7 +147,7 @@ const CorrectiveUI = {
     controls.innerHTML = `
       <div class="flex items-center gap-3">
         <div class="text-xs font-semibold uppercase tracking-wider" style="color:var(--ink-muted)">Showing <span style="color:var(--ink);font-weight:700">${pageStart + 1}–${Math.min(pageStart + pagedIncidents.length, incidents.length)}</span> of <span style="color:var(--ink);font-weight:700">${incidents.length}</span> jobs</div>
-        <button class="corrective-export-btn btn btn-sm" style="background:#22c55e;color:#fff;border-color:#22c55e">
+        <button class="corrective-export-btn btn btn-sm" style="background:var(--ok);color:#fff;border-color:var(--ok)">
           <i data-lucide="download" class="pointer-events-none"></i> CSV
         </button>
       </div>
@@ -236,7 +236,7 @@ const CorrectiveUI = {
             </span>
           </div>
           <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-            <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap" style="background:#111827;color:#fff">
+            <span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap" style="background:var(--ink);color:var(--canvas)">
               <i data-lucide="clock" class="w-3 h-3"></i> ETA ${etaText}
             </span>
             ${latestEtr ? `<span class="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap" style="border:1.5px solid #d97706;color:#d97706;background:rgba(217,119,6,.06)">
@@ -280,7 +280,7 @@ const CorrectiveUI = {
             <button class="btn btn-sm btn-ghost btn-corrective-update" data-id="${incidentKey}">
               <i data-lucide="refresh-cw" class="w-3 h-3 pointer-events-none"></i> Update
             </button>
-            <button class="btn btn-sm btn-corrective-finish" style="background:#111827;color:#fff;border-color:#111827" data-id="${incidentKey}">
+            <button class="btn btn-sm btn-corrective-finish" style="background:var(--ink);color:var(--canvas);border-color:var(--ink)" data-id="${incidentKey}">
               <i data-lucide="check" class="w-3 h-3 pointer-events-none"></i> NS Finish
             </button>
             <button class="btn btn-sm btn-ghost btn-corrective-detail" data-id="${incidentKey}">
