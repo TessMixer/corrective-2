@@ -4950,97 +4950,185 @@ function ensureUpdateModal() {
     "beforeend",
     `
       <div id="modal-corrective-update" class="modal-backdrop hidden">
-        <div class="bg-white rounded-2xl w-full max-w-6xl p-3 md:p-6 max-h-[92vh] overflow-y-auto">
-              <div class="flex items-center justify-between mb-3">
-            <h3 id="corrective-update-title" class="text-base md:text-xl font-bold text-slate-800">NS Update</h3>
-            <button id="btn-close-corrective-update" class="px-3 py-1 bg-slate-100 rounded-lg text-sm">ปิด</button>
+        <style>
+          #modal-corrective-update .upd-shell{background:var(--surface);border-radius:16px;width:100%;max-width:820px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh-lg)}
+          #modal-corrective-update .upd-hdr{padding:14px 20px;border-bottom:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+          #modal-corrective-update .upd-body{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;overflow:hidden}
+          #modal-corrective-update .upd-col{padding:18px;overflow-y:auto}
+          #modal-corrective-update .upd-col-l{border-right:1px solid var(--hair)}
+          #modal-corrective-update .upd-sec-label{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+          #modal-corrective-update .upd-sec-label span{font-size:10px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em}
+          #modal-corrective-update .upd-fl{font-size:10px;font-weight:600;color:var(--ink-muted);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em}
+          #modal-corrective-update .upd-fl .req{color:var(--sev-dn);margin-left:2px}
+          #modal-corrective-update .upd-sel,#modal-corrective-update .upd-inp{width:100%;background:var(--surface-2);border:1px solid var(--hair);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--ink);outline:none;transition:border-color .15s;font-family:inherit}
+          #modal-corrective-update .upd-sel:focus,#modal-corrective-update .upd-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(234,88,12,.1)}
+          #modal-corrective-update .upd-sub-label{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;border:1px solid var(--hair);font-size:11px;font-weight:500;color:var(--ink-muted);cursor:pointer;transition:all .15s;user-select:none}
+          #modal-corrective-update .upd-sub-label:has(input:checked){background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+          #modal-corrective-update .upd-sub-label input{display:none}
+          #modal-corrective-update .upd-sub-label:has(input:checked)::before{content:"✓";font-size:10px;font-weight:900;margin-right:2px}
+          #modal-corrective-update .upd-ftr{padding:11px 20px;border-top:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface-2)}
+          #modal-corrective-update .upd-clock-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;border:1px solid rgba(13,148,136,.25);background:var(--ok-soft)}
+          #modal-corrective-update .upd-clock-badge.stopped{border-color:rgba(220,38,38,.25);background:var(--sev-dn-soft)}
+          #modal-corrective-update .upd-clock-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex-shrink:0}
+          #modal-corrective-update .upd-clock-badge.stopped .upd-clock-dot{background:var(--sev-dn)}
+          #modal-corrective-update .upd-clock-text{font-size:11px;font-weight:700;color:var(--ok)}
+          #modal-corrective-update .upd-clock-badge.stopped .upd-clock-text{color:var(--sev-dn)}
+          #modal-corrective-update .upd-dropzone{border:1.5px dashed var(--hair);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s}
+          #modal-corrective-update .upd-dropzone:hover{border-color:var(--ink-dim)}
+          @media(max-width:640px){#modal-corrective-update .upd-body{grid-template-columns:1fr}#modal-corrective-update .upd-col-l{border-right:none;border-bottom:1px solid var(--hair)}}
+        </style>
+        <div class="upd-shell">
+
+          <!-- ─── Header ─── -->
+          <div class="upd-hdr">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <div style="width:38px;height:38px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i data-lucide="wrench" style="width:18px;height:18px;color:#fff;pointer-events:none"></i>
+              </div>
+              <div style="min-width:0">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <h2 style="font-size:17px;font-weight:800;color:var(--ink);margin:0;white-space:nowrap">NS Update</h2>
+                  <span id="corrective-update-title" style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px;background:var(--surface-2);color:var(--ink-muted);font-family:var(--f-mono);white-space:nowrap"></span>
+                  <span id="corrective-update-type-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);white-space:nowrap">NS UPDATE</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <div id="upd-clock-badge-wrap" class="upd-clock-badge">
+                <span class="upd-clock-dot"></span>
+                <span class="upd-clock-text">Clock <b id="upd-clock-status" style="font-weight:900">STARTED</b> · <span id="upd-clock-elapsed" style="font-family:var(--f-mono)">00:00:00</span></span>
+              </div>
+              <button id="btn-close-corrective-update" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--hair);background:transparent;color:var(--ink-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0" title="ปิด">
+                <i data-lucide="x" style="width:15px;height:15px;pointer-events:none"></i>
+              </button>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            <div class="border rounded-xl p-3 md:p-5 space-y-3 bg-slate-50/40">
-              <h4 class="font-semibold text-sm text-slate-700">📍 ข้อมูลจุดเสีย</h4>
+          <!-- ─── Two-column Body ─── -->
+          <div class="upd-body">
 
-              <div class="grid grid-cols-3 gap-2">
+            <!-- LEFT: ข้อมูลจุดเสีย -->
+            <div class="upd-col upd-col-l">
+              <div class="upd-sec-label">
+                <i data-lucide="map-pin" style="width:13px;height:13px;color:var(--ink-dim);flex-shrink:0"></i>
+                <span>ข้อมูลจุดเสีย · FAILURE POINT</span>
+              </div>
+
+              <!-- OFC / Network / Cause -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
                 <div>
-                  <label class="text-xs text-slate-600">OFC Type:</label>
-                  <select id="upd-ofc-type" class="mt-0.5 w-full bg-slate-100 rounded-lg px-2 py-1.5 text-xs md:text-sm">
+                  <label class="upd-fl">OFC Type<span class="req">*</span></label>
+                  <select id="upd-ofc-type" class="upd-sel">
                     <option value="">เลือกประเภท</option>
                     <option>หลายเส้น</option>
                     <option>Flat type 2 Core</option><option>4 Core ADSS</option><option>12 Core ADSS</option><option>24 Core ADSS</option>
                     <option>48 Core ADSS</option><option>60 Core ADSS</option><option>144 Core ADSS</option><option>216 Core ADSS</option>
                     <option>312 Core ADSS</option><option>12 Core Armour</option><option>48 Core Armour</option><option>60 Core Armour</option><option>144 Core Armour</option>
                   </select>
-                  <div class="mt-2 p-3 rounded-lg border border-emerald-300 bg-emerald-50 hidden" id="upd-multi-ofc-summary-wrap">
-                    <div class="font-semibold text-slate-800">ข้อมูล OFC ที่เลือก:</div>
-                    <div id="upd-multi-ofc-summary" class="text-emerald-800"></div>
+                  <div class="mt-2 p-2 rounded-lg hidden" id="upd-multi-ofc-summary-wrap" style="border:1px solid rgba(13,148,136,.3);background:var(--ok-soft)">
+                    <div style="font-size:11px;font-weight:700;color:var(--ok)">OFC ที่เลือก:</div>
+                    <div id="upd-multi-ofc-summary" style="font-size:11px;color:var(--ok-ink)"></div>
                   </div>
                 </div>
                 <div>
-                  <label class="text-xs text-slate-600">Network Type:</label>
-                  <select id="upd-network-type" class="mt-0.5 w-full bg-slate-100 rounded-lg px-2 py-1.5 text-xs md:text-sm">
+                  <label class="upd-fl">Network Type</label>
+                  <select id="upd-network-type" class="upd-sel">
                     <option value="">-</option>
                     <option value="Backbone">Backbone</option>
                     <option value="Access">Access</option>
                   </select>
                 </div>
                 <div>
-                  <label class="text-xs text-slate-600">สาเหตุ:</label>
-                  <select id="upd-cause" class="mt-0.5 w-full bg-slate-100 rounded-lg px-2 py-1.5 text-xs md:text-sm">
+                  <label class="upd-fl">สาเหตุ · Cause</label>
+                  <select id="upd-cause" class="upd-sel">
                     <option value="">เลือกสาเหตุ</option>
                     <option>Animal gnawing</option><option>High loss/Crack</option><option>Cut by Unknown agency</option><option>Cut trees</option><option>Cut by MEA/PEA agency</option><option>Car accident</option><option>Electrical Surge</option><option>Electrical pole was broken by accident</option><option>Electrical pole was broken by Natural Disaster</option><option>Electric Authority remove pole</option><option>Road Construction</option><option>BTS Construction</option><option>Fire damanged</option><option>Natural Disaster</option><option>Equipment at Node</option><option>Equipment at customer</option><option>Bullet</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label class="text-xs text-slate-600">Circuit ID + Customer (ไม่บังคับ):</label>
-                <div class="grid grid-cols-1 gap-1.5 mt-0.5">
-                  <select id="upd-originate" class="w-full bg-slate-100 rounded-lg px-2 py-1.5 text-xs md:text-sm"></select>
-                  <select id="upd-terminate" class="w-full bg-slate-100 rounded-lg px-2 py-1.5 text-xs md:text-sm"></select>
-                </div>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-slate-600">ข้อมูลจุดเสีย (Site/Distance/Area/Lat,Long)</span>
-                <button id="btn-add-site-row" type="button" class="px-2 py-1 text-xs bg-indigo-500 text-white rounded-lg">+ เพิ่มจุด</button>
-              </div>
-              <div id="upd-site-rows" class="space-y-2"></div>
-              <div>
-                <label class="text-xs text-slate-600">Sub Contractor (เลือกได้หลายเจ้า):</label>
-                <div class="grid grid-cols-4 gap-1.5 mt-1.5">
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="TAS (Zone1)"> TAS (Zone1)</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="BAN"> BAN</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="TAS (Zone2)"> TAS (Zone2)</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="JL"> JL</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="ATG"> ATG</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="TP"> TP</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="NPY"> NPY</label>
-                  <label class="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border rounded-lg text-xs"><input type="checkbox" class="upd-sub" value="JJ&A"> JJ&A</label>
+              <!-- Circuit ID -->
+              <div style="margin-bottom:12px">
+                <label class="upd-fl">Circuit ID + Customer <span style="font-weight:500;text-transform:none;letter-spacing:0">(ไม่บังคับ)</span></label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                  <select id="upd-originate" class="upd-sel"></select>
+                  <select id="upd-terminate" class="upd-sel"></select>
                 </div>
               </div>
 
+              <!-- Site rows -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:10px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em">ข้อมูลจุดเสีย <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-dim)">(Site / Distance / Area / Lat,Long)</span></span>
+                <button id="btn-add-site-row" type="button" style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:7px;background:var(--surface-2);border:1px solid var(--hair);font-size:11px;font-weight:600;color:var(--ink-muted);cursor:pointer">
+                  <i data-lucide="plus" style="width:12px;height:12px;pointer-events:none"></i>
+                </button>
+              </div>
+              <div id="upd-site-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+
+              <!-- Sub Contractor -->
+              <div>
+                <label class="upd-fl">Sub Contractor <span style="font-weight:500;text-transform:none;letter-spacing:0">(เลือกได้หลายเจ้า)</span></label>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:6px">
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="TAS (Zone1)"> TAS (Zone1)</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="BAN"> BAN</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="TAS (Zone2)"> TAS (Zone2)</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="JL"> JL</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="ATG"> ATG</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="TP"> TP</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="NPY"> NPY</label>
+                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="JJ&A"> JJ&A</label>
+                </div>
+              </div>
             </div>
-            <div class="border rounded-xl p-3 md:p-5 space-y-3 bg-slate-50/40">
-              <h4 class="font-semibold text-sm text-slate-700">🖼️ รูปภาพ / การดำเนินงาน</h4>
+
+            <!-- RIGHT: รูปภาพ & การดำเนินงาน -->
+            <div class="upd-col">
+              <div class="upd-sec-label">
+                <i data-lucide="camera" style="width:13px;height:13px;color:var(--ink-dim);flex-shrink:0"></i>
+                <span>รูปภาพ & การดำเนินงาน</span>
+              </div>
 
               <input id="upd-camera-input" type="file" accept="image/*" capture="environment" class="hidden">
               <input id="upd-file-input" type="file" multiple accept="image/*,.pdf,.doc,.docx" class="hidden">
 
-              <div class="grid grid-cols-2 gap-2">
-                <label for="upd-camera-input" class="cursor-pointer bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-2 text-center text-sm transition-colors">📷 ถ่ายภาพ</label>
-                <label for="upd-file-input" class="cursor-pointer bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-2 text-center text-sm transition-colors">📎 แนบไฟล์</label>
+              <!-- Photo / Attach buttons -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <label for="upd-camera-input" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:9px;background:var(--ink);color:var(--canvas);font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                  <i data-lucide="camera" style="width:14px;height:14px;pointer-events:none"></i> ถ่ายภาพ
+                </label>
+                <label for="upd-file-input" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:9px;background:transparent;border:1.5px solid var(--hair);color:var(--ink-muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--ink-dim)';this.style.color='var(--ink)'" onmouseout="this.style.borderColor='var(--hair)';this.style.color='var(--ink-muted)'">
+                  <i data-lucide="paperclip" style="width:14px;height:14px;pointer-events:none"></i> แนบไฟล์
+                </label>
               </div>
 
-              <div id="upd-attachments-preview" class="flex flex-wrap gap-2 min-h-[20px]"></div>
+              <!-- Dropzone -->
+              <label for="upd-file-input" class="upd-dropzone" style="display:block;margin-bottom:10px">
+                <i data-lucide="upload-cloud" style="width:20px;height:20px;color:var(--ink-dim);margin:0 auto 6px;display:block"></i>
+                <p style="font-size:11px;color:var(--ink-muted);margin:0">ลากวางหรือคลิกเพื่อแนบไฟล์</p>
+                <p style="font-size:10px;color:var(--ink-dim);margin:3px 0 0">JPG, PNG, PDF — สูงสุด 20 MB</p>
+              </label>
 
-              <div class="flex items-center gap-2">
-                <span>Clock Status: <b id="upd-clock-status" class="text-green-600">STARTED</b></span>
-                <button id="upd-start" class="px-2 py-1 bg-green-200 rounded">Start</button>
-                <button id="upd-stop" class="px-2 py-1 bg-red-400 text-white rounded">Stop</button>
+              <!-- Attachment preview -->
+              <div id="upd-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;min-height:10px"></div>
+
+              <!-- Clock section -->
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--hair);margin-bottom:10px">
+                <span style="font-size:10px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0">Clock</span>
+                <span style="font-size:11px;font-weight:700;color:var(--ok);background:var(--ok-soft);padding:2px 8px;border-radius:20px;letter-spacing:.04em">STARTED</span>
+                <div style="flex:1"></div>
+                <button id="upd-start" style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;background:#10b981;color:#fff;font-size:11px;font-weight:700;border:none;cursor:pointer;flex-shrink:0">
+                  <i data-lucide="play" style="width:11px;height:11px;pointer-events:none"></i> Start
+                </button>
+                <button id="upd-stop" style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;background:transparent;color:var(--sev-dn);border:1.5px solid var(--sev-dn);font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">
+                  <i data-lucide="square" style="width:10px;height:10px;pointer-events:none"></i> Stop
+                </button>
               </div>
-              <div>
-                <label class="text-sm text-slate-600">เหตุผลกรณีกด Stop:</label>
-                <select id="upd-stop-reason" class="w-full bg-slate-100 rounded-lg px-3 py-2 mt-1">
-                  <option value="">-- เลือกเหตุผล --</option>
+
+              <!-- Stop reason -->
+              <div style="margin-bottom:10px">
+                <label class="upd-fl">เหตุผลกรณีกด Stop</label>
+                <select id="upd-stop-reason" class="upd-sel">
+                  <option value="">— เลือกเหตุผล —</option>
                   <option>เนื่องจากรอเจ้าหน้าที่การไฟฟ้าให้เข้าดำเนินการแก้ไข</option>
                   <option>เนื่องจากเพลิงยังลุกไหม้อยู่</option>
                   <option>เนื่องจากรอเจ้าหน้าที่ปักเสาไฟฟ้าใหม่</option>
@@ -5049,36 +5137,66 @@ function ensureUpdateModal() {
                   <option>ตรวจสอบพบ OFC มีปัญหาในพื้นอาคาร</option>
                   <option value="__other__">อื่นๆ (กรอกเอง)</option>
                 </select>
-                <input id="upd-stop-reason-custom" class="w-full bg-slate-100 rounded-lg px-3 py-2 mt-2 hidden" placeholder="ระบุเหตุผล Stop เพิ่มเติม">
-                </div>
-
-              <div id="upd-initial-fix-wrap">
-                <label class="text-sm text-slate-600">การแก้ไขเบื้องต้น:</label>
-                <select id="upd-initial-fix" class="w-full bg-slate-100 rounded-lg px-3 py-2 mt-1">
-                  <option value="">-- เลือกวิธีการ --</option>
-                  <option value="ลากคร่อม">ลากคร่อม</option>
-                  <option value="ร่นลูป">ร่นลูป</option>
-                  <option value="โยก Core">โยก Core</option>
-                  <option value="ตัดต่อใหม่">ตัดต่อใหม่</option>
-                  <option value="ค่าเร่งด่วน">ค่าเร่งด่วน</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-sm text-slate-600">ETR:</label>
-                <div class="grid grid-cols-2 gap-3 mt-1">
-                  <input id="upd-etr-hour" type="number" min="0" class="bg-slate-100 rounded-lg px-3 py-2" placeholder="ชั่วโมง">
-                  <input id="upd-etr-min" type="number" min="0" max="59" class="bg-slate-100 rounded-lg px-3 py-2" placeholder="นาที">
-                </div>
+                <input id="upd-stop-reason-custom" class="upd-inp hidden" style="margin-top:6px" placeholder="ระบุเหตุผล Stop เพิ่มเติม">
               </div>
 
-              <button id="btn-generate-update" class="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white font-bold rounded-xl shadow-[0_4px_15px_-3px_rgba(249,115,22,0.4)] transform hover:-translate-y-0.5 transition-all outline-none">✨ สร้างสรุป Update</button>
-              <textarea id="upd-message" class="w-full bg-slate-100 rounded-lg px-3 py-2 h-32" placeholder="ข้อความอัปเดต (จะถูกสร้างอัตโนมัติ)"></textarea>
+              <!-- Initial fix + ETR -->
+              <div id="upd-initial-fix-wrap" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:12px">
+                <div>
+                  <label class="upd-fl">การแก้ไขเบื้องต้น</label>
+                  <select id="upd-initial-fix" class="upd-sel">
+                    <option value="">ลากคร่อม</option>
+                    <option value="ลากคร่อม">ลากคร่อม</option>
+                    <option value="ร่นลูป">ร่นลูป</option>
+                    <option value="โยก Core">โยก Core</option>
+                    <option value="ตัดต่อใหม่">ตัดต่อใหม่</option>
+                    <option value="ค่าเร่งด่วน">ค่าเร่งด่วน</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="upd-fl">ETR · Estimated Time to Restore</label>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <input id="upd-etr-hour" type="number" min="0" class="upd-inp" style="width:52px;text-align:center" placeholder="0">
+                    <span style="font-size:11px;font-weight:600;color:var(--ink-muted)">HR</span>
+                    <input id="upd-etr-min" type="number" min="0" max="59" class="upd-inp" style="width:52px;text-align:center" placeholder="0">
+                    <span style="font-size:11px;font-weight:600;color:var(--ink-muted)">MIN</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Generate button -->
+              <button id="btn-generate-update" style="width:100%;padding:11px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;font-size:13px;font-weight:800;border:none;cursor:pointer;box-shadow:0 4px 14px -3px rgba(234,88,12,.4);transition:all .15s;margin-bottom:10px" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 18px -3px rgba(234,88,12,.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px -3px rgba(234,88,12,.4)'">
+                ✨ สร้างสรุป Update
+              </button>
+
+              <!-- Message textarea -->
+              <div style="position:relative">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                  <label class="upd-fl" style="margin:0">ข้อความ Update <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-dim)">(สร้างอัตโนมัติ)</span></label>
+                  <button id="btn-upd-copy-msg" type="button" style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--hair);font-size:10px;font-weight:600;color:var(--ink-muted);cursor:pointer">
+                    <i data-lucide="copy" style="width:11px;height:11px;pointer-events:none"></i> COPY
+                  </button>
+                </div>
+                <textarea id="upd-message" class="upd-inp" style="height:90px;resize:none;line-height:1.5" placeholder="ข้อความอัปเดต (จะถูกสร้างอัตโนมัติ)"></textarea>
+              </div>
             </div>
           </div>
 
-          <div class="flex justify-end gap-3 mt-5 pt-4 border-t border-slate-100">
-            <button id="btn-cancel-corrective-update" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">ยกเลิก</button>
-            <button id="btn-save-corrective-update" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl shadow-md transition-all">บันทึก</button>
+          <!-- ─── Footer ─── -->
+          <div class="upd-ftr">
+            <div style="display:flex;align-items:center;gap:10px">
+              <i data-lucide="user-circle" style="width:14px;height:14px;color:var(--ink-dim)"></i>
+              <span id="upd-footer-user" style="font-size:11px;font-weight:600;color:var(--ink-muted)">—</span>
+              <span style="color:var(--hair);font-size:12px">·</span>
+              <i data-lucide="clock" style="width:13px;height:13px;color:var(--ink-dim)"></i>
+              <span id="upd-footer-ts" style="font-size:11px;color:var(--ink-dim)">—</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button id="btn-cancel-corrective-update" style="padding:7px 18px;border-radius:9px;background:transparent;border:1.5px solid var(--hair);color:var(--ink-muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--ink-dim)';this.style.color='var(--ink)'" onmouseout="this.style.borderColor='var(--hair)';this.style.color='var(--ink-muted)'">ยกเลิก</button>
+              <button id="btn-save-corrective-update" style="display:flex;align-items:center;gap:6px;padding:7px 18px;border-radius:9px;background:var(--ink);color:var(--canvas);font-size:12px;font-weight:700;border:none;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                <i data-lucide="save" style="width:13px;height:13px;pointer-events:none"></i> บันทึก Update
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -5203,10 +5321,41 @@ function ensureUpdateModal() {
   stopReasonSelect.onchange = syncStopReasonCustomInput;
   syncStopReasonCustomInput();
 
+  function updClockElapsed(startIso, stopIso) {
+    const s = new Date(startIso).getTime();
+    const e = stopIso ? new Date(stopIso).getTime() : Date.now();
+    if (!s || isNaN(s)) return "00:00:00";
+    const tot = Math.max(0, Math.floor((e - s) / 1000));
+    const hh = String(Math.floor(tot / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((tot % 3600) / 60)).padStart(2, "0");
+    const ss = String(tot % 60).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  function updSetClockUI(status) {
+    const badge = document.getElementById("upd-clock-badge-wrap");
+    const statusEl = document.getElementById("upd-clock-status");
+    const isStopped = status === "STOPPED";
+    if (statusEl) statusEl.textContent = status;
+    if (badge) badge.classList.toggle("stopped", isStopped);
+  }
+
+  function updStartTimer() {
+    if (window._updClockInterval) clearInterval(window._updClockInterval);
+    window._updClockInterval = setInterval(() => {
+      const el = document.getElementById("upd-clock-elapsed");
+      if (!el) { clearInterval(window._updClockInterval); return; }
+      const m = document.getElementById("modal-corrective-update");
+      if (!m || m.classList.contains("hidden")) { clearInterval(window._updClockInterval); return; }
+      el.textContent = updClockElapsed(m.dataset.startClockAt, "");
+    }, 1000);
+  }
+
   document.getElementById("upd-start").onclick = () => {
-    document.getElementById("upd-clock-status").textContent = "STARTED";
-    document.getElementById("upd-clock-status").className = "text-green-600";
     modal.dataset.startClockAt = new Date().toISOString();
+    modal.dataset.stopClockAt = "";
+    updSetClockUI("STARTED");
+    updStartTimer();
   };
 
   document.getElementById("upd-stop").onclick = () => {
@@ -5218,11 +5367,21 @@ function ensureUpdateModal() {
       alert("กรุณาเลือกเหตุผลกรณีกด Stop");
       return;
     }
-    document.getElementById("upd-clock-status").textContent = "STOPPED";
-    document.getElementById("upd-clock-status").className = "text-red-600";
-    modal.dataset.stopClockAt = new Date().toISOString();
+    const stopAt = new Date().toISOString();
+    modal.dataset.stopClockAt = stopAt;
     modal.dataset.stopReason = stopReason;
+    updSetClockUI("STOPPED");
+    if (window._updClockInterval) clearInterval(window._updClockInterval);
+    const el = document.getElementById("upd-clock-elapsed");
+    if (el) el.textContent = updClockElapsed(modal.dataset.startClockAt, stopAt);
   };
+
+  document.getElementById("btn-upd-copy-msg")?.addEventListener("click", () => {
+    const txt = document.getElementById("upd-message")?.value || "";
+    if (txt) navigator.clipboard?.writeText(txt).catch(() => {});
+    const btn = document.getElementById("btn-upd-copy-msg");
+    if (btn) { btn.textContent = "✓ Copied"; setTimeout(() => { btn.innerHTML = '<i data-lucide="copy" style="width:11px;height:11px;pointer-events:none"></i> COPY'; if (window.lucide) lucide.createIcons({ nodes: [btn] }); }, 1500); }
+  });
 
   const cameraInput = document.getElementById("upd-camera-input");
   const fileInput = document.getElementById("upd-file-input");
@@ -5978,7 +6137,17 @@ function openCorrectiveUpdateModal(incidentId) {
     stopReasonSelectEl.onchange = syncStopReasonFields;
   }
 
-  document.getElementById("corrective-update-title").textContent = `NS Update (${incident.incidentId})`;
+  const titleEl = document.getElementById("corrective-update-title");
+  if (titleEl) titleEl.textContent = incident.incidentId || "";
+  const typeBadge = document.getElementById("corrective-update-type-badge");
+  if (typeBadge) typeBadge.textContent = `NS UPDATE · ${String(incident.workType || "FIBER").toUpperCase()}`;
+  const footerUser = document.getElementById("upd-footer-user");
+  if (footerUser) footerUser.textContent = incident.respondedBy || incident.createdBy || "—";
+  const footerTs = document.getElementById("upd-footer-ts");
+  if (footerTs) {
+    const d = new Date(incident.respondedAt || incident.createdAt || Date.now());
+    footerTs.textContent = isNaN(d.getTime()) ? "—" : d.toLocaleString("en-GB", { hour:"2-digit", minute:"2-digit", day:"2-digit", month:"short", year:"numeric" });
+  }
   const firstTicket = getFirstSymphonyTicket(incident);
   renderCircuitCustomerSelectors({
     originSelectId: "upd-originate",
@@ -5989,8 +6158,10 @@ function openCorrectiveUpdateModal(incidentId) {
   const latestUpdate = (incident.updates || []).slice(-1)[0] || {};
   const lastClockStatus = String(latestUpdate.clockStatus || "STARTED").trim();
   const isStopped = lastClockStatus === "STOPPED";
-  document.getElementById("upd-clock-status").textContent = isStopped ? "STOPPED" : "STARTED";
-  document.getElementById("upd-clock-status").className = isStopped ? "text-red-600" : "text-green-600";
+  if (typeof updSetClockUI === "function") updSetClockUI(isStopped ? "STOPPED" : "STARTED");
+  else {
+    document.getElementById("upd-clock-status").textContent = isStopped ? "STOPPED" : "STARTED";
+  }
 
   document.getElementById("upd-ofc-type").value = latestUpdate.ofcType || "";
   document.getElementById("upd-network-type").value = latestUpdate.networkType || "";
@@ -6025,6 +6196,13 @@ function openCorrectiveUpdateModal(incidentId) {
   modal.dataset.startClockAt = latestUpdate.startClockAt || "";
   modal.dataset.stopClockAt = latestUpdate.stopClockAt || "";
   modal.dataset.stopReason = latestUpdate.stopReason || "";
+
+  // Update elapsed display + start live ticker if clock is running
+  const elapsedEl = document.getElementById("upd-clock-elapsed");
+  if (elapsedEl) elapsedEl.textContent = typeof updClockElapsed === "function"
+    ? updClockElapsed(modal.dataset.startClockAt, modal.dataset.stopClockAt || "")
+    : "00:00:00";
+  if (!isStopped && modal.dataset.startClockAt && typeof updStartTimer === "function") updStartTimer();
   modal.dataset.parsedMethod = latestUpdate.parsedMethod || "";
   modal.dataset.parsedMethodDistance = latestUpdate.parsedMethodDistance || "";
   modal.dataset.parsedCutPoint = latestUpdate.parsedCutPoint || "";
