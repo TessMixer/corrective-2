@@ -585,6 +585,7 @@ const TOPBAR_META = {
   "dashboard-details":{ crumb: "Reports · Archive",       title: "Details" },
   "subcontractor":    { crumb: "Reports · Archive",       title: "Subcontractor" },
   "recycle":          { crumb: "System · Trash",          title: "Recycle Bin" },
+  "settings":         { crumb: "System",                  title: "Settings" },
 };
 
 function updateTopbarBreadcrumb(view) {

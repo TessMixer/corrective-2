@@ -17,7 +17,9 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Read(//f:/NOC/**)",
-      "Read(//g/Corrective/**)"
+      "Read(//g/Corrective/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 /dev/stdin)"
     ],
     "additionalDirectories": [
       "\\tmp"

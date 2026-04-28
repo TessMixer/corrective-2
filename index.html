@@ -34,6 +34,7 @@
   <link rel="stylesheet" href="styles/enterprise-theme.css">
   <link rel="stylesheet" href="styles/dark-mode.css">
   <link rel="stylesheet" href="styles/pages/alert-monitor.css">
+  <link rel="stylesheet" href="styles/pages/settings.css">
 
   <style>
     /* Ticket responsive */
@@ -319,6 +320,10 @@
       </div>
 
       <div style="padding-top:12px;border-top:1px solid var(--sb-hair)">
+        <div data-view="settings" id="nav-settings" class="nav-item">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span>Settings</span>
+        </div>
         <div data-view="recycle" id="nav-recycle" class="nav-item" style="color:#f87171">
           <i data-lucide="trash-2" class="w-5 h-5" style="color:#f87171"></i>
           <span>Recycle Bin</span>
@@ -513,6 +518,1046 @@
       <div id="view-calendar" class="view-content hidden fade-in py-6 md:py-8 px-3 md:px-6 space-y-4">
         <div id="calendar-container"></div>
       </div>
+
+      <!-- VIEW: SETTINGS ════════════════════════════════════════ -->
+      <div id="view-settings" class="view-content hidden" style="height:calc(100vh - 56px)">
+        <div class="set-shell">
+
+          <!-- ── Left nav ── -->
+          <aside class="set-sidebar">
+            <div class="set-search">
+              <i data-lucide="search"></i>
+              <input type="text" placeholder="Search settings…" id="stg-search" autocomplete="off">
+              <kbd>⌘K</kbd>
+            </div>
+
+            <div class="set-group">
+              <div class="set-group-label">Account</div>
+              <button class="set-link active" data-stg-nav="profile">
+                <i data-lucide="user-round"></i><span>Profile &amp; Account</span>
+              </button>
+              <button class="set-link" data-stg-nav="notifications">
+                <i data-lucide="bell"></i><span>Notifications</span>
+              </button>
+            </div>
+
+            <div class="set-group">
+              <div class="set-group-label">Operations</div>
+              <button class="set-link" data-stg-nav="rules">
+                <i data-lucide="siren"></i><span>Alert &amp; Incident Rules</span>
+              </button>
+              <button class="set-link" data-stg-nav="sla">
+                <i data-lucide="gauge"></i><span>SLA &amp; MTTR Targets</span>
+              </button>
+              <button class="set-link" data-stg-nav="teams">
+                <i data-lucide="users"></i><span>Teams &amp; Subcontractors</span>
+              </button>
+              <button class="set-link" data-stg-nav="catalog">
+                <i data-lucide="list-tree"></i><span>Master Data / Catalogs</span>
+              </button>
+            </div>
+
+            <div class="set-group">
+              <div class="set-group-label">System</div>
+              <button class="set-link" data-stg-nav="integrations">
+                <i data-lucide="plug"></i><span>Integrations</span>
+              </button>
+              <button class="set-link" data-stg-nav="permissions">
+                <i data-lucide="shield"></i><span>Permissions &amp; Roles</span>
+              </button>
+              <button class="set-link" data-stg-nav="appearance">
+                <i data-lucide="palette"></i><span>Appearance / Branding</span>
+              </button>
+              <button class="set-link" data-stg-nav="backup">
+                <i data-lucide="database-backup"></i><span>Backup &amp; Data</span>
+              </button>
+              <button class="set-link" data-stg-nav="about">
+                <i data-lucide="info"></i><span>About / System Info</span>
+              </button>
+            </div>
+
+            <div class="set-recent">
+              <div class="set-group-label">Recently changed</div>
+              <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">SLA target — Fiber 4h</div><div class="r-s">2h ago · admin</div></div></div>
+              <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">Added subcontractor: ABC Telecom</div><div class="r-s">yesterday · admin</div></div></div>
+              <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">LINE token rotated</div><div class="r-s">3 days ago · admin</div></div></div>
+            </div>
+          </aside>
+
+          <!-- ── Right content ── -->
+          <div class="set-content" id="set-content-area">
+
+            <!-- ══ 1. Profile & Account ══════════════════════ -->
+            <section data-stg-section="profile" class="active">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="user-round"></i><span>Account</span></div>
+                  <h1>Profile &amp; Account</h1>
+                  <p class="set-sub">ข้อมูลส่วนตัว ภาษา timezone และความปลอดภัยของบัญชี</p>
+                </div>
+                <div class="set-head-actions">
+                  <button class="btn btn-sm btn-ghost" id="stg-export-btn"><i data-lucide="download"></i>Export</button>
+                  <label class="btn btn-sm btn-ghost" style="cursor:pointer"><i data-lucide="upload"></i>Import<input type="file" id="stg-import-file" accept=".json" style="display:none"></label>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <!-- Profile card -->
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Profile</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-profile-head">
+                      <div class="s-avatar-xl" id="stg-avatar-preview">AN</div>
+                      <div class="s-avatar-actions">
+                        <button class="btn btn-sm" id="stg-btn-change-avatar">Change avatar</button>
+                        <p class="s-h" style="margin:8px 0 0;">PNG / JPG · ≤ 1 MB · 256×256+</p>
+                      </div>
+                      <div class="s-profile-meta">
+                        <div class="s-pm-row"><span>Display name</span><b id="stg-avatar-name">Administrator</b></div>
+                        <div class="s-pm-row"><span>Email</span><b class="mono">admin@symphony.co.th</b></div>
+                        <div class="s-pm-row"><span>Last login</span><b>วันนี้ · 192.168.50.21</b></div>
+                      </div>
+                    </div>
+
+                    <!-- Avatar panel -->
+                    <div id="stg-avatar-panel" class="stg-avc-panel" style="display:none">
+                      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-muted);margin:0 0 10px">Avatar Color</p>
+                      <div class="stg-avc-colors" id="stg-avatar-colors">
+                        <button class="stg-avc" data-color="#ea580c" style="background:#ea580c"></button>
+                        <button class="stg-avc" data-color="#0d9488" style="background:#0d9488"></button>
+                        <button class="stg-avc" data-color="#2563eb" style="background:#2563eb"></button>
+                        <button class="stg-avc" data-color="#7c3aed" style="background:#7c3aed"></button>
+                        <button class="stg-avc" data-color="#db2777" style="background:#db2777"></button>
+                        <button class="stg-avc" data-color="#16a34a" style="background:#16a34a"></button>
+                        <button class="stg-avc" data-color="#dc2626" style="background:#dc2626"></button>
+                        <button class="stg-avc" data-color="#475569" style="background:#475569"></button>
+                        <label style="width:28px;height:28px;border-radius:50%;border:2px dashed var(--hair);cursor:pointer;display:grid;place-items:center;color:var(--ink-dim);font-size:16px;position:relative;overflow:hidden" title="Custom">
+                          +<input type="color" id="stg-avc-custom" style="position:absolute;opacity:0;width:100%;height:100%;cursor:pointer">
+                        </label>
+                      </div>
+                      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-muted);margin:0 0 8px">Preview &amp; Initials</p>
+                      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+                        <div id="stg-avc-preview" style="width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;font-size:16px;font-weight:700;display:grid;place-items:center;flex-shrink:0;transition:background .15s">AN</div>
+                        <input class="form-input" id="stg-avc-initials" maxlength="3" placeholder="2–3 chars" style="flex:1;text-transform:uppercase;letter-spacing:.1em">
+                      </div>
+                      <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm btn-primary" id="stg-avc-apply">Apply</button>
+                        <button class="btn btn-sm btn-ghost" id="stg-avc-cancel">Cancel</button>
+                      </div>
+                    </div>
+
+                    <div class="s-grid-2">
+                      <div class="s-field"><label>Display Name</label><input class="form-input" id="stg-profile-name" value="Administrator"></div>
+                      <div class="s-field"><label>Initials (Avatar)</label><input class="form-input" id="stg-profile-initials" value="AN" maxlength="3"></div>
+                      <div class="s-field"><label>Email</label><input class="form-input" id="stg-profile-email" value="admin@symphony.co.th" readonly><span class="s-h">Managed by Firebase Auth</span></div>
+                      <div class="s-field"><label>Role</label>
+                        <select class="form-input">
+                          <option selected>NOC Level 3</option>
+                          <option>NOC Level 2</option>
+                          <option>Administrator</option>
+                          <option>Viewer</option>
+                        </select>
+                      </div>
+                      <div class="s-field"><label>Language</label>
+                        <select class="form-input">
+                          <option value="th" selected>ภาษาไทย (Thai)</option>
+                          <option value="en">English</option>
+                        </select>
+                      </div>
+                      <div class="s-field"><label>Session Timeout</label>
+                        <select class="form-input">
+                          <option>30 minutes</option>
+                          <option selected>1 hour</option>
+                          <option>4 hours</option>
+                          <option>8 hours</option>
+                          <option>Never</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- Security card -->
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Security</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Password</div><div class="s-h">อัปเดตล่าสุด 3 เดือนที่แล้ว</div></div>
+                      <div class="s-row-control"><button class="btn btn-sm" id="stg-btn-change-pwd">Change password</button></div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Two-Factor Authentication</div><div class="s-h">Require OTP via LINE or email at each login</div></div>
+                      <div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Login Notifications</div><div class="s-h">Send alert on new device sign-in</div></div>
+                      <div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Active sessions</div><div class="s-h">Web (Chrome) · Mobile (Android)</div></div>
+                      <div class="s-row-control"><button class="btn btn-sm btn-ghost">Sign out others</button></div>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2h ago</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 2. Notifications ══════════════════════════ -->
+            <section data-stg-section="notifications">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="bell"></i><span>Account</span></div>
+                  <h1>Notifications</h1>
+                  <p class="set-sub">ตั้งกฎรับแจ้งเตือนผ่าน LINE / Email / Push และ escalation policy</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Channels</h3><span class="s-h">เลือกช่องทางที่ใช้งาน</span></header>
+                  <div class="s-card-body">
+                    <div class="s-channels">
+                      <div class="s-channel">
+                        <div class="ch-icon" style="background:#dcfce7;color:#15803d;"><i data-lucide="message-circle"></i></div>
+                        <div class="ch-info"><b>LINE Notify</b><div class="s-h">Group: NOC-OnDuty</div></div>
+                        <span class="s-badge ok">Connected</span>
+                        <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                        <button class="btn btn-sm btn-ghost">Test</button>
+                      </div>
+                      <div class="s-channel">
+                        <div class="ch-icon" style="background:#dbeafe;color:#1d4ed8;"><i data-lucide="mail"></i></div>
+                        <div class="ch-info"><b>Email</b><div class="s-h">admin@symphony.co.th</div></div>
+                        <span class="s-badge ok">Verified</span>
+                        <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                        <button class="btn btn-sm btn-ghost">Test</button>
+                      </div>
+                      <div class="s-channel">
+                        <div class="ch-icon" style="background:#ede9fe;color:#6d28d9;"><i data-lucide="bell"></i></div>
+                        <div class="ch-info"><b>Push Notifications (FCM)</b><div class="s-h">Browser &amp; mobile push via Firebase</div></div>
+                        <span class="s-badge ok">Allowed</span>
+                        <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                        <button class="btn btn-sm btn-ghost">Test</button>
+                      </div>
+                      <div class="s-channel">
+                        <div class="ch-icon" style="background:#fef3c7;color:#a16207;"><i data-lucide="volume-2"></i></div>
+                        <div class="ch-info"><b>Browser Sound Alert</b><div class="s-h">Play sound when new incident created</div></div>
+                        <span class="s-badge">Optional</span>
+                        <label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label>
+                        <button class="btn btn-sm btn-ghost">Test</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Severity rules</h3><span class="s-h">เลือกช่องทางสำหรับแต่ละระดับความรุนแรง</span></header>
+                  <div class="s-card-body">
+                    <table class="s-table">
+                      <thead><tr><th>Severity</th><th>LINE</th><th>Email</th><th>Push</th><th>Bypass quiet hours</th></tr></thead>
+                      <tbody>
+                        <tr><td><span class="tag dn tag-dot">Down · DN</span></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td></tr>
+                        <tr><td><span class="tag inf tag-dot">Info · INF</span></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></td></tr>
+                        <tr><td><span class="tag ok tag-dot">Recovered · OK</span></td><td><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></td><td><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Quiet hours</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Enable quiet hours</div><div class="s-h">ลดการแจ้งเตือนช่วงเวลาที่กำหนด (ยกเว้น Down)</div></div>
+                      <div class="s-row-control">
+                        <input type="time" class="form-input mono" value="22:00" style="width:96px;">
+                        <span class="s-h">ถึง</span>
+                        <input type="time" class="form-input mono" value="07:00" style="width:96px;">
+                        <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                      </div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Skip on weekends</div><div class="s-h">ไม่บังคับ quiet hours วันเสาร์-อาทิตย์</div></div>
+                      <div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Escalation policy</h3><span class="s-h">ถ้าไม่มีการ ack ภายในเวลาที่กำหนด → ส่งต่ออัตโนมัติ</span></header>
+                  <div class="s-card-body">
+                    <ol class="s-escalate">
+                      <li><div class="step">1</div><div class="who"><b>NOC On-shift</b><div class="s-h">notify ทันที · ทุกช่องทาง</div></div><div class="when"><span class="s-h">หลัง</span><b class="mono">0 min</b></div><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></li>
+                      <li><div class="step">2</div><div class="who"><b>NOC Supervisor</b><div class="s-h">หากยังไม่มี ack</div></div><div class="when"><span class="s-h">หลัง</span><b class="mono"><input class="form-input mono" value="60" type="number" style="width:60px;display:inline-block;height:26px;font-size:13px;"> min</b></div><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></li>
+                      <li><div class="step">3</div><div class="who"><b>Team Leader (call)</b><div class="s-h">โทรศัพท์</div></div><div class="when"><span class="s-h">หลัง</span><b class="mono">120 min</b></div><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></li>
+                    </ol>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>yesterday</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 3. Alert & Incident Rules ═════════════════ -->
+            <section data-stg-section="rules">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="siren"></i><span>Operations</span></div>
+                  <h1>Alert &amp; Incident Rules</h1>
+                  <p class="set-sub">กฎอัตโนมัติเมื่อเกิด alert · auto-create / auto-assign / workflow</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Auto-create incident</h3><span class="s-h">เกณฑ์การยกระดับ alert → incident อัตโนมัติ</span></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Auto-create เมื่อ Down</div><div class="s-h">สร้าง incident ทันทีถ้า severity = DN</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Notify on incident create</div><div class="s-h">Send LINE / push immediately when alert is created</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Suppress duplicates</div><div class="s-h">ไม่สร้าง incident ซ้ำสำหรับ node เดียวกัน</div></div><div class="s-row-control"><input class="form-input mono" value="15" style="width:70px;text-align:right;"> <span class="s-h">นาที</span></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Incident ID prefix</div><div class="s-h">Generates IDs like I2504-000001</div></div><div class="s-row-control"><input class="form-input mono" value="I" style="width:70px;"></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Auto-escalate after</div><div class="s-h">Hours before unresponded incident escalates</div></div><div class="s-row-control"><input class="form-input mono" value="2" type="number" style="width:70px;text-align:right;"> <span class="s-h">hrs</span></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Auto-close after</div><div class="s-h">Days before finished incident auto-archives</div></div><div class="s-row-control"><input class="form-input mono" value="7" type="number" style="width:70px;text-align:right;"> <span class="s-h">days</span></div></div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Workflow flags</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Require photo on Finish</div><div class="s-h">Block save if no image attached in NS Finish</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Require S/N on Equipment Finish</div><div class="s-h">At least one serial number row must be filled</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Notify on SLA breach</div><div class="s-h">Alert when MTTR exceeds target SLA hours</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Default work type</div></div><div class="s-row-control"><select class="form-input" style="max-width:180px;"><option selected>Fiber</option><option>Equipment</option></select></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Max active alerts</div></div><div class="s-row-control"><input class="form-input mono" value="500" type="number" style="width:90px;text-align:right;"></div></div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Auto-assign rules</h3><span class="s-h">ผูก incident กับ team ตามเงื่อนไข</span><button class="btn btn-sm" style="margin-left:auto;"><i data-lucide="plus"></i>Add rule</button></header>
+                  <div class="s-card-body">
+                    <div class="s-rules-list">
+                      <div class="s-rule"><span class="s-rule-num">1</span><div class="s-rule-body"><div class="s-rule-when">If <b>Work type = Fiber</b></div><div class="s-rule-then">→ Assign to <b>NS-BKK-N</b> · ETA: 1.5h</div></div><span class="s-chip ok">Active</span><button class="icon-btn"><i data-lucide="pencil"></i></button></div>
+                      <div class="s-rule"><span class="s-rule-num">2</span><div class="s-rule-body"><div class="s-rule-when">If <b>Work type = Equipment</b></div><div class="s-rule-then">→ Assign to <b>Sub-CNX</b> · ETA: 2h</div></div><span class="s-chip ok">Active</span><button class="icon-btn"><i data-lucide="pencil"></i></button></div>
+                      <div class="s-rule disabled"><span class="s-rule-num">3</span><div class="s-rule-body"><div class="s-rule-when">If <b>Time = 22:00–06:00</b></div><div class="s-rule-then">→ Assign to <b>Night Shift Pool</b></div></div><span class="s-chip">Paused</span><button class="icon-btn"><i data-lucide="pencil"></i></button></div>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-04-20</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 4. SLA & MTTR Targets ══════════════════════ -->
+            <section data-stg-section="sla">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="gauge"></i><span>Operations</span></div>
+                  <h1>SLA &amp; MTTR Targets</h1>
+                  <p class="set-sub">SLA + MTTR target ตาม severity, customer tier, และ work type</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Customer tier targets</h3><span class="s-h">SLA / MTTR ตาม tier · มี penalty อัตโนมัติ</span></header>
+                  <div class="s-card-body" style="padding:0;">
+                    <table class="s-table">
+                      <thead><tr><th>Tier</th><th>Response</th><th>MTTR target</th><th>Uptime SLA</th><th>Penalty / hr</th><th></th></tr></thead>
+                      <tbody>
+                        <tr><td><span class="s-tier gold"><i data-lucide="crown"></i> Gold</span></td><td><input class="form-input mono" value="00:15" style="width:80px;"></td><td><input class="form-input mono" value="02:00" style="width:80px;"></td><td><input class="form-input mono" value="99.95%" style="width:90px;"></td><td><input class="form-input mono" value="฿ 5,000" style="width:100px;"></td><td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td></tr>
+                        <tr><td><span class="s-tier silver"><i data-lucide="award"></i> Silver</span></td><td><input class="form-input mono" value="00:30" style="width:80px;"></td><td><input class="form-input mono" value="04:00" style="width:80px;"></td><td><input class="form-input mono" value="99.50%" style="width:90px;"></td><td><input class="form-input mono" value="฿ 2,000" style="width:100px;"></td><td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td></tr>
+                        <tr><td><span class="s-tier bronze"><i data-lucide="shield"></i> Bronze</span></td><td><input class="form-input mono" value="01:00" style="width:80px;"></td><td><input class="form-input mono" value="08:00" style="width:80px;"></td><td><input class="form-input mono" value="99.00%" style="width:90px;"></td><td><input class="form-input mono" value="฿ 500" style="width:100px;"></td><td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td></tr>
+                        <tr><td><span class="s-tier standard">Standard</span></td><td><input class="form-input mono" value="02:00" style="width:80px;"></td><td><input class="form-input mono" value="12:00" style="width:80px;"></td><td><input class="form-input mono" value="98.00%" style="width:90px;"></td><td><input class="form-input mono" value="—" style="width:100px;"></td><td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>MTTR by work type</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-mttr-grid">
+                      <div class="s-mttr"><div class="m-h"><i data-lucide="cable"></i> Fiber cut</div><div class="m-v"><input class="form-input mono" value="04:00"></div><div class="m-s">actual avg: <b style="color:var(--ok);">03:24</b></div></div>
+                      <div class="s-mttr"><div class="m-h"><i data-lucide="hard-drive"></i> Equipment</div><div class="m-v"><input class="form-input mono" value="08:00"></div><div class="m-s">actual avg: <b style="color:var(--ok);">06:18</b></div></div>
+                      <div class="s-mttr"><div class="m-h"><i data-lucide="zap"></i> Power / PEA</div><div class="m-v"><input class="form-input mono" value="06:00"></div><div class="m-s">actual avg: <b style="color:var(--sev-dn);">07:42</b></div></div>
+                      <div class="s-mttr"><div class="m-h"><i data-lucide="cloud-rain"></i> Environmental</div><div class="m-v"><input class="form-input mono" value="08:00"></div><div class="m-s">actual avg: <b style="color:var(--ok);">05:11</b></div></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Business hours</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Business hours window</div><div class="s-h">นับเวลาเฉพาะใน window นี้สำหรับ SLA แบบ business-hour</div></div>
+                      <div class="s-row-control">
+                        <input type="time" class="form-input mono" value="08:00" style="width:96px;">
+                        <span class="s-h">–</span>
+                        <input type="time" class="form-input mono" value="17:00" style="width:96px;">
+                      </div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Working days</div></div>
+                      <div class="s-row-control">
+                        <div class="day-pills">
+                          <span class="day-pill on">M</span><span class="day-pill on">T</span><span class="day-pill on">W</span><span class="day-pill on">T</span><span class="day-pill on">F</span><span class="day-pill">S</span><span class="day-pill">S</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">Calculate MTTR in business hours only</div><div class="s-h">Exclude nights and weekends from SLA clock</div></div>
+                      <div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div>
+                    </div>
+                    <div class="s-row">
+                      <div class="s-row-label"><div class="s-l">SLA warning threshold</div><div class="s-h">Show warning badge when MTTR reaches X% of SLA</div></div>
+                      <div class="s-row-control"><input class="form-input mono" value="80" style="width:70px;text-align:right;"> <span class="s-h">%</span></div>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-04-15</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 5. Teams & Subcontractors ══════════════════ -->
+            <section data-stg-section="teams">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="users"></i><span>Operations</span></div>
+                  <h1>Teams &amp; Subcontractors</h1>
+                  <p class="set-sub">จัดการทีม NS, ผู้รับเหมา และพื้นที่ดูแล</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>NS Response Teams</h3><span class="s-h">Teams ที่ใช้ใน NS Response</span></header>
+                  <div class="s-card-body">
+                    <div class="s-tag-cloud" id="stg-team-tags">
+                      <span class="s-tag-edit">Team 1 <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">Team 2 <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">Team 3 <button class="x" data-rm-tag>×</button></span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:4px">
+                      <input class="form-input" id="stg-team-new" placeholder="New team name…" style="flex:1;max-width:260px;">
+                      <button class="btn btn-sm" id="stg-team-add"><i data-lucide="plus"></i>Add Team</button>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Subcontractors</h3><button class="btn btn-sm" style="margin-left:auto;" id="stg-sub-add"><i data-lucide="plus"></i>Add vendor</button></header>
+                  <div class="s-card-body">
+                    <div class="s-vendors" id="stg-sub-tbody-wrap">
+                      <table class="s-table" style="display:none"><tbody id="stg-sub-tbody-hidden"></tbody></table>
+                      <!-- Vendor cards rendered by JS populateForm -->
+                      <div id="stg-sub-list">
+                        <div class="s-vendor">
+                          <div class="v-logo" style="background:#0ea5e9;">ABC</div>
+                          <div class="v-info"><b>บริษัท ABC Telecom</b><div class="s-h">Phone: 081-234-5678 · Zone: Central</div></div>
+                          <div class="v-score"><div class="vs-num">90</div><div class="vs-bar"><span style="width:90%;background:var(--ok);"></span></div></div>
+                          <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                          <button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>
+                        </div>
+                        <div class="s-vendor">
+                          <div class="v-logo" style="background:#22c55e;">ชส</div>
+                          <div class="v-info"><b>ช่างสมชาย</b><div class="s-h">Phone: 089-876-5432 · Zone: North</div></div>
+                          <div class="v-score"><div class="vs-num">85</div><div class="vs-bar"><span style="width:85%;background:var(--accent);"></span></div></div>
+                          <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                          <button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>
+                        </div>
+                        <div class="s-vendor">
+                          <div class="v-logo" style="background:#f97316;">XYZ</div>
+                          <div class="v-info"><b>XYZ Network Solutions</b><div class="s-h">Phone: 02-555-1234 · Zone: South</div></div>
+                          <div class="v-score"><div class="vs-num">78</div><div class="vs-bar"><span style="width:78%;background:var(--sev-dn);"></span></div></div>
+                          <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                          <button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-04-22</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 6. Master Data / Catalogs ══════════════════ -->
+            <section data-stg-section="catalog">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="list-tree"></i><span>Operations</span></div>
+                  <h1>Master Data / Catalogs</h1>
+                  <p class="set-sub">Dropdown master · สาเหตุ / การแก้ไข / device / OFC / cancellation reasons</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Dropdown catalogs</h3><span class="s-h">ตัวเลือกที่ใช้ใน form ทั่วทั้งระบบ — เพิ่ม/แก้/ลบได้</span></header>
+                  <div class="s-card-body">
+                    <div class="s-cat-grid">
+                      <div class="s-cat">
+                        <header><div class="ci"><i data-lucide="flag"></i></div><div><b>Alarm Types</b><div class="s-h">6 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
+                        <div class="s-cat-chips"><span class="s-chip">Link Down</span><span class="s-chip">Power Fail</span><span class="s-chip">RSSI Low</span><span class="s-chip">Fiber Cut</span><span class="s-chip more">+2 more</span></div>
+                      </div>
+                      <div class="s-cat">
+                        <header><div class="ci"><i data-lucide="wrench"></i></div><div><b>Fix Methods</b><div class="s-h">5 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
+                        <div class="s-cat-chips"><span class="s-chip">ตัดต่อใหม่</span><span class="s-chip">เปลี่ยนอุปกรณ์</span><span class="s-chip">Reset/Reboot</span><span class="s-chip more">+2 more</span></div>
+                      </div>
+                      <div class="s-cat">
+                        <header><div class="ci"><i data-lucide="hard-drive"></i></div><div><b>Equipment Types</b><div class="s-h">7 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
+                        <div class="s-cat-chips"><span class="s-chip">OLT</span><span class="s-chip">ONT</span><span class="s-chip">Switch</span><span class="s-chip">Router</span><span class="s-chip more">+3 more</span></div>
+                      </div>
+                      <div class="s-cat">
+                        <header><div class="ci"><i data-lucide="cable"></i></div><div><b>OFC / Connector Types</b><div class="s-h">6 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
+                        <div class="s-cat-chips"><span class="s-chip">SC/APC</span><span class="s-chip">SC/UPC</span><span class="s-chip">LC/APC</span><span class="s-chip more">+3 more</span></div>
+                      </div>
+                      <div class="s-cat">
+                        <header><div class="ci"><i data-lucide="x-circle"></i></div><div><b>Cancellation Reasons</b><div class="s-h">4 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
+                        <div class="s-cat-chips"><span class="s-chip">ลูกค้าขอยกเลิก</span><span class="s-chip">Duplicate</span><span class="s-chip">Test alarm</span><span class="s-chip more">+1 more</span></div>
+                      </div>
+                      <div class="s-cat">
+                        <header><div class="ci"><i data-lucide="map-pin"></i></div><div><b>Problem Categories</b><div class="s-h">5 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
+                        <div class="s-cat-chips"><span class="s-chip">Physical Damage</span><span class="s-chip">Config Error</span><span class="s-chip">Power Issue</span><span class="s-chip more">+2 more</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Tags &amp; labels</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-tag-cloud" id="stg-alarm-tags">
+                      <span class="s-tag-edit">Link Down <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">Power Fail <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">RSSI Low <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">Fiber Cut <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">Temperature High <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">VIP <button class="x" data-rm-tag>×</button></span>
+                      <span class="s-tag-edit">Recurring <button class="x" data-rm-tag>×</button></span>
+                      <button class="s-tag-add"><i data-lucide="plus"></i>Add tag</button>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-04-10</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 7. Integrations ════════════════════════════ -->
+            <section data-stg-section="integrations">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="plug"></i><span>System</span></div>
+                  <h1>Integrations</h1>
+                  <p class="set-sub">เชื่อม Symphony NMS, ticketing, LINE, Webhook, Map และ Storage</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Network management</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-int">
+                      <div class="i-head">
+                        <div class="i-logo" style="background:#0f172a;color:#fff;">S</div>
+                        <div class="i-info"><b>Symphony NMS</b><div class="s-h">Source ของ alarm ทั้งหมด · poll ทุก 5 วินาที</div></div>
+                        <span class="s-badge ok">Connected</span>
+                        <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                      </div>
+                      <div class="i-body">
+                        <div class="s-grid-3">
+                          <div class="s-field"><label>Host</label><input class="form-input mono" value="nms.symphony.co.th"></div>
+                          <div class="s-field"><label>Port</label><input class="form-input mono" value="8443"></div>
+                          <div class="s-field"><label>Protocol</label><select class="form-input"><option>HTTPS</option><option>TLS</option></select></div>
+                          <div class="s-field"><label>API key</label><input class="form-input mono" value="sk_live_••••••••••••42z9"></div>
+                          <div class="s-field"><label>Poll interval</label><input class="form-input mono" value="5 sec"></div>
+                          <div class="s-field"><label>Last sync</label><input class="form-input mono" value="2026-04-28 11:42" readonly></div>
+                        </div>
+                        <div class="i-foot"><button class="btn btn-sm">Test connection</button><span class="s-h" style="margin-left:8px;">Last test: <b style="color:var(--ok);">OK · 124ms</b></span></div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Messaging</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-int">
+                      <div class="i-head">
+                        <div class="i-logo" style="background:#dcfce7;color:#15803d;">LINE</div>
+                        <div class="i-info"><b>LINE Notify</b><div class="s-h">ส่งแจ้งเตือนเข้า group</div></div>
+                        <span class="s-badge ok">Connected</span>
+                        <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+                      </div>
+                      <div class="i-body">
+                        <div class="s-grid-2">
+                          <div class="s-field"><label>Channel Access Token</label><input class="form-input mono" type="password" value="xxxxxxxxxxxxxxxxxxxxxxxx"></div>
+                          <div class="s-field"><label>Group ID</label><input class="form-input mono" value="C1234567890abcdef"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="s-int">
+                      <div class="i-head">
+                        <div class="i-logo" style="background:#e0e7ff;color:#3730a3;">T</div>
+                        <div class="i-info"><b>Microsoft Teams</b><div class="s-h">Webhook ส่งเข้า channel</div></div>
+                        <span class="s-badge">Not connected</span>
+                        <label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label>
+                      </div>
+                      <div class="i-body">
+                        <div class="s-field"><label>Webhook URL</label><input class="form-input mono" placeholder="https://prod-12.tm.webhook.office.com/…"></div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Webhooks (outbound)</h3><button class="btn btn-sm" style="margin-left:auto;"><i data-lucide="plus"></i>Add webhook</button></header>
+                  <div class="s-card-body" style="padding:0;">
+                    <table class="s-table">
+                      <thead><tr><th>URL</th><th>Events</th><th>Status</th><th></th></tr></thead>
+                      <tbody>
+                        <tr><td class="mono" style="font-size:12px;">https://ops.partnerco.com/incidents</td><td class="s-h">incident.created, incident.closed</td><td><span class="s-badge ok">Active</span></td><td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Storage backend</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Primary storage</div></div><div class="s-row-control"><div class="seg-mini"><button class="active">Firestore</button><button>LocalStorage</button></div></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Firebase Project ID</div></div><div class="s-row-control"><input class="form-input mono" value="noc-symphony-prod" readonly style="max-width:260px;"></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Firestore Region</div></div><div class="s-row-control"><input class="form-input mono" value="asia-southeast1" readonly style="max-width:200px;"></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Include full payload on webhook</div><div class="s-h">Send all fields (not just status change delta)</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div></div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-03-01</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 8. Permissions & Roles ═════════════════════ -->
+            <section data-stg-section="permissions">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="shield"></i><span>System</span></div>
+                  <h1>Permissions &amp; Roles</h1>
+                  <p class="set-sub">Role matrix · ใครเห็นและแก้อะไรได้ + invite ผู้ใช้</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Roles</h3>
+                    <button class="btn btn-sm" style="margin-left:auto;" id="stg-role-add"><i data-lucide="plus"></i>New role</button>
+                  </header>
+                  <div class="s-card-body">
+                    <div class="s-roles">
+                      <div class="s-role">
+                        <div class="r-badge" style="background:#fee2e2;color:#b91c1c;">Administrator</div>
+                        <div class="r-info"><b>Administrator</b><div class="s-h">Full system access · settings · cannot be deleted</div></div>
+                        <div class="r-count"><b>1</b><span> users</span></div>
+                        <button class="btn btn-sm btn-ghost">Edit</button>
+                        <span></span>
+                      </div>
+                    </div>
+                    <!-- Dynamic role cards injected by populateForm -->
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Role Matrix</h3></header>
+                  <div class="s-card-body" style="padding:0;overflow-x:auto;">
+                    <table class="s-table s-perm" id="stg-role-table">
+                      <thead>
+                        <tr>
+                          <th style="min-width:140px;text-align:left">Role</th>
+                          <th>View</th>
+                          <th>Create</th>
+                          <th>Respond</th>
+                          <th>Finish</th>
+                          <th>Delete</th>
+                          <th>Admin</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="stg-role-tbody">
+                        <tr data-role-fixed="true">
+                          <td><span style="font-weight:700;color:var(--ink)">Administrator</span></td>
+                          <td><input type="checkbox" checked disabled></td>
+                          <td><input type="checkbox" checked disabled></td>
+                          <td><input type="checkbox" checked disabled></td>
+                          <td><input type="checkbox" checked disabled></td>
+                          <td><input type="checkbox" checked disabled></td>
+                          <td><input type="checkbox" checked disabled></td>
+                          <td></td>
+                        </tr>
+                        <tr>
+                          <td><input class="form-input" value="NOC Level 3" style="font-weight:600;min-width:120px"></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><button class="btn btn-sm btn-ghost stg-role-rm" title="Remove role">×</button></td>
+                        </tr>
+                        <tr>
+                          <td><input class="form-input" value="NOC Level 2" style="font-weight:600;min-width:120px"></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><button class="btn btn-sm btn-ghost stg-role-rm" title="Remove role">×</button></td>
+                        </tr>
+                        <tr>
+                          <td><input class="form-input" value="Viewer" style="font-weight:600;min-width:120px"></td>
+                          <td><input type="checkbox" checked></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><input type="checkbox"></td>
+                          <td><button class="btn btn-sm btn-ghost stg-role-rm" title="Remove role">×</button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Users</h3>
+                    <div style="margin-left:auto;display:flex;gap:6px;">
+                      <input class="form-input" placeholder="Search users…" style="width:200px;">
+                      <button class="btn btn-sm"><i data-lucide="user-plus"></i>Invite user</button>
+                    </div>
+                  </header>
+                  <div class="s-card-body" style="padding:0;">
+                    <table class="s-table">
+                      <thead><tr><th>User</th><th>Role</th><th>Last active</th><th>Status</th><th></th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td><div class="s-user"><div class="ua" style="background:#0f172a;">A</div><div><b>Administrator</b><div class="s-h mono">admin@symphony.co.th</div></div></div></td>
+                          <td>Administrator</td>
+                          <td class="s-h">Just now</td>
+                          <td><span class="s-status online">● online</span></td>
+                          <td>—</td>
+                        </tr>
+                        <tr>
+                          <td><div class="s-user"><div class="ua" style="background:#0ea5e9;">N</div><div><b>NOC Officer</b><div class="s-h mono">officer@symphony.co.th</div></div></div></td>
+                          <td><select class="form-input" style="min-width:130px;"><option>Administrator</option><option selected>NOC Level 3</option><option>NOC Level 2</option><option>Viewer</option></select></td>
+                          <td class="s-h">2026-04-27</td>
+                          <td><span class="s-status online">● online</span></td>
+                          <td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td>
+                        </tr>
+                        <tr>
+                          <td><div class="s-user"><div class="ua" style="background:#475569;">V</div><div><b>Read-Only Dashboard</b><div class="s-h mono">view@symphony.co.th</div></div></div></td>
+                          <td><select class="form-input" style="min-width:130px;"><option>Administrator</option><option>NOC Level 3</option><option>NOC Level 2</option><option selected>Viewer</option></select></td>
+                          <td class="s-h">2026-04-20</td>
+                          <td><span class="s-status offline">● offline</span></td>
+                          <td><button class="icon-btn"><i data-lucide="more-horizontal"></i></button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-04-28</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 9. Appearance / Branding ══════════════════ -->
+            <section data-stg-section="appearance">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="palette"></i><span>System</span></div>
+                  <h1>Appearance / Branding</h1>
+                  <p class="set-sub">ธีมหน้าตา สีหลัก logo และ workspace identity</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Theme</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-theme-grid">
+                      <label class="s-theme">
+                        <input type="radio" name="theme-mode" value="light">
+                        <div class="s-theme-card light"><div class="t-bar"></div><div class="t-row"><div class="t-side"></div><div class="t-main"></div></div></div>
+                        <div class="s-theme-label">Light <span class="s-h">· เริ่มต้น</span></div>
+                      </label>
+                      <label class="s-theme">
+                        <input type="radio" name="theme-mode" value="dark">
+                        <div class="s-theme-card dark"><div class="t-bar"></div><div class="t-row"><div class="t-side"></div><div class="t-main"></div></div></div>
+                        <div class="s-theme-label">Dark</div>
+                      </label>
+                      <label class="s-theme">
+                        <input type="radio" name="theme-mode" value="system" checked>
+                        <div class="s-theme-card auto"><div class="t-bar"></div><div class="t-row"><div class="t-side"></div><div class="t-main"></div></div></div>
+                        <div class="s-theme-label">System (Auto)</div>
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Accent color</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-color-grid">
+                      <label class="s-color active"><input type="radio" name="accent-color" value="#f97316" checked><span style="background:#f97316;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#ef4444"><span style="background:#ef4444;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#eab308"><span style="background:#eab308;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#22c55e"><span style="background:#22c55e;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#06b6d4"><span style="background:#06b6d4;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#3b82f6"><span style="background:#3b82f6;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#8b5cf6"><span style="background:#8b5cf6;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#ec4899"><span style="background:#ec4899;"></span></label>
+                      <label class="s-color"><input type="radio" name="accent-color" value="#0f172a"><span style="background:#0f172a;"></span></label>
+                    </div>
+                    <div style="margin-top:12px;">
+                      <div class="s-h" style="margin-bottom:6px;">Custom hex</div>
+                      <div class="stg-color-row">
+                        <div class="stg-color-swatch" id="stg-accent-swatch" style="background:#f97316"><input type="color" value="#f97316"></div>
+                        <input class="form-input" value="#f97316" style="font-family:var(--f-mono);max-width:120px;" id="stg-accent-hex">
+                        <span class="s-h">Accent color</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Workspace identity</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-grid-2">
+                      <div class="s-field"><label>Company name</label><input class="form-input" value="Symphony Communication"></div>
+                      <div class="s-field"><label>System title</label><input class="form-input" value="NOC Incident Management"></div>
+                      <div class="s-field"><label>Support email</label><input class="form-input" value="noc@symphony.co.th"></div>
+                      <div class="s-field"><label>Logo URL</label><input class="form-input" value="/symphony-logo.jpg" placeholder="/logo.png or https://…"><span class="s-h">Shown in sidebar and reports</span></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Display preferences</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Font family</div></div><div class="s-row-control"><select class="form-input" style="max-width:280px;"><option selected>Prompt + Inter (default)</option><option>Inter only</option><option>System UI</option></select></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Sidebar density</div></div><div class="s-row-control"><div class="seg-mini"><button>Compact</button><button class="active">Default</button><button>Comfortable</button></div></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Show count badges</div><div class="s-h">ตัวเลขข้างเมนู เช่น Alert · 7</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Reduce motion</div><div class="s-h">ลด animation transitions</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div></div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last modified <b>2026-04-01</b> by <b>admin</b></span><a href="#" class="muted-link">View audit log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 10. Backup & Data ══════════════════════════ -->
+            <section data-stg-section="backup">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="database-backup"></i><span>System</span></div>
+                  <h1>Backup &amp; Data</h1>
+                  <p class="set-sub">Auto-backup, export ข้อมูล และ retention ของ Recycle Bin</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Backup schedule</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Auto backup (Daily)</div><div class="s-h">รัน backup อัตโนมัติทุกวันตอน 03:00</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Backup time</div></div><div class="s-row-control"><input type="time" class="form-input mono" value="03:00" style="width:100px;"></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Retention</div><div class="s-h">เก็บ backup ย้อนหลัง</div></div><div class="s-row-control"><input class="form-input mono" value="30" type="number" style="width:80px;text-align:right;"> <span class="s-h">วัน</span></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Destination</div></div><div class="s-row-control"><select class="form-input" style="max-width:280px;"><option selected>Firebase Storage</option><option>AWS S3</option><option>Local disk</option></select></div></div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Data retention</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Closed incidents</div><div class="s-h">เก็บ incident ที่ปิดแล้ว</div></div><div class="s-row-control"><input class="form-input mono" value="730" style="width:80px;text-align:right;"> <span class="s-h">วัน</span></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Recycle Bin</div><div class="s-h">ก่อนลบถาวร</div></div><div class="s-row-control"><input class="form-input mono" value="30" style="width:80px;text-align:right;"> <span class="s-h">วัน</span></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Audit log</div></div><div class="s-row-control"><input class="form-input mono" value="365" style="width:80px;text-align:right;"> <span class="s-h">วัน</span></div></div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Export data</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-export-grid">
+                      <button class="s-export"><i data-lucide="file-spreadsheet"></i><b>Incidents</b><span class="s-h">JSON / CSV · all records</span></button>
+                      <button class="s-export"><i data-lucide="settings"></i><b>System config</b><span class="s-h">JSON · all settings</span></button>
+                      <button class="s-export"><i data-lucide="bar-chart-3"></i><b>SLA report</b><span class="s-h">PDF · monthly summary</span></button>
+                      <label class="s-export" style="cursor:pointer;"><i data-lucide="upload"></i><b>Import incidents</b><span class="s-h">JSON restore</span><input type="file" accept=".json" style="display:none"></label>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Storage usage</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-storage">
+                      <div class="st-bar">
+                        <span style="width:47%;background:#3b82f6;"></span>
+                        <span style="width:15%;background:#22c55e;"></span>
+                        <span style="width:11%;background:#f97316;"></span>
+                      </div>
+                      <div class="st-legend">
+                        <span><i style="background:#3b82f6;"></i>Incidents (4.7 MB)</span>
+                        <span><i style="background:#22c55e;"></i>Attachments (1.5 MB)</span>
+                        <span><i style="background:#f97316;"></i>Backups (1.1 MB)</span>
+                        <span style="margin-left:auto;color:var(--ink-dim);">2.7 MB free of 10 MB</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Danger zone</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-danger">
+                      <div>
+                        <b>Purge archived incidents</b>
+                        <p>ลบ incident ถาวรที่เก่ากว่า N วัน · ไม่สามารถกู้คืนได้</p>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+                          <span style="font-size:12px;color:var(--ink-muted)">Older than</span>
+                          <input class="form-input mono" type="number" value="90" style="width:70px;height:30px;">
+                          <span style="font-size:12px;color:var(--ink-muted)">days</span>
+                        </div>
+                      </div>
+                      <button class="btn btn-sm btn-danger">Purge Now</button>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="history"></i><span>Last backup <b>2026-04-28 03:00</b> · <b style="color:var(--ok);">OK</b></span><a href="#" class="muted-link">View log →</a></div>
+              </footer>
+            </section>
+
+            <!-- ══ 11. About / System Info ════════════════════ -->
+            <section data-stg-section="about">
+              <header class="set-head">
+                <div>
+                  <div class="set-eyebrow"><i data-lucide="info"></i><span>System</span></div>
+                  <h1>About / System Info</h1>
+                  <p class="set-sub">Version, license, API health และ changelog</p>
+                </div>
+              </header>
+              <main class="set-main">
+
+                <section class="s-card">
+                  <div class="s-card-body">
+                    <div class="s-about-hero">
+                      <div class="logo-circ" style="width:64px;height:64px;font-size:18px;">SC</div>
+                      <div>
+                        <h2 style="margin:0;font-size:22px;">NOC Incident Management</h2>
+                        <p style="margin:4px 0 0;color:var(--ink-dim);">Symphony Communication · Network Operations Center</p>
+                        <div class="s-about-meta">
+                          <span><b>Version</b> 2.0.0</span>
+                          <span><b>Branch</b> corrective-2-main</span>
+                          <span><b>Build</b> 2026-04-28</span>
+                          <span><b>Environment</b> Production (Netlify)</span>
+                        </div>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:6px;">
+                        <button class="btn btn-sm"><i data-lucide="refresh-cw"></i>Check for updates</button>
+                        <button class="btn btn-sm btn-ghost" onclick="window.location.reload()"><i data-lucide="rotate-ccw"></i>Reload App</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>System health</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-health-grid">
+                      <div class="s-health"><span class="hd"></span><div><b>Firebase Auth</b><div class="s-h">latency — · uptime 99.99%</div></div></div>
+                      <div class="s-health"><span class="hd"></span><div><b>Firestore</b><div class="s-h">latency 12ms · uptime 99.98%</div></div></div>
+                      <div class="s-health"><span class="hd"></span><div><b>Symphony NMS poller</b><div class="s-h">latency 124ms · uptime 99.95%</div></div></div>
+                      <div class="s-health"><span class="hd warn"></span><div><b>Notification worker</b><div class="s-h">latency — · uptime 98.42%</div></div></div>
+                      <div class="s-health"><span class="hd"></span><div><b>LINE Notify</b><div class="s-h">Connected · last test OK</div></div></div>
+                      <div class="s-health"><span class="hd"></span><div><b>Firebase Storage</b><div class="s-h">latency 81ms · uptime 100%</div></div></div>
+                      <div class="s-health"><span class="hd"></span><div><b>FCM Push</b><div class="s-h">latency — · uptime 99.97%</div></div></div>
+                      <div class="s-health"><span class="hd"></span><div><b>Netlify CDN</b><div class="s-h">latency 8ms · uptime 99.99%</div></div></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Feature flags</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Calendar View</div><div class="s-h">Show calendar in main navigation</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Dashboard Analytics</div><div class="s-h">Enable Chart.js charts in Dashboard view</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">PWA / Offline Mode</div><div class="s-h">Cache assets and show offline banner</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Debug Mode</div><div class="s-h">Verbose console logging (disable in production)</div></div><div class="s-row-control"><label class="s-toggle"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div></div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Firebase config</h3></header>
+                  <div class="s-card-body">
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Project ID</div></div><div class="s-row-control"><input class="form-input mono" value="noc-symphony-prod" readonly style="max-width:260px;"></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Firestore Region</div></div><div class="s-row-control"><input class="form-input mono" value="asia-southeast1" readonly style="max-width:200px;"></div></div>
+                    <div class="s-row"><div class="s-row-label"><div class="s-l">Auth Domain</div></div><div class="s-row-control"><input class="form-input mono" value="noc-symphony-prod.firebaseapp.com" readonly style="max-width:300px;"></div></div>
+                  </div>
+                </section>
+
+                <section class="s-card">
+                  <header class="s-card-head"><h3>Diagnostics</h3></header>
+                  <div class="s-card-body">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <button class="btn btn-sm"><i data-lucide="download"></i>Download support bundle</button>
+                      <button class="btn btn-sm btn-ghost"><i data-lucide="book-open"></i>Documentation</button>
+                      <button class="btn btn-sm btn-ghost"><i data-lucide="alert-triangle"></i>Report a bug</button>
+                      <span style="margin-left:auto;font-size:11.5px;color:var(--ink-dim);">© 2024–2026 Symphony Communication</span>
+                    </div>
+                  </div>
+                </section>
+
+              </main>
+              <footer class="set-foot">
+                <div class="audit"><i data-lucide="info"></i><span>Version <b>2.0.0</b> · Build <b>2026-04-28</b></span></div>
+              </footer>
+            </section>
+
+          </div><!-- /set-content -->
+        </div><!-- /set-shell -->
+
+        <!-- Fixed save bar -->
+        <div class="set-savebar" id="set-savebar">
+          <i data-lucide="circle-dot" style="color:var(--accent);"></i>
+          <span>You have <b id="stg-unsaved-count">unsaved changes</b></span>
+          <span class="spacer"></span>
+          <button class="btn btn-sm" id="stg-discard-btn">Discard</button>
+          <button class="btn btn-sm btn-primary" id="stg-save-btn"><i data-lucide="save"></i>Save changes</button>
+        </div>
+
+      </div><!-- /view-settings -->
 
     </div><!-- /main-scroll-area -->
   </main>
@@ -790,6 +1835,956 @@ window.addEventListener('online',  () => showOfflineBanner(false));
   // Auto-refresh badge every 30s
   setInterval(() => { if (window.Store) window.updateNotifBadge(); }, 30000);
   document.addEventListener('DOMContentLoaded', () => { setTimeout(window.updateNotifBadge, 1500); });
+})();
+</script>
+
+<!-- ═══ CHANGE PASSWORD MODAL ════════════════════════════════════ -->
+<div id="modal-change-pwd" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--sh-lg);width:100%;max-width:400px;margin:16px;overflow:hidden">
+    <!-- Head -->
+    <div style="padding:20px 22px 16px;border-bottom:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--ink)">Change Password</div>
+        <div style="font-size:12px;color:var(--ink-muted);margin-top:2px">Update your account password</div>
+      </div>
+      <button id="stg-pwd-close" style="width:30px;height:30px;border-radius:50%;border:none;background:var(--surface-2);color:var(--ink-muted);font-size:18px;cursor:pointer;display:grid;place-items:center;line-height:1">×</button>
+    </div>
+    <!-- Body -->
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);display:block;margin-bottom:5px">Current Password</label>
+        <input type="password" id="stg-pwd-current" class="stg-inp" placeholder="••••••••" autocomplete="current-password" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);display:block;margin-bottom:5px">New Password</label>
+        <input type="password" id="stg-pwd-new" class="stg-inp" placeholder="Min. 8 characters" autocomplete="new-password" style="width:100%">
+        <!-- Strength bar -->
+        <div style="margin-top:6px;height:3px;border-radius:9999px;background:var(--surface-3);overflow:hidden">
+          <div id="stg-pwd-strength-bar" style="height:100%;width:0;border-radius:9999px;background:var(--sev-dn);transition:width .25s,background .25s"></div>
+        </div>
+        <div id="stg-pwd-strength-txt" style="font-size:11px;color:var(--ink-dim);margin-top:3px"></div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);display:block;margin-bottom:5px">Confirm Password</label>
+        <input type="password" id="stg-pwd-confirm" class="stg-inp" placeholder="Repeat new password" autocomplete="new-password" style="width:100%">
+      </div>
+      <div id="stg-pwd-error" style="display:none;font-size:12px;font-weight:600;color:var(--sev-dn);padding:8px 12px;background:var(--sev-dn-soft);border-radius:var(--r-sm)"></div>
+    </div>
+    <!-- Foot -->
+    <div style="padding:14px 22px 18px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--hair)">
+      <button class="stg-btn-ghost" id="stg-pwd-cancel-btn">Cancel</button>
+      <button class="stg-btn-save" id="stg-pwd-submit">Update Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS UI ════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════════════════════════════════════════════════════
+     NocSettings — localStorage-backed settings store
+     Key: 'noc-settings-v1'
+     Exposes window.NocSettings for use across the app
+  ══════════════════════════════════════════════════════════ */
+  var STORE_KEY = 'noc-settings-v1';
+
+  var DEFAULTS = {
+    profile: {
+      displayName: 'Administrator', initials: 'AN', role: 'NOC Level 3',
+      language: 'th', sessionTimeout: '1 hour', twoFactor: false, loginNotifications: true
+    },
+    notifications: {
+      lineNotify: true, emailAlerts: true, pushFcm: true, browserSound: false,
+      minSeverity: 'Warning+', statusChange: 'All transitions',
+      quietFrom: '22:00', quietUntil: '07:00', quietDays: 'Weekdays only',
+      escalateAfter: 60, escalationTarget: 'NOC Supervisor', notifyOnSLABreach: true
+    },
+    rules: {
+      incidentPrefix: 'I', defaultSeverity: 'Warning', autoEscalate: 2, autoClose: 7,
+      maxAlerts: 500, defaultWorkType: 'Fiber',
+      requirePhoto: false, requireSN: true, notifyOnCreate: true, notifyOnSLA: true
+    },
+    sla: {
+      fiberHours: 4, equipHours: 8, warnThreshold: 80, mttrFormat: 'hhmm',
+      bizHoursOnly: false, bizStart: '08:00', bizEnd: '17:00'
+    },
+    teams: {
+      list: ['Team 1', 'Team 2', 'Team 3'],
+      subcontractors: [
+        { name: 'บริษัท ABC Telecom', phone: '081-234-5678', zone: 'Central' },
+        { name: 'ช่างสมชาย', phone: '089-876-5432', zone: 'North' },
+        { name: 'XYZ Network Solutions', phone: '02-555-1234', zone: 'South' }
+      ]
+    },
+    appearance: {
+      theme: 'system', accentColor: '#ea580c', okColor: '#0d9488',
+      companyName: 'Symphony Communication', systemTitle: 'NOC Incident Management',
+      logoUrl: '/symphony-logo.jpg'
+    },
+    permissions: {
+      roles: [
+        { name: 'Administrator', perms: [1,1,1,1,1,1], fixed: true },
+        { name: 'NOC Level 3',   perms: [1,1,1,1,0,0] },
+        { name: 'NOC Level 2',   perms: [1,1,1,0,0,0] },
+        { name: 'Viewer',        perms: [1,0,0,0,0,0] }
+      ]
+    }
+  };
+
+  function loadData() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return JSON.parse(JSON.stringify(DEFAULTS));
+      var saved = JSON.parse(raw);
+      var merged = JSON.parse(JSON.stringify(DEFAULTS));
+      Object.keys(saved).forEach(function(k) {
+        if (merged[k] && typeof merged[k] === 'object' && !Array.isArray(merged[k])) {
+          Object.assign(merged[k], saved[k]);
+        } else {
+          merged[k] = saved[k];
+        }
+      });
+      return merged;
+    } catch(e) { return JSON.parse(JSON.stringify(DEFAULTS)); }
+  }
+
+  window.NocSettings = {
+    _data: loadData(),
+    get: function(s) { return this._data[s] || {}; },
+    getAll: function() { return this._data; },
+    save: function() { try { localStorage.setItem(STORE_KEY, JSON.stringify(this._data)); } catch(e){} },
+    reload: function() { this._data = loadData(); }
+  };
+
+  /* ── Helpers ── */
+  function shadeColor(hex, pct) {
+    var n = parseInt(hex.replace('#',''), 16);
+    var r = Math.min(255, Math.max(0, (n >> 16) + (pct * 2.55 | 0)));
+    var g = Math.min(255, Math.max(0, ((n >> 8) & 0xff) + (pct * 2.55 | 0)));
+    var b = Math.min(255, Math.max(0, (n & 0xff) + (pct * 2.55 | 0)));
+    return '#' + [r,g,b].map(function(v){ return v.toString(16).padStart(2,'0'); }).join('');
+  }
+
+  function setVal(id, val) {
+    var el = document.getElementById(id);
+    if (el && val !== undefined) el.value = val;
+  }
+
+  function getVal(id) {
+    var el = document.getElementById(id);
+    return el ? el.value : undefined;
+  }
+
+  /* ── Sync teams → NS Response modal ── */
+  function syncTeamsToModal(teams) {
+    var sel = document.getElementById('response-assigned-team');
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">— เลือก Team —</option>' +
+      (teams || []).map(function(t) {
+        return '<option value="' + t + '"' + (t === cur ? ' selected' : '') + '>' + t + '</option>';
+      }).join('');
+  }
+
+  /* ════════════════════════════════════════════════════════
+     applySettings — push data into live UI
+  ════════════════════════════════════════════════════════ */
+  function applySettings() {
+    var d = window.NocSettings._data;
+
+    /* Profile → sidebar */
+    var sName   = document.querySelector('.sidebar-user .name');
+    var sRole   = document.querySelector('.sidebar-user .role');
+    var sAvatar = document.querySelector('.sidebar-user .avatar');
+    if (sName)   sName.textContent   = d.profile.displayName;
+    if (sRole)   sRole.textContent   = d.profile.role;
+    if (sAvatar) sAvatar.textContent = d.profile.initials;
+
+    /* Theme */
+    var root = document.documentElement;
+    var theme = d.appearance.theme;
+    if (theme === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+      root.removeAttribute('data-theme');
+    } else {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.setAttribute('data-theme', 'dark');
+      } else {
+        root.removeAttribute('data-theme');
+      }
+    }
+    var isDark = root.getAttribute('data-theme') === 'dark';
+    var iconDark = document.getElementById('icon-dark-mode');
+    if (iconDark) {
+      iconDark.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    /* Colors */
+    if (d.appearance.accentColor) {
+      root.style.setProperty('--accent', d.appearance.accentColor);
+      root.style.setProperty('--accent-ink', shadeColor(d.appearance.accentColor, -40));
+    }
+    if (d.appearance.okColor) {
+      root.style.setProperty('--ok', d.appearance.okColor);
+    }
+
+    /* Teams → response modal */
+    syncTeamsToModal(d.teams.list);
+
+    /* Brand title */
+    var brandTitle = document.querySelector('.sidebar-brand h1');
+    if (brandTitle && d.appearance.systemTitle) brandTitle.textContent = d.appearance.systemTitle;
+  }
+
+  /* ════════════════════════════════════════════════════════
+     populateForm — fill fields from NocSettings._data
+  ════════════════════════════════════════════════════════ */
+  function populateForm() {
+    var d = window.NocSettings._data;
+
+    /* Profile */
+    setVal('stg-profile-name',     d.profile.displayName);
+    setVal('stg-profile-initials', d.profile.initials);
+    var av = document.getElementById('stg-avatar-preview');
+    if (av) av.textContent = d.profile.initials || 'AN';
+    var an = document.getElementById('stg-avatar-name');
+    if (an) an.textContent = d.profile.displayName || 'Administrator';
+    var pSw = document.querySelectorAll('[data-stg-section="profile"] .s-toggle input');
+    if (pSw[0]) pSw[0].checked = !!d.profile.twoFactor;
+    if (pSw[1]) pSw[1].checked = !!d.profile.loginNotifications;
+
+    /* Notifications toggles */
+    var nSw = document.querySelectorAll('[data-stg-section="notifications"] .s-toggle input');
+    var nChk = [d.notifications.lineNotify, d.notifications.emailAlerts,
+                d.notifications.pushFcm,   d.notifications.browserSound,
+                d.notifications.notifyOnSLABreach];
+    nSw.forEach(function(sw, i){ if (nChk[i] !== undefined) sw.checked = !!nChk[i]; });
+    var nTimes = document.querySelectorAll('[data-stg-section="notifications"] input[type=time]');
+    if (nTimes[0]) nTimes[0].value = d.notifications.quietFrom  || '22:00';
+    if (nTimes[1]) nTimes[1].value = d.notifications.quietUntil || '07:00';
+    var escInp = document.querySelector('[data-stg-section="notifications"] input[type=number]');
+    if (escInp) escInp.value = d.notifications.escalateAfter || 60;
+
+    /* Rules */
+    var rInps = document.querySelectorAll('[data-stg-section="rules"] .form-input');
+    if (rInps[0]) rInps[0].value = d.rules.incidentPrefix;
+    if (rInps[1]) rInps[1].value = d.rules.autoEscalate;
+    if (rInps[2]) rInps[2].value = d.rules.autoClose;
+    if (rInps[3]) rInps[3].value = d.rules.maxAlerts;
+    var rSw = document.querySelectorAll('[data-stg-section="rules"] .s-toggle input');
+    var rChk = [d.rules.requirePhoto, d.rules.requireSN, d.rules.notifyOnCreate, d.rules.notifyOnSLA];
+    rSw.forEach(function(sw, i){ if (rChk[i] !== undefined) sw.checked = !!rChk[i]; });
+
+    /* SLA */
+    var sInps = document.querySelectorAll('[data-stg-section="sla"] .form-input');
+    if (sInps[0]) sInps[0].value = d.sla.fiberHours;
+    if (sInps[1]) sInps[1].value = d.sla.equipHours;
+    if (sInps[2]) sInps[2].value = d.sla.warnThreshold;
+    var sSw = document.querySelector('[data-stg-section="sla"] .s-toggle input');
+    if (sSw) sSw.checked = !!d.sla.bizHoursOnly;
+    var sTimes = document.querySelectorAll('[data-stg-section="sla"] input[type=time]');
+    if (sTimes[0]) sTimes[0].value = d.sla.bizStart || '08:00';
+    if (sTimes[1]) sTimes[1].value = d.sla.bizEnd   || '17:00';
+    var mttrR = document.querySelector('[data-stg-section="sla"] input[name="mttr-fmt"][value="' + (d.sla.mttrFormat || 'hhmm') + '"]');
+    if (mttrR) mttrR.checked = true;
+
+    /* Teams */
+    var tagWrap = document.getElementById('stg-team-tags');
+    if (tagWrap && d.teams.list) {
+      tagWrap.innerHTML = d.teams.list.map(function(t){
+        return '<span class="s-tag-edit">' + t + ' <button class="x" data-rm-tag>×</button></span>';
+      }).join('');
+    }
+    var subTbody = document.getElementById('stg-sub-tbody');
+    if (subTbody && d.teams.subcontractors) {
+      subTbody.innerHTML = d.teams.subcontractors.map(function(s){
+        return '<tr>' +
+          '<td><input class="form-input" value="' + s.name + '" style="min-width:160px"></td>' +
+          '<td><input class="form-input" value="' + s.phone + '" style="min-width:120px"></td>' +
+          '<td><input class="form-input" value="' + s.zone + '" style="min-width:100px"></td>' +
+          '<td><button class="btn btn-sm btn-ghost stg-sub-rm" style="color:var(--sev-dn)">Remove</button></td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    /* Appearance */
+    var themeR = document.querySelector('[data-stg-section="appearance"] input[name="theme-mode"][value="' + (d.appearance.theme || 'system') + '"]');
+    if (themeR) themeR.checked = true;
+    var accentHex = document.getElementById('stg-accent-hex');
+    if (accentHex) accentHex.value = d.appearance.accentColor || '#ea580c';
+    var accentSwatch = document.getElementById('stg-accent-swatch');
+    if (accentSwatch) {
+      var c = d.appearance.accentColor || '#ea580c';
+      accentSwatch.style.background = c;
+      var ci = accentSwatch.querySelector('input[type=color]');
+      if (ci) ci.value = c;
+    }
+
+    /* Permissions — role matrix */
+    var tbody = document.getElementById('stg-role-tbody');
+    if (tbody && d.permissions && d.permissions.roles) {
+      tbody.innerHTML = d.permissions.roles.map(function(role){
+        if (role.fixed) {
+          return '<tr data-role-fixed="true">' +
+            '<td><span style="font-weight:700;color:var(--ink)">Administrator</span></td>' +
+            '<td><input type="checkbox" checked disabled></td>'.repeat(6) +
+            '<td></td></tr>';
+        }
+        var pCols = [0,1,2,3,4,5].map(function(i){
+          return '<td><input type="checkbox"' + (role.perms[i] ? ' checked' : '') + '></td>';
+        }).join('');
+        return '<tr>' +
+          '<td><input class="form-input" value="' + role.name + '" style="font-weight:600;min-width:120px"></td>' +
+          pCols +
+          '<td><button class="btn btn-sm btn-ghost stg-role-rm" style="color:var(--sev-dn)" title="Remove role">×</button></td>' +
+          '</tr>';
+      }).join('');
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════
+     collectFormData — read form into NocSettings._data
+  ════════════════════════════════════════════════════════ */
+  function collectFormData() {
+    var d = window.NocSettings._data;
+
+    /* Profile */
+    d.profile.displayName = getVal('stg-profile-name') || d.profile.displayName;
+    d.profile.initials    = getVal('stg-profile-initials') || d.profile.initials;
+    var pSw = document.querySelectorAll('[data-stg-section="profile"] .s-toggle input');
+    if (pSw[0]) d.profile.twoFactor         = pSw[0].checked;
+    if (pSw[1]) d.profile.loginNotifications = pSw[1].checked;
+
+    /* Notifications */
+    var nSw = document.querySelectorAll('[data-stg-section="notifications"] .s-toggle input');
+    if (nSw[0]) d.notifications.lineNotify       = nSw[0].checked;
+    if (nSw[1]) d.notifications.emailAlerts      = nSw[1].checked;
+    if (nSw[2]) d.notifications.pushFcm          = nSw[2].checked;
+    if (nSw[3]) d.notifications.browserSound     = nSw[3].checked;
+    if (nSw[4]) d.notifications.notifyOnSLABreach= nSw[4].checked;
+    var nTimes = document.querySelectorAll('[data-stg-section="notifications"] input[type=time]');
+    if (nTimes[0]) d.notifications.quietFrom  = nTimes[0].value;
+    if (nTimes[1]) d.notifications.quietUntil = nTimes[1].value;
+    var escInp = document.querySelector('[data-stg-section="notifications"] input[type=number]');
+    if (escInp) d.notifications.escalateAfter = +escInp.value || 60;
+
+    /* Rules */
+    var rInps = document.querySelectorAll('[data-stg-section="rules"] .form-input');
+    if (rInps[0]) d.rules.incidentPrefix = rInps[0].value;
+    if (rInps[1]) d.rules.autoEscalate   = +rInps[1].value || 2;
+    if (rInps[2]) d.rules.autoClose      = +rInps[2].value || 7;
+    if (rInps[3]) d.rules.maxAlerts      = +rInps[3].value || 500;
+    var rSw = document.querySelectorAll('[data-stg-section="rules"] .s-toggle input');
+    if (rSw[0]) d.rules.requirePhoto   = rSw[0].checked;
+    if (rSw[1]) d.rules.requireSN      = rSw[1].checked;
+    if (rSw[2]) d.rules.notifyOnCreate = rSw[2].checked;
+    if (rSw[3]) d.rules.notifyOnSLA    = rSw[3].checked;
+
+    /* SLA */
+    var sInps = document.querySelectorAll('[data-stg-section="sla"] .form-input');
+    if (sInps[0]) d.sla.fiberHours    = +sInps[0].value || 4;
+    if (sInps[1]) d.sla.equipHours    = +sInps[1].value || 8;
+    if (sInps[2]) d.sla.warnThreshold = +sInps[2].value || 80;
+    var sSw = document.querySelector('[data-stg-section="sla"] .s-toggle input');
+    if (sSw) d.sla.bizHoursOnly = sSw.checked;
+    var sTimes = document.querySelectorAll('[data-stg-section="sla"] input[type=time]');
+    if (sTimes[0]) d.sla.bizStart = sTimes[0].value;
+    if (sTimes[1]) d.sla.bizEnd   = sTimes[1].value;
+    var mttrR = document.querySelector('[data-stg-section="sla"] input[name="mttr-fmt"]:checked');
+    if (mttrR) d.sla.mttrFormat = mttrR.value;
+
+    /* Teams */
+    d.teams.list = Array.from(document.querySelectorAll('#stg-team-tags .s-tag-edit')).map(function(tag){
+      return (tag.childNodes[0] && tag.childNodes[0].textContent || '').trim();
+    }).filter(Boolean);
+    d.teams.subcontractors = Array.from(document.querySelectorAll('#stg-sub-tbody tr')).map(function(tr){
+      var ins = tr.querySelectorAll('input.form-input');
+      return { name: ins[0] ? ins[0].value : '', phone: ins[1] ? ins[1].value : '', zone: ins[2] ? ins[2].value : '' };
+    }).filter(function(s){ return s.name; });
+
+    /* Appearance */
+    var themeR = document.querySelector('[data-stg-section="appearance"] input[name="theme-mode"]:checked');
+    if (themeR) d.appearance.theme = themeR.value;
+    var accentR = document.querySelector('[data-stg-section="appearance"] input[name="accent-color"]:checked');
+    if (accentR) d.appearance.accentColor = accentR.value;
+    var accentHex = document.getElementById('stg-accent-hex');
+    if (accentHex && /^#[0-9a-f]{6}$/i.test(accentHex.value)) d.appearance.accentColor = accentHex.value;
+
+    /* Permissions */
+    d.permissions.roles = [];
+    document.querySelectorAll('#stg-role-tbody tr').forEach(function(tr){
+      if (tr.dataset.roleFixed) {
+        d.permissions.roles.push({ name: 'Administrator', perms: [1,1,1,1,1,1], fixed: true });
+        return;
+      }
+      var nameInp = tr.querySelector('input.form-input');
+      var cbs = Array.from(tr.querySelectorAll('input[type=checkbox]'));
+      if (nameInp && nameInp.value.trim()) {
+        d.permissions.roles.push({ name: nameInp.value.trim(), perms: cbs.map(function(c){ return c.checked ? 1 : 0; }) });
+      }
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Init
+  ════════════════════════════════════════════════════════ */
+  window.addEventListener('load', function() {
+    if (window.lucide) lucide.createIcons();
+    populateForm();
+    applySettings();
+  });
+
+  /* ════════════════════════════════════════════════════════
+     Sidebar nav → Settings view
+  ════════════════════════════════════════════════════════ */
+  document.getElementById('nav-settings') && document.getElementById('nav-settings').addEventListener('click', function() {
+    if (window.Store) {
+      window.Store.dispatch(function(s){ return Object.assign({}, s, { ui: Object.assign({}, s.ui, { currentView: 'settings' }) }); });
+    } else {
+      showView('settings');
+    }
+    if (window.lucide) lucide.createIcons();
+  });
+
+  /* ════════════════════════════════════════════════════════
+     Section nav switching
+  ════════════════════════════════════════════════════════ */
+  var sectionNameEl = document.getElementById('stg-section-name');
+
+  document.querySelectorAll('[data-stg-nav]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var key = btn.dataset.stgNav;
+      document.querySelectorAll('[data-stg-nav]').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('[data-stg-section]').forEach(function(s){ s.classList.remove('active'); });
+      var sec = document.querySelector('[data-stg-section="' + key + '"]');
+      if (sec) sec.classList.add('active');
+      if (sectionNameEl) sectionNameEl.textContent = btn.textContent.trim();
+      var stgContent = document.getElementById('set-content-area');
+      if (stgContent) stgContent.scrollTo(0, 0);
+    });
+  });
+
+  /* ════════════════════════════════════════════════════════
+     Search / filter nav
+  ════════════════════════════════════════════════════════ */
+  var searchEl = document.getElementById('stg-search');
+  if (searchEl) {
+    searchEl.addEventListener('input', function() {
+      var q = this.value.toLowerCase().trim();
+      document.querySelectorAll('[data-stg-nav]').forEach(function(btn) {
+        btn.style.display = (!q || btn.textContent.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+      });
+      document.querySelectorAll('.set-group-label').forEach(function(lbl) {
+        var el = lbl.nextElementSibling;
+        var any = false;
+        while (el && !el.classList.contains('set-group-label')) {
+          if (el.style.display !== 'none') any = true;
+          el = el.nextElementSibling;
+        }
+        lbl.style.display = any ? '' : 'none';
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Unsaved changes indicator
+  ════════════════════════════════════════════════════════ */
+  var unsavedBadge = document.getElementById('set-savebar');
+
+  function markDirty() {
+    if (unsavedBadge) unsavedBadge.classList.add('visible');
+  }
+
+  var viewSettings = document.getElementById('view-settings');
+  if (viewSettings) {
+    viewSettings.addEventListener('input',  markDirty);
+    viewSettings.addEventListener('change', markDirty);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Save
+  ════════════════════════════════════════════════════════ */
+
+  var discardBtn = document.getElementById('stg-discard-btn');
+  if (discardBtn) {
+    discardBtn.addEventListener('click', function() {
+      window.NocSettings.reload();
+      populateForm();
+      applySettings();
+      var sb = document.getElementById('set-savebar');
+      if (sb) sb.classList.remove('visible');
+    });
+  }
+  var saveBtn = document.getElementById('stg-save-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      collectFormData();
+      window.NocSettings.save();
+      applySettings();
+      if (unsavedBadge) unsavedBadge.classList.remove('visible');
+      var toast = document.createElement('div');
+      toast.textContent = '\u2713 Settings saved';
+      Object.assign(toast.style, {
+        position:'fixed', bottom:'24px', right:'24px', zIndex:'9999',
+        background:'var(--ok)', color:'#fff', fontSize:'13px', fontWeight:'600',
+        padding:'10px 18px', borderRadius:'8px',
+        boxShadow:'0 4px 16px rgba(0,0,0,.2)', transition:'opacity .3s'
+      });
+      document.body.appendChild(toast);
+      setTimeout(function() {
+        toast.style.opacity = '0';
+        setTimeout(function() { toast.remove(); }, 310);
+      }, 2200);
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Export JSON
+  ════════════════════════════════════════════════════════ */
+  var exportBtn = document.getElementById('stg-export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function() {
+      collectFormData();
+      var blob = new Blob([JSON.stringify(window.NocSettings._data, null, 2)], { type: 'application/json' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url;
+      a.download = 'noc-settings-' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Import JSON
+  ════════════════════════════════════════════════════════ */
+  var importFile = document.getElementById('stg-import-file');
+  if (importFile) {
+    importFile.addEventListener('change', function() {
+      var file = this.files[0];
+      if (!file) return;
+      var self = this;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          var imported = JSON.parse(ev.target.result);
+          Object.keys(imported).forEach(function(k) {
+            if (window.NocSettings._data[k]) Object.assign(window.NocSettings._data[k], imported[k]);
+          });
+          populateForm();
+          applySettings();
+          markDirty();
+          alert('Settings imported \u2014 review then click Save.');
+        } catch(e) { alert('Invalid JSON file.'); }
+      };
+      reader.readAsText(file);
+      self.value = '';
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Delegated click events (remove tags / roles / subs)
+  ════════════════════════════════════════════════════════ */
+  if (viewSettings) {
+    viewSettings.addEventListener('click', function(e) {
+      /* Remove tag */
+      if (e.target.matches('[data-rm-tag]')) {
+        var tag = e.target.closest('.s-tag-edit');
+        if (tag) { tag.remove(); markDirty(); }
+      }
+      /* Remove subcontractor row */
+      if (e.target.matches('.stg-sub-rm')) {
+        var tr = e.target.closest('tr');
+        if (tr) { tr.remove(); markDirty(); }
+      }
+      /* Remove role row */
+      if (e.target.matches('.stg-role-rm')) {
+        var roleRow = e.target.closest('tr');
+        var roleName = roleRow && roleRow.querySelector('input') ? roleRow.querySelector('input').value : 'this role';
+        if (confirm('Remove role "' + roleName + '"?')) {
+          if (roleRow) { roleRow.remove(); markDirty(); }
+        }
+      }
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Add team tag
+  ════════════════════════════════════════════════════════ */
+  function addTeam() {
+    var inp  = document.getElementById('stg-team-new');
+    var name = inp ? inp.value.trim() : '';
+    if (!name) return;
+    var tag  = document.createElement('span');
+    tag.className = 's-tag-edit';
+    tag.innerHTML = name + ' <button class="x" data-rm-tag>×</button>';
+    var teamTags = document.getElementById('stg-team-tags');
+    if (teamTags) teamTags.appendChild(tag);
+    if (inp) inp.value = '';
+    markDirty();
+  }
+
+  var teamAddBtn = document.getElementById('stg-team-add');
+  if (teamAddBtn) teamAddBtn.addEventListener('click', addTeam);
+  var teamNewInp = document.getElementById('stg-team-new');
+  if (teamNewInp) {
+    teamNewInp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); addTeam(); }
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Add subcontractor row
+  ════════════════════════════════════════════════════════ */
+  var subAddBtn = document.getElementById('stg-sub-add');
+  if (subAddBtn) {
+    subAddBtn.addEventListener('click', function() {
+      var tbody = document.getElementById('stg-sub-tbody');
+      if (!tbody) return;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input class="form-input" placeholder="Company name" style="min-width:160px"></td>' +
+        '<td><input class="form-input" placeholder="Phone" style="min-width:120px"></td>' +
+        '<td><input class="form-input" placeholder="Zone" style="min-width:100px"></td>' +
+        '<td><button class="btn btn-sm btn-ghost stg-sub-rm" style="color:var(--sev-dn)">Remove</button></td>';
+      tbody.appendChild(tr);
+      var firstInp = tr.querySelector('input');
+      if (firstInp) firstInp.focus();
+      markDirty();
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Add Role row
+  ════════════════════════════════════════════════════════ */
+  var roleAddBtn = document.getElementById('stg-role-add');
+  if (roleAddBtn) {
+    roleAddBtn.addEventListener('click', function() {
+      var tbody = document.getElementById('stg-role-tbody');
+      if (!tbody) return;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input class="form-input" placeholder="Role name" style="font-weight:600;min-width:120px"></td>' +
+        '<td><input type="checkbox"></td>' +
+        '<td><input type="checkbox"></td>' +
+        '<td><input type="checkbox"></td>' +
+        '<td><input type="checkbox"></td>' +
+        '<td><input type="checkbox"></td>' +
+        '<td><input type="checkbox"></td>' +
+        '<td><button class="btn btn-sm btn-ghost stg-role-rm" style="color:var(--sev-dn)" title="Remove role">×</button></td>';
+      tbody.appendChild(tr);
+      var firstInp = tr.querySelector('input');
+      if (firstInp) firstInp.focus();
+      markDirty();
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Avatar live preview
+  ════════════════════════════════════════════════════════ */
+  var initialsInp = document.getElementById('stg-profile-initials');
+  if (initialsInp) {
+    initialsInp.addEventListener('input', function() {
+      var el = document.getElementById('stg-avatar-preview');
+      if (el) el.textContent = this.value.toUpperCase().slice(0, 3) || 'AN';
+    });
+  }
+  var nameInp = document.getElementById('stg-profile-name');
+  if (nameInp) {
+    nameInp.addEventListener('input', function() {
+      var el = document.getElementById('stg-avatar-name');
+      if (el) el.textContent = this.value || 'Administrator';
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Color swatch <-> hex text sync
+  ════════════════════════════════════════════════════════ */
+  /* accent color radio sync */
+  document.querySelectorAll('input[name="accent-color"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      var hex = this.value;
+      var sw = document.getElementById('stg-accent-swatch');
+      var hx = document.getElementById('stg-accent-hex');
+      if (sw) { sw.style.background = hex; var ci = sw.querySelector('input[type=color]'); if (ci) ci.value = hex; }
+      if (hx) hx.value = hex;
+    });
+  });
+
+  document.querySelectorAll('#view-settings .stg-color-swatch').forEach(function(swatch) {
+    var colorInput = swatch.querySelector('input[type=color]');
+    var textInput  = swatch.closest('.stg-color-row') ? swatch.closest('.stg-color-row').querySelector('.form-input') : null;
+    if (!colorInput || !textInput) return;
+    colorInput.addEventListener('input', function() {
+      swatch.style.background = colorInput.value;
+      textInput.value = colorInput.value;
+    });
+    textInput.addEventListener('input', function() {
+      if (/^#[0-9a-f]{6}$/i.test(textInput.value)) {
+        colorInput.value = textInput.value;
+        swatch.style.background = textInput.value;
+      }
+    });
+  });
+
+  /* ════════════════════════════════════════════════════════
+     Ctrl+K / Cmd+K → focus settings search
+  ════════════════════════════════════════════════════════ */
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      var v = document.getElementById('view-settings');
+      if (v && !v.classList.contains('hidden')) {
+        e.preventDefault();
+        var s = document.getElementById('stg-search');
+        if (s) s.focus();
+      }
+    }
+  });
+
+  /* ════════════════════════════════════════════════════════
+     Change Avatar panel
+  ════════════════════════════════════════════════════════ */
+  var _avcColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ea580c';
+
+  var avcPanel   = document.getElementById('stg-avatar-panel');
+  var avcPreview = document.getElementById('stg-avc-preview');
+  var avcInitInp = document.getElementById('stg-avc-initials');
+
+  /* Open panel */
+  var btnChangeAvatar = document.getElementById('stg-btn-change-avatar');
+  if (btnChangeAvatar) {
+    btnChangeAvatar.addEventListener('click', function() {
+      /* Seed panel with current values */
+      var curInitials = (document.getElementById('stg-profile-initials') || {}).value || 'AN';
+      if (avcInitInp)  avcInitInp.value = curInitials;
+      if (avcPreview)  avcPreview.textContent = curInitials;
+      _avcColor = window.NocSettings._data.appearance.accentColor || '#ea580c';
+      if (avcPreview)  avcPreview.style.background = _avcColor;
+
+      /* Mark selected swatch */
+      document.querySelectorAll('.stg-avc').forEach(function(b) {
+        b.style.outline = b.dataset.color === _avcColor ? '3px solid var(--ink)' : 'none';
+        b.style.outlineOffset = '2px';
+      });
+
+      avcPanel.style.display = avcPanel.style.display === 'none' ? 'block' : 'none';
+      if (avcPanel.style.display === 'block' && avcInitInp) avcInitInp.focus();
+    });
+  }
+
+  /* Color swatch clicks */
+  document.getElementById('stg-avatar-colors') && document.getElementById('stg-avatar-colors').addEventListener('click', function(e) {
+    var btn = e.target.closest('.stg-avc');
+    if (!btn) return;
+    _avcColor = btn.dataset.color;
+    if (avcPreview) avcPreview.style.background = _avcColor;
+    document.querySelectorAll('.stg-avc').forEach(function(b) {
+      b.style.outline = b === btn ? '3px solid var(--ink)' : 'none';
+      b.style.outlineOffset = '2px';
+    });
+  });
+
+  /* Custom color picker */
+  var avcCustom = document.getElementById('stg-avc-custom');
+  if (avcCustom) {
+    avcCustom.addEventListener('input', function() {
+      _avcColor = this.value;
+      if (avcPreview) avcPreview.style.background = _avcColor;
+      document.querySelectorAll('.stg-avc').forEach(function(b) { b.style.outline = 'none'; });
+    });
+  }
+
+  /* Initials preview */
+  if (avcInitInp) {
+    avcInitInp.addEventListener('input', function() {
+      if (avcPreview) avcPreview.textContent = this.value.toUpperCase().slice(0, 3) || '?';
+    });
+  }
+
+  /* Apply */
+  var avcApply = document.getElementById('stg-avc-apply');
+  if (avcApply) {
+    avcApply.addEventListener('click', function() {
+      var newInitials = avcInitInp ? avcInitInp.value.trim().toUpperCase().slice(0, 3) : 'AN';
+      if (!newInitials) return;
+
+      /* Update main avatar display */
+      var mainAv = document.getElementById('stg-avatar-preview');
+      if (mainAv) { mainAv.textContent = newInitials; mainAv.style.background = _avcColor; }
+
+      /* Update initials field */
+      var initInp = document.getElementById('stg-profile-initials');
+      if (initInp) initInp.value = newInitials;
+
+      /* Update NocSettings and CSS variable */
+      window.NocSettings._data.profile.initials   = newInitials;
+      window.NocSettings._data.appearance.accentColor = _avcColor;
+      document.documentElement.style.setProperty('--accent', _avcColor);
+
+      /* Update sidebar avatar */
+      var sidebarAv = document.querySelector('.sidebar-user .avatar');
+      if (sidebarAv) { sidebarAv.textContent = newInitials; sidebarAv.style.background = _avcColor; }
+
+      avcPanel.style.display = 'none';
+      markDirty();
+    });
+  }
+
+  /* Cancel */
+  var avcCancel = document.getElementById('stg-avc-cancel');
+  if (avcCancel) { avcCancel.addEventListener('click', function() { avcPanel.style.display = 'none'; }); }
+
+  /* ════════════════════════════════════════════════════════
+     Change Password modal
+  ════════════════════════════════════════════════════════ */
+  var pwdModal    = document.getElementById('modal-change-pwd');
+  var pwdCurrent  = document.getElementById('stg-pwd-current');
+  var pwdNew      = document.getElementById('stg-pwd-new');
+  var pwdConfirm  = document.getElementById('stg-pwd-confirm');
+  var pwdError    = document.getElementById('stg-pwd-error');
+  var pwdStrBar   = document.getElementById('stg-pwd-strength-bar');
+  var pwdStrTxt   = document.getElementById('stg-pwd-strength-txt');
+
+  function openPwdModal() {
+    if (!pwdModal) return;
+    if (pwdCurrent)  pwdCurrent.value  = '';
+    if (pwdNew)      pwdNew.value      = '';
+    if (pwdConfirm)  pwdConfirm.value  = '';
+    if (pwdError)    { pwdError.style.display = 'none'; pwdError.textContent = ''; }
+    if (pwdStrBar)   pwdStrBar.style.width = '0';
+    if (pwdStrTxt)   pwdStrTxt.textContent = '';
+    pwdModal.style.display = 'flex';
+    setTimeout(function() { if (pwdCurrent) pwdCurrent.focus(); }, 50);
+  }
+
+  function closePwdModal() {
+    if (pwdModal) pwdModal.style.display = 'none';
+  }
+
+  function showPwdError(msg) {
+    if (!pwdError) return;
+    pwdError.textContent = msg;
+    pwdError.style.display = 'block';
+  }
+
+  /* Password strength meter */
+  function calcStrength(pwd) {
+    var score = 0;
+    if (pwd.length >= 8)  score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    return score; /* 0-5 */
+  }
+
+  if (pwdNew) {
+    pwdNew.addEventListener('input', function() {
+      var pwd = this.value;
+      if (!pwd) {
+        if (pwdStrBar) pwdStrBar.style.width = '0';
+        if (pwdStrTxt) pwdStrTxt.textContent = '';
+        return;
+      }
+      var s = calcStrength(pwd);
+      var pct  = ['0%','25%','45%','65%','85%','100%'][s];
+      var color= s <= 1 ? 'var(--sev-dn)' : s <= 3 ? 'var(--sev-inf)' : 'var(--ok)';
+      var label= ['','Weak','Fair','Good','Strong','Very Strong'][s] || '';
+      if (pwdStrBar) { pwdStrBar.style.width = pct; pwdStrBar.style.background = color; }
+      if (pwdStrTxt) { pwdStrTxt.textContent = label; pwdStrTxt.style.color = color; }
+    });
+  }
+
+  /* Open button */
+  var btnChangePwd = document.getElementById('stg-btn-change-pwd');
+  if (btnChangePwd) btnChangePwd.addEventListener('click', openPwdModal);
+
+  /* Close buttons */
+  var pwdCloseBtn  = document.getElementById('stg-pwd-close');
+  var pwdCancelBtn = document.getElementById('stg-pwd-cancel-btn');
+  if (pwdCloseBtn)  pwdCloseBtn.addEventListener('click',  closePwdModal);
+  if (pwdCancelBtn) pwdCancelBtn.addEventListener('click', closePwdModal);
+
+  /* Close on backdrop click */
+  if (pwdModal) {
+    pwdModal.addEventListener('click', function(e) {
+      if (e.target === pwdModal) closePwdModal();
+    });
+  }
+
+  /* Escape key */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && pwdModal && pwdModal.style.display === 'flex') closePwdModal();
+  });
+
+  /* Submit */
+  var pwdSubmit = document.getElementById('stg-pwd-submit');
+  if (pwdSubmit) {
+    pwdSubmit.addEventListener('click', function() {
+      if (!pwdCurrent || !pwdNew || !pwdConfirm || !pwdError) return;
+      var cur  = pwdCurrent.value.trim();
+      var nw   = pwdNew.value;
+      var conf = pwdConfirm.value;
+
+      /* Validate */
+      if (!cur) { showPwdError('Please enter your current password.'); pwdCurrent.focus(); return; }
+      if (nw.length < 8) { showPwdError('New password must be at least 8 characters.'); pwdNew.focus(); return; }
+      if (nw !== conf) { showPwdError('Passwords do not match.'); pwdConfirm.focus(); return; }
+      if (pwdError) pwdError.style.display = 'none';
+
+      /* Try Firebase Auth if available */
+      var fbUser = window.firebase && firebase.auth && firebase.auth().currentUser;
+      if (fbUser) {
+        pwdSubmit.disabled = true;
+        pwdSubmit.textContent = 'Updating…';
+        var credential = firebase.auth.EmailAuthProvider.credential(fbUser.email, cur);
+        fbUser.reauthenticateWithCredential(credential)
+          .then(function() { return fbUser.updatePassword(nw); })
+          .then(function() {
+            closePwdModal();
+            var toast = document.createElement('div');
+            toast.textContent = '✓ Password updated';
+            Object.assign(toast.style, {
+              position:'fixed', bottom:'24px', right:'24px', zIndex:'9999',
+              background:'var(--ok)', color:'#fff', fontSize:'13px', fontWeight:'600',
+              padding:'10px 18px', borderRadius:'8px',
+              boxShadow:'0 4px 16px rgba(0,0,0,.2)', transition:'opacity .3s'
+            });
+            document.body.appendChild(toast);
+            setTimeout(function(){ toast.style.opacity='0'; setTimeout(function(){ toast.remove(); }, 310); }, 2500);
+          })
+          .catch(function(err) {
+            var msg = err.code === 'auth/wrong-password' ? 'Current password is incorrect.' :
+                      err.code === 'auth/weak-password'  ? 'New password is too weak.' :
+                      err.message || 'Update failed. Try again.';
+            showPwdError(msg);
+          })
+          .finally(function() {
+            pwdSubmit.disabled = false;
+            pwdSubmit.textContent = 'Update Password';
+          });
+      } else {
+        /* No Firebase — local mock */
+        closePwdModal();
+        var toast2 = document.createElement('div');
+        toast2.textContent = '✓ Password updated';
+        Object.assign(toast2.style, {
+          position:'fixed', bottom:'24px', right:'24px', zIndex:'9999',
+          background:'var(--ok)', color:'#fff', fontSize:'13px', fontWeight:'600',
+          padding:'10px 18px', borderRadius:'8px',
+          boxShadow:'0 4px 16px rgba(0,0,0,.2)', transition:'opacity .3s'
+        });
+        document.body.appendChild(toast2);
+        setTimeout(function(){ toast2.style.opacity='0'; setTimeout(function(){ toast2.remove(); }, 310); }, 2500);
+      }
+    });
+  }
+
 })();
 </script>
 </body>
