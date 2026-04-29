@@ -80,7 +80,8 @@
             </div>
             <div class="form-group">
               <label class="form-label">Alarm</label>
-              <input id="f-alarm" class="form-input" placeholder="Alarm description">
+              <input id="f-alarm" class="form-input" placeholder="Alarm description" list="alarm-types-datalist" autocomplete="off">
+              <datalist id="alarm-types-datalist"></datalist>
             </div>
           </div>
 
@@ -135,6 +136,7 @@
           </div>
 
         </div>
+        <div id="f-ticket-error" style="display:none;margin:0 20px 12px;padding:10px 14px;background:var(--sev-dn-soft,#fee2e2);color:var(--sev-dn,#dc2626);border-radius:8px;font-size:13px;font-weight:600;"></div>
         <div class="modal-foot">
           <button type="button" id="btn-discard-create-alert" class="btn btn-ghost">Cancel</button>
           <button type="submit" class="btn btn-accent">Create Ticket</button>
@@ -579,7 +581,7 @@
             <div class="set-recent">
               <div class="set-group-label">Recently changed</div>
               <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">SLA target — Fiber 4h</div><div class="r-s">2h ago · admin</div></div></div>
-              <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">Added subcontractor: ABC Telecom</div><div class="r-s">yesterday · admin</div></div></div>
+              <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">Updated subcontractor list</div><div class="r-s">today · admin</div></div></div>
               <div class="set-recent-row"><span class="r-dot"></span><div><div class="r-t">LINE token rotated</div><div class="r-s">3 days ago · admin</div></div></div>
             </div>
           </aside>
@@ -960,29 +962,7 @@
                     <div class="s-vendors" id="stg-sub-tbody-wrap">
                       <table class="s-table" style="display:none"><tbody id="stg-sub-tbody-hidden"></tbody></table>
                       <!-- Vendor cards rendered by JS populateForm -->
-                      <div id="stg-sub-list">
-                        <div class="s-vendor">
-                          <div class="v-logo" style="background:#0ea5e9;">ABC</div>
-                          <div class="v-info"><b>บริษัท ABC Telecom</b><div class="s-h">Phone: 081-234-5678 · Zone: Central</div></div>
-                          <div class="v-score"><div class="vs-num">90</div><div class="vs-bar"><span style="width:90%;background:var(--ok);"></span></div></div>
-                          <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
-                          <button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>
-                        </div>
-                        <div class="s-vendor">
-                          <div class="v-logo" style="background:#22c55e;">ชส</div>
-                          <div class="v-info"><b>ช่างสมชาย</b><div class="s-h">Phone: 089-876-5432 · Zone: North</div></div>
-                          <div class="v-score"><div class="vs-num">85</div><div class="vs-bar"><span style="width:85%;background:var(--accent);"></span></div></div>
-                          <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
-                          <button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>
-                        </div>
-                        <div class="s-vendor">
-                          <div class="v-logo" style="background:#f97316;">XYZ</div>
-                          <div class="v-info"><b>XYZ Network Solutions</b><div class="s-h">Phone: 02-555-1234 · Zone: South</div></div>
-                          <div class="v-score"><div class="vs-num">78</div><div class="vs-bar"><span style="width:78%;background:var(--sev-dn);"></span></div></div>
-                          <label class="s-toggle"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
-                          <button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>
-                        </div>
-                      </div>
+                      <div id="stg-sub-list"></div>
                     </div>
                   </div>
                 </section>
@@ -1006,50 +986,7 @@
 
                 <section class="s-card">
                   <header class="s-card-head"><h3>Dropdown catalogs</h3><span class="s-h">ตัวเลือกที่ใช้ใน form ทั่วทั้งระบบ — เพิ่ม/แก้/ลบได้</span></header>
-                  <div class="s-card-body">
-                    <div class="s-cat-grid">
-                      <div class="s-cat">
-                        <header><div class="ci"><i data-lucide="flag"></i></div><div><b>Alarm Types</b><div class="s-h">6 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
-                        <div class="s-cat-chips"><span class="s-chip">Link Down</span><span class="s-chip">Power Fail</span><span class="s-chip">RSSI Low</span><span class="s-chip">Fiber Cut</span><span class="s-chip more">+2 more</span></div>
-                      </div>
-                      <div class="s-cat">
-                        <header><div class="ci"><i data-lucide="wrench"></i></div><div><b>Fix Methods</b><div class="s-h">5 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
-                        <div class="s-cat-chips"><span class="s-chip">ตัดต่อใหม่</span><span class="s-chip">เปลี่ยนอุปกรณ์</span><span class="s-chip">Reset/Reboot</span><span class="s-chip more">+2 more</span></div>
-                      </div>
-                      <div class="s-cat">
-                        <header><div class="ci"><i data-lucide="hard-drive"></i></div><div><b>Equipment Types</b><div class="s-h">7 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
-                        <div class="s-cat-chips"><span class="s-chip">OLT</span><span class="s-chip">ONT</span><span class="s-chip">Switch</span><span class="s-chip">Router</span><span class="s-chip more">+3 more</span></div>
-                      </div>
-                      <div class="s-cat">
-                        <header><div class="ci"><i data-lucide="cable"></i></div><div><b>OFC / Connector Types</b><div class="s-h">6 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
-                        <div class="s-cat-chips"><span class="s-chip">SC/APC</span><span class="s-chip">SC/UPC</span><span class="s-chip">LC/APC</span><span class="s-chip more">+3 more</span></div>
-                      </div>
-                      <div class="s-cat">
-                        <header><div class="ci"><i data-lucide="x-circle"></i></div><div><b>Cancellation Reasons</b><div class="s-h">4 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
-                        <div class="s-cat-chips"><span class="s-chip">ลูกค้าขอยกเลิก</span><span class="s-chip">Duplicate</span><span class="s-chip">Test alarm</span><span class="s-chip more">+1 more</span></div>
-                      </div>
-                      <div class="s-cat">
-                        <header><div class="ci"><i data-lucide="map-pin"></i></div><div><b>Problem Categories</b><div class="s-h">5 ตัวเลือก</div></div><button class="btn btn-sm btn-ghost"><i data-lucide="settings-2"></i>Edit</button></header>
-                        <div class="s-cat-chips"><span class="s-chip">Physical Damage</span><span class="s-chip">Config Error</span><span class="s-chip">Power Issue</span><span class="s-chip more">+2 more</span></div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section class="s-card">
-                  <header class="s-card-head"><h3>Tags &amp; labels</h3></header>
-                  <div class="s-card-body">
-                    <div class="s-tag-cloud" id="stg-alarm-tags">
-                      <span class="s-tag-edit">Link Down <button class="x" data-rm-tag>×</button></span>
-                      <span class="s-tag-edit">Power Fail <button class="x" data-rm-tag>×</button></span>
-                      <span class="s-tag-edit">RSSI Low <button class="x" data-rm-tag>×</button></span>
-                      <span class="s-tag-edit">Fiber Cut <button class="x" data-rm-tag>×</button></span>
-                      <span class="s-tag-edit">Temperature High <button class="x" data-rm-tag>×</button></span>
-                      <span class="s-tag-edit">VIP <button class="x" data-rm-tag>×</button></span>
-                      <span class="s-tag-edit">Recurring <button class="x" data-rm-tag>×</button></span>
-                      <button class="s-tag-add"><i data-lucide="plus"></i>Add tag</button>
-                    </div>
-                  </div>
+                  <div class="s-card-body" id="stg-catalogs-body" style="display:flex;flex-direction:column;gap:0"></div>
                 </section>
 
               </main>
@@ -1577,7 +1514,6 @@
 <script src="scripts/parsers/email.parser.js?v=2"></script>
 
 <script src="scripts/services/localdb.service.js?v=3"></script>
-<script src="scripts/services/incident.service.js?v=2"></script>
 <script src="scripts/services/alert.service.js?v=2"></script>
 
 <script src="scripts/ui/alert.ui.js?v=6"></script>
@@ -1640,6 +1576,11 @@ document.querySelectorAll('.radio-option').forEach(opt => {
 
 <!-- Bootstrap -->
 <script>window.NOC_VAPID_KEY = "BFT1BrILtvMuvjzGW-6CNoXQkDlFMiayUSO1IW0jNIOGhfJqcwsE2F9cZ-O297gyXCbkBvMVO1WuG4IzJfHJNug";</script>
+<script>
+  // API key ต้องตรงกับ NOC_API_SECRET ใน Netlify Environment Variables
+  // เมื่อเพิ่ม login system แล้ว ให้เปลี่ยนเป็น Firebase ID Token แทน
+  window.NOC_API_KEY = "noc-internal-2024";
+</script>
 <script type="module" src="scripts/services/firebase.service.js"></script>
 <script type="module" src="scripts/services/storage.service.js"></script>
 <script type="module" src="scripts/services/push.service.js"></script>
@@ -1911,11 +1852,16 @@ window.addEventListener('online',  () => showOfflineBanner(false));
       bizHoursOnly: false, bizStart: '08:00', bizEnd: '17:00'
     },
     teams: {
-      list: ['Team 1', 'Team 2', 'Team 3'],
+      list: ['Keng', 'Jin', 'Ball'],
       subcontractors: [
-        { name: 'บริษัท ABC Telecom', phone: '081-234-5678', zone: 'Central' },
-        { name: 'ช่างสมชาย', phone: '089-876-5432', zone: 'North' },
-        { name: 'XYZ Network Solutions', phone: '02-555-1234', zone: 'South' }
+        { name: 'TAS (Zone1)', phone: '', zone: 'Zone 1' },
+        { name: 'TAS (Zone2)', phone: '', zone: 'Zone 2' },
+        { name: 'ATG',        phone: '', zone: 'Zone 3' },
+        { name: 'TP',         phone: '', zone: 'Zone 3' },
+        { name: 'NPY',        phone: '', zone: 'Zone 4' },
+        { name: 'JJ&A',       phone: '', zone: 'Zone 4' },
+        { name: 'BAN',        phone: '', zone: 'Zone 1' },
+        { name: 'JL',         phone: '', zone: 'Zone 2' }
       ]
     },
     appearance: {
@@ -1930,6 +1876,39 @@ window.addEventListener('online',  () => showOfflineBanner(false));
         { name: 'NOC Level 2',   perms: [1,1,1,0,0,0] },
         { name: 'Viewer',        perms: [1,0,0,0,0,0] }
       ]
+    },
+    catalogs: {
+      alarmTypes: ['Link Down','Power Fail','RSSI Low','Fiber Cut','Temperature High','VIP','Recurring'],
+      causes: [
+        'Animal gnawing','High loss/Crack','Cut by Unknown agency','Cut trees',
+        'Cut by MEA/PEA agency','Car accident','Electrical Surge',
+        'Electrical pole was broken by accident','Electrical pole was broken by Natural Disaster',
+        'Electric Authority remove pole','Road Construction','BTS Construction',
+        'Fire damanged','Natural Disaster','Equipment at Node','Equipment at customer','Bullet'
+      ],
+      stopReasons: [
+        'เนื่องจากรอเจ้าหน้าที่การไฟฟ้าให้เข้าดำเนินการแก้ไข',
+        'เนื่องจากเพลิงยังลุกไหม้อยู่',
+        'เนื่องจากรอเจ้าหน้าที่ปักเสาไฟฟ้าใหม่',
+        'เนื่องจากรอเจ้าหน้าที่อนุญาตให้เข้าพื้นที่',
+        'ตรวจสอบพบ OFC มีปัญหาในพื้นที่ลูกค้า',
+        'ตรวจสอบพบ OFC มีปัญหาในพื้นอาคาร'
+      ],
+      fixMethods: ['ลากคร่อม','ร่นลูป','โยก Core','ตัดต่อใหม่','ค่าเร่งด่วน'],
+      ofcTypes: [
+        'หลายเส้น','Flat type 2 Core','4 Core ADSS','12 Core ADSS','24 Core ADSS',
+        '48 Core ADSS','60 Core ADSS','144 Core ADSS','216 Core ADSS','312 Core ADSS',
+        '12 Core Armour','48 Core Armour','60 Core Armour','144 Core Armour'
+      ],
+      networkTypes: ['Backbone','Access'],
+      cancelReasons: ['ลูกค้าขอยกเลิก','Duplicate','Test alarm','False alarm'],
+      eqStatuses: ['Investigating','เดินทางถึงลูกค้าแล้ว','ตรวจสอบพบ','กำลังแก้ไข','รอ Spare','แก้ไขเสร็จ'],
+      eqFindings: [
+        'อุปกรณ์ Hang','SFP Hang/เสีย','Rectifier Fail','พัดลมเสีย/ดัง','Card Fail',
+        'Port เสีย','Config มีปัญหา','Adapter เสีย','UPS มีปัญหา','สาย LAN หลวม',
+        'Patch Cord มีปัญหา','สายไฟหลวม','สาย Fiber หลวม','ระบบไฟฟ้าที่ลูกค้ามีปัญหา','อื่นๆ'
+      ],
+      eqCauses: ['Hardware failure','Software/Config Issue','Power Issue (Internal)','Power Issue (External)','Unknown']
     }
   };
 
@@ -1946,19 +1925,36 @@ window.addEventListener('online',  () => showOfflineBanner(false));
           merged[k] = saved[k];
         }
       });
+      // migrate: ถ้า teams.list ยังเป็น placeholder เก่า ให้ใช้ default ใหม่
+      var pl = ['Team 1','Team 2','Team 3'];
+      if (merged.teams && merged.teams.list &&
+          merged.teams.list.length === pl.length &&
+          merged.teams.list.every(function(t,i){ return t === pl[i]; })) {
+        merged.teams.list = JSON.parse(JSON.stringify(DEFAULTS.teams.list));
+      }
+      // migrate: ถ้า subcontractors ยังเป็นข้อมูลเก่า (ABC Telecom / ช่างสมชาย / XYZ)
+      var oldSubNames = ['บริษัท ABC Telecom','ช่างสมชาย','XYZ Network Solutions'];
+      if (merged.teams && Array.isArray(merged.teams.subcontractors) &&
+          merged.teams.subcontractors.some(function(s){ return oldSubNames.indexOf(s.name) !== -1; })) {
+        merged.teams.subcontractors = JSON.parse(JSON.stringify(DEFAULTS.teams.subcontractors));
+      }
       return merged;
     } catch(e) { return JSON.parse(JSON.stringify(DEFAULTS)); }
   }
 
   window.NocSettings = {
     _data: loadData(),
-    get: function(s) { return this._data[s] || {}; },
+    get: function(s) { if (s === undefined) return this._data; return this._data[s] || {}; },
     getAll: function() { return this._data; },
     save: function() { try { localStorage.setItem(STORE_KEY, JSON.stringify(this._data)); } catch(e){} },
     reload: function() { this._data = loadData(); }
   };
 
   /* ── Helpers ── */
+  function escapeHtmlAttr(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function shadeColor(hex, pct) {
     var n = parseInt(hex.replace('#',''), 16);
     var r = Math.min(255, Math.max(0, (n >> 16) + (pct * 2.55 | 0)));
@@ -2035,6 +2031,12 @@ window.addEventListener('online',  () => showOfflineBanner(false));
     /* Teams → response modal */
     syncTeamsToModal(d.teams.list);
 
+    /* Alarm types datalist (f-alarm) */
+    var alarmDL = document.getElementById('alarm-types-datalist');
+    if (alarmDL && d.catalogs && d.catalogs.alarmTypes) {
+      alarmDL.innerHTML = d.catalogs.alarmTypes.map(function(t){ return '<option value="' + escapeHtmlAttr(t) + '">'; }).join('');
+    }
+
     /* Brand title */
     var brandTitle = document.querySelector('.sidebar-brand h1');
     if (brandTitle && d.appearance.systemTitle) brandTitle.textContent = d.appearance.systemTitle;
@@ -2099,15 +2101,23 @@ window.addEventListener('online',  () => showOfflineBanner(false));
         return '<span class="s-tag-edit">' + t + ' <button class="x" data-rm-tag>×</button></span>';
       }).join('');
     }
-    var subTbody = document.getElementById('stg-sub-tbody');
-    if (subTbody && d.teams.subcontractors) {
-      subTbody.innerHTML = d.teams.subcontractors.map(function(s){
-        return '<tr>' +
-          '<td><input class="form-input" value="' + s.name + '" style="min-width:160px"></td>' +
-          '<td><input class="form-input" value="' + s.phone + '" style="min-width:120px"></td>' +
-          '<td><input class="form-input" value="' + s.zone + '" style="min-width:100px"></td>' +
-          '<td><button class="btn btn-sm btn-ghost stg-sub-rm" style="color:var(--sev-dn)">Remove</button></td>' +
-          '</tr>';
+    var subList = document.getElementById('stg-sub-list');
+    if (subList && d.teams.subcontractors) {
+      var subColors = ['#0ea5e9','#22c55e','#f97316','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444'];
+      subList.innerHTML = d.teams.subcontractors.map(function(s, i) {
+        var initials = s.name.replace(/[()]/g,'').trim().split(/[\s\-]+/).map(function(w){ return w[0] || ''; }).join('').substring(0,3).toUpperCase() || 'SUB';
+        var bg = subColors[i % subColors.length];
+        return '<div class="s-vendor" data-sub-row>' +
+          '<div class="v-logo" style="background:' + bg + '">' + initials + '</div>' +
+          '<div class="v-info">' +
+            '<input class="form-input sub-name-inp" value="' + s.name + '" style="min-width:140px;margin-bottom:4px">' +
+            '<div style="display:flex;gap:6px">' +
+              '<input class="form-input sub-phone-inp" value="' + (s.phone||'') + '" placeholder="Phone" style="min-width:100px;font-size:11px">' +
+              '<input class="form-input sub-zone-inp" value="' + (s.zone||'') + '" placeholder="Zone" style="min-width:80px;font-size:11px">' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>' +
+        '</div>';
       }).join('');
     }
 
@@ -2122,6 +2132,50 @@ window.addEventListener('online',  () => showOfflineBanner(false));
       accentSwatch.style.background = c;
       var ci = accentSwatch.querySelector('input[type=color]');
       if (ci) ci.value = c;
+    }
+
+    /* Catalogs */
+    var catBody = document.getElementById('stg-catalogs-body');
+    if (catBody && d.catalogs) {
+      var CAT_DEFS = [
+        { key:'alarmTypes',   label:'Alarm Types',           icon:'flag',            desc:'ประเภท Alarm / tag ที่ใช้กรอง' },
+        { key:'causes',       label:'Fiber Fault Causes',    icon:'alert-triangle',  desc:'สาเหตุการขัดข้อง Fiber (upd-cause / finish-cause)' },
+        { key:'stopReasons',  label:'Stop / Pause Reasons',  icon:'pause-circle',    desc:'เหตุผลกด Stop ใน NS Update' },
+        { key:'fixMethods',   label:'Fix Methods',           icon:'wrench',          desc:'วิธีการแก้ไข (finish-method / upd-initial-fix)' },
+        { key:'ofcTypes',     label:'OFC Cable Types',       icon:'cable',           desc:'ประเภทสาย OFC (upd-ofc-type)' },
+        { key:'networkTypes', label:'Network Types',         icon:'network',         desc:'ประเภทเครือข่าย (upd-network-type)' },
+        { key:'cancelReasons',label:'Cancel Reasons',        icon:'x-circle',        desc:'เหตุผลยกเลิก Alert' },
+        { key:'eqStatuses',   label:'Equipment Statuses',    icon:'activity',        desc:'สถานะ Equipment Update' },
+        { key:'eqFindings',   label:'Equipment Findings',    icon:'search',          desc:'สิ่งที่ตรวจสอบพบ (eq-upd-finding)' },
+        { key:'eqCauses',     label:'Equipment Causes',      icon:'cpu',             desc:'สาเหตุ Equipment (eq-finish-cause)' }
+      ];
+      catBody.innerHTML = CAT_DEFS.map(function(def) {
+        var items = (d.catalogs && Array.isArray(d.catalogs[def.key])) ? d.catalogs[def.key] : [];
+        return '<div class="s-cat-section" data-cat-key="' + def.key + '" style="padding:14px 0;border-bottom:1px solid var(--hair)">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
+            '<div class="ci"><i data-lucide="' + def.icon + '"></i></div>' +
+            '<div style="flex:1"><b style="font-size:12.5px;font-weight:600">' + def.label + '</b><div class="s-h">' + def.desc + '</div></div>' +
+            '<span class="s-badge" style="margin-left:auto" id="stg-cat-count-' + def.key + '">' + items.length + ' items</span>' +
+          '</div>' +
+          '<div class="s-tag-cloud stg-cat-tags" style="margin-bottom:8px">' +
+            items.map(function(item) {
+              return '<span class="s-tag-edit">' + escapeHtmlAttr(item) + ' <button class="x" data-cat-rm="' + def.key + '">×</button></span>';
+            }).join('') +
+          '</div>' +
+          '<div style="display:flex;gap:6px">' +
+            '<input class="form-input stg-cat-inp" data-cat-key="' + def.key + '" placeholder="เพิ่มตัวเลือกใหม่…" style="flex:1;font-size:12px">' +
+            '<button class="btn btn-sm stg-cat-add" data-cat-key="' + def.key + '"><i data-lucide="plus" style="width:12px;height:12px"></i> เพิ่ม</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      if (catBody.lastElementChild) catBody.lastElementChild.style.borderBottom = 'none';
+      if (window.lucide) lucide.createIcons({ el: catBody });
+    }
+
+    /* Alarm types datalist */
+    var alarmDL = document.getElementById('alarm-types-datalist');
+    if (alarmDL && d.catalogs && d.catalogs.alarmTypes) {
+      alarmDL.innerHTML = d.catalogs.alarmTypes.map(function(t){ return '<option value="' + escapeHtmlAttr(t) + '">'; }).join('');
     }
 
     /* Permissions — role matrix */
@@ -2201,9 +2255,12 @@ window.addEventListener('online',  () => showOfflineBanner(false));
     d.teams.list = Array.from(document.querySelectorAll('#stg-team-tags .s-tag-edit')).map(function(tag){
       return (tag.childNodes[0] && tag.childNodes[0].textContent || '').trim();
     }).filter(Boolean);
-    d.teams.subcontractors = Array.from(document.querySelectorAll('#stg-sub-tbody tr')).map(function(tr){
-      var ins = tr.querySelectorAll('input.form-input');
-      return { name: ins[0] ? ins[0].value : '', phone: ins[1] ? ins[1].value : '', zone: ins[2] ? ins[2].value : '' };
+    d.teams.subcontractors = Array.from(document.querySelectorAll('#stg-sub-list .s-vendor[data-sub-row]')).map(function(row){
+      return {
+        name:  (row.querySelector('.sub-name-inp')  || {}).value || '',
+        phone: (row.querySelector('.sub-phone-inp') || {}).value || '',
+        zone:  (row.querySelector('.sub-zone-inp')  || {}).value || ''
+      };
     }).filter(function(s){ return s.name; });
 
     /* Appearance */
@@ -2213,6 +2270,16 @@ window.addEventListener('online',  () => showOfflineBanner(false));
     if (accentR) d.appearance.accentColor = accentR.value;
     var accentHex = document.getElementById('stg-accent-hex');
     if (accentHex && /^#[0-9a-f]{6}$/i.test(accentHex.value)) d.appearance.accentColor = accentHex.value;
+
+    /* Catalogs */
+    if (!d.catalogs) d.catalogs = {};
+    document.querySelectorAll('#stg-catalogs-body .s-cat-section[data-cat-key]').forEach(function(section){
+      var key = section.dataset.catKey;
+      if (!key) return;
+      d.catalogs[key] = Array.from(section.querySelectorAll('.stg-cat-tags .s-tag-edit')).map(function(tag){
+        return (tag.childNodes[0] && tag.childNodes[0].textContent || '').trim();
+      }).filter(Boolean);
+    });
 
     /* Permissions */
     d.permissions.roles = [];
@@ -2399,8 +2466,22 @@ window.addEventListener('online',  () => showOfflineBanner(false));
       }
       /* Remove subcontractor row */
       if (e.target.matches('.stg-sub-rm')) {
-        var tr = e.target.closest('tr');
+        var tr = e.target.closest('.s-vendor');
         if (tr) { tr.remove(); markDirty(); }
+      }
+      /* Remove catalog tag */
+      if (e.target.matches('[data-cat-rm]')) {
+        var catTag = e.target.closest('.s-tag-edit');
+        if (catTag) {
+          var catKey = e.target.dataset.catRm;
+          catTag.remove();
+          var countBadge = document.getElementById('stg-cat-count-' + catKey);
+          if (countBadge) {
+            var remaining = (document.querySelector('.s-cat-section[data-cat-key="' + catKey + '"] .stg-cat-tags') || {}).querySelectorAll ? document.querySelector('.s-cat-section[data-cat-key="' + catKey + '"] .stg-cat-tags').querySelectorAll('.s-tag-edit').length : 0;
+            countBadge.textContent = remaining + ' items';
+          }
+          markDirty();
+        }
       }
       /* Remove role row */
       if (e.target.matches('.stg-role-rm')) {
@@ -2444,18 +2525,62 @@ window.addEventListener('online',  () => showOfflineBanner(false));
   var subAddBtn = document.getElementById('stg-sub-add');
   if (subAddBtn) {
     subAddBtn.addEventListener('click', function() {
-      var tbody = document.getElementById('stg-sub-tbody');
-      if (!tbody) return;
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td><input class="form-input" placeholder="Company name" style="min-width:160px"></td>' +
-        '<td><input class="form-input" placeholder="Phone" style="min-width:120px"></td>' +
-        '<td><input class="form-input" placeholder="Zone" style="min-width:100px"></td>' +
-        '<td><button class="btn btn-sm btn-ghost stg-sub-rm" style="color:var(--sev-dn)">Remove</button></td>';
-      tbody.appendChild(tr);
-      var firstInp = tr.querySelector('input');
+      var subList = document.getElementById('stg-sub-list');
+      if (!subList) return;
+      var subColors = ['#0ea5e9','#22c55e','#f97316','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444'];
+      var idx = subList.querySelectorAll('[data-sub-row]').length;
+      var div = document.createElement('div');
+      div.className = 's-vendor';
+      div.setAttribute('data-sub-row','');
+      div.innerHTML =
+        '<div class="v-logo" style="background:' + subColors[idx % subColors.length] + '">NEW</div>' +
+        '<div class="v-info">' +
+          '<input class="form-input sub-name-inp" placeholder="Company name" style="min-width:140px;margin-bottom:4px">' +
+          '<div style="display:flex;gap:6px">' +
+            '<input class="form-input sub-phone-inp" placeholder="Phone" style="min-width:100px;font-size:11px">' +
+            '<input class="form-input sub-zone-inp" placeholder="Zone" style="min-width:80px;font-size:11px">' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn btn-sm btn-ghost stg-sub-rm">Remove</button>';
+      subList.appendChild(div);
+      var firstInp = div.querySelector('input');
       if (firstInp) firstInp.focus();
       markDirty();
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Catalog add buttons (delegated on catalog body)
+  ════════════════════════════════════════════════════════ */
+  var catBodyEl = document.getElementById('stg-catalogs-body');
+  if (catBodyEl) {
+    function addCatalogTag(catKey, value) {
+      var tagCloud = catBodyEl.querySelector('.s-cat-section[data-cat-key="' + catKey + '"] .stg-cat-tags');
+      if (!tagCloud || !value) return;
+      var span = document.createElement('span');
+      span.className = 's-tag-edit';
+      span.innerHTML = escapeHtmlAttr(value) + ' <button class="x" data-cat-rm="' + catKey + '">×</button>';
+      tagCloud.appendChild(span);
+      var countBadge = document.getElementById('stg-cat-count-' + catKey);
+      if (countBadge) countBadge.textContent = tagCloud.querySelectorAll('.s-tag-edit').length + ' items';
+      markDirty();
+    }
+    catBodyEl.addEventListener('click', function(e) {
+      if (e.target.matches('.stg-cat-add') || e.target.closest('.stg-cat-add')) {
+        var btn = e.target.matches('.stg-cat-add') ? e.target : e.target.closest('.stg-cat-add');
+        var key = btn.dataset.catKey;
+        var inp = catBodyEl.querySelector('.s-cat-section[data-cat-key="' + key + '"] .stg-cat-inp');
+        var val = inp ? inp.value.trim() : '';
+        if (val) { addCatalogTag(key, val); inp.value = ''; }
+      }
+    });
+    catBodyEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && e.target.matches('.stg-cat-inp')) {
+        var key = e.target.dataset.catKey;
+        var val = e.target.value.trim();
+        if (val) { addCatalogTag(key, val); e.target.value = ''; }
+        e.preventDefault();
+      }
     });
   }
 

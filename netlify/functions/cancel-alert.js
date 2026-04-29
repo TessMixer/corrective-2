@@ -1,3 +1,5 @@
+const { handlePreflight, withCors } = require('./_cors');
+const { requireAuth } = require('./_auth');
 const admin = require("firebase-admin");
 
 function getDb() {
@@ -22,7 +24,7 @@ function getDb() {
   return admin.firestore();
 }
 
-exports.handler = async (event) => {
+async function _handler(event) {
   try {
     if (event.httpMethod !== "POST") {
       return { statusCode: 405, body: JSON.stringify({ error: "METHOD_NOT_ALLOWED" }) };
@@ -74,4 +76,15 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: error.message || "CANCEL_INCIDENT_FAILED" }),
     };
   }
+}
+
+// CORS-wrapped handler
+
+exports.handler = async (event) => {
+  const pre = handlePreflight(event);
+  if (pre) return pre;
+  const authErr = requireAuth(event);
+  if (authErr) return withCors(authErr);
+  const result = await _handler(event);
+  return withCors(result);
 };

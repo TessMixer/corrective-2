@@ -1,3 +1,5 @@
+const { handlePreflight, withCors } = require('./_cors');
+const { requireAuth } = require('./_auth');
 const admin = require("firebase-admin");
 
 function createAdminAdapter(projectId, clientEmail, rawPrivateKey) {
@@ -482,7 +484,7 @@ function normalizeBatchWithContext(items) {
   return { normalizedItems, itemErrors };
 }
 
-exports.handler = async function handler(event) {
+async function _handler(event) {
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -557,4 +559,14 @@ exports.handler = async function handler(event) {
 
     };
   }
+}
+
+// CORS-wrapped handler
+exports.handler = async (event) => {
+  const pre = handlePreflight(event);
+  if (pre) return pre;
+  const authErr = requireAuth(event);
+  if (authErr) return withCors(authErr);
+  const result = await _handler(event);
+  return withCors(result);
 };

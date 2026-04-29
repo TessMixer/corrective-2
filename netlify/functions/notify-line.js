@@ -1,4 +1,5 @@
-exports.handler = async (event) => {
+const { handlePreflight, withCors } = require('./_cors');
+async function _handler(event) {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
@@ -124,6 +125,15 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: JSON.stringify(result) };
   } catch (err) {
     console.error("notify-line error:", err);
-    return { statusCode: 200, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
+}
+
+// CORS-wrapped handler
+
+exports.handler = async (event) => {
+  const pre = handlePreflight(event);
+  if (pre) return pre;
+  const result = await _handler(event);
+  return withCors(result);
 };

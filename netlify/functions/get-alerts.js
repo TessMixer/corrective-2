@@ -1,3 +1,4 @@
+const { handlePreflight, withCors } = require('./_cors');
 const admin = require("firebase-admin");
 
 function getDb() {
@@ -186,7 +187,9 @@ function mergeAlertsByIncidentAndNode(alerts = []) {
   return Array.from(grouped.values());
 }
 
-exports.handler = async () => {
+exports.handler = async (event) => {
+  const pre = handlePreflight(event);
+  if (pre) return pre;
   try {
     const db = getDb();
     const snapshot = await db.collection("appState").doc("noc-store").collection("alerts").get();
@@ -198,14 +201,14 @@ exports.handler = async () => {
 
     const alerts = mergeAlertsByIncidentAndNode(rawAlerts);
 
-    return {
+    return withCors({
       statusCode: 200,
       body: JSON.stringify({ alerts }),
-    };
+    });
   } catch (error) {
-    return {
+    return withCors({
       statusCode: 500,
       body: JSON.stringify({ error: error.message || "GET_ALERTS_FAILED" }),
-    };
+    });
   }
 };

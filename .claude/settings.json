@@ -19,7 +19,11 @@
       "Read(//f:/NOC/**)",
       "Read(//g/Corrective/**)",
       "Bash(python3 -c ' *)",
-      "Bash(python3 /dev/stdin)"
+      "Bash(python3 /dev/stdin)",
+      "Bash(sed -i 's/const _innerHandler = _handler;//g' g:/NS/corrective-2-main/netlify/functions/__TRACKED_VAR__.js)",
+      "Bash(sed -i 's/await _innerHandler\\(event\\)/await _handler\\(event\\)/g' g:/NS/corrective-2-main/netlify/functions/__TRACKED_VAR__.js)",
+      "Bash(grep -v \"?\\\\.\\\\\\\\|if.*null\\\\|if.*!=\")",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -673,11 +673,16 @@ const DashboardUI = (function () {
       });
     }
 
-    // Min count change → re-render hotspot section (clusters + map rebuild together)
-    document.getElementById('dash-hotspot-min')?.addEventListener('change', e => {
-      _minCount = Number(e.target.value);
-      renderHotspotsSection(container, state, y, m, _minCount);
-    });
+    // Min count change → re-render hotspot section; replace element to avoid stacking listeners
+    const hotspotMinEl = document.getElementById('dash-hotspot-min');
+    if (hotspotMinEl) {
+      const fresh = hotspotMinEl.cloneNode(true);
+      hotspotMinEl.parentNode.replaceChild(fresh, hotspotMinEl);
+      fresh.addEventListener('change', e => {
+        _minCount = Number(e.target.value);
+        renderHotspotsSection(container, state, y, m, _minCount);
+      });
+    }
 
     if (clusters.length) {
       setTimeout(() => initHotspotMap(clusters), 0);

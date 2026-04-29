@@ -1,3 +1,4 @@
+const { handlePreflight, withCors } = require('./_cors');
 const admin = require("firebase-admin");
 
 function getDb() {
@@ -174,7 +175,7 @@ function isCorrectiveOrHistoryStatus(status) {
     "NS_FINISH",
   ].includes(status);
 }
-exports.handler = async () => {
+async function _handler(event) {
 
   try {
     let db;
@@ -281,4 +282,12 @@ exports.handler = async () => {
       }),
     };
   }
+}
+
+// CORS-wrapped handler
+exports.handler = async (event) => {
+  const pre = handlePreflight(event);
+  if (pre) return pre;
+  const result = await _handler(event);
+  return withCors(result);
 };

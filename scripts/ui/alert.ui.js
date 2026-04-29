@@ -309,7 +309,11 @@ const AlertUI = (function () {
           </table>
         </div>`;
     } catch (err) {
-      wrapper.innerHTML = `<div style="padding:20px;color:var(--sev-dn)">Error: ${err.message}</div>`;
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'padding:20px;color:var(--sev-dn)';
+      errDiv.textContent = `Error: ${err.message}`;
+      wrapper.innerHTML = '';
+      wrapper.appendChild(errDiv);
       console.error(err);
     }
 

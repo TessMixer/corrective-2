@@ -494,6 +494,32 @@ function closeModal(modalEl) {
     incidentForm.addEventListener("submit", (event) => {
       event.preventDefault();
 
+      const tickets = buildTicketsFromForm();
+
+      // Symphony Ticket ซ้ำกันไม่ได้ — ตรวจสอบก่อน submit
+      const newTicketNos = tickets.map(t => t.symphonyTicket).filter(Boolean);
+      if (newTicketNos.length > 0) {
+        const existingAlerts = Store.getState().alerts || [];
+        const usedTicketNos = existingAlerts.flatMap(a =>
+          (a.tickets || []).map(t => t.symphonyTicket || t.ticket || "").filter(Boolean)
+        );
+        const duplicates = newTicketNos.filter(no => usedTicketNos.includes(no));
+        if (duplicates.length > 0) {
+          const errEl = document.getElementById("f-ticket-error");
+          if (errEl) {
+            errEl.textContent = `Symphony Ticket ซ้ำ: ${duplicates.join(", ")} — มีอยู่ในระบบแล้ว`;
+            errEl.style.display = "block";
+          } else {
+            alert(`Symphony Ticket ซ้ำ: ${duplicates.join(", ")} — มีอยู่ในระบบแล้ว`);
+          }
+          return;
+        }
+      }
+
+      // ซ่อน error เดิม (ถ้ามี)
+      const errEl = document.getElementById("f-ticket-error");
+      if (errEl) errEl.style.display = "none";
+
       const enteredId = document.getElementById("f-incidentId")?.value?.trim();
       const data = {
         incidentId: enteredId || generateIncidentId(),
@@ -504,7 +530,7 @@ function closeModal(modalEl) {
         nocBy: "System",
         severity: "Medium",
         status: "ACTIVE",
-        tickets: buildTicketsFromForm(),
+        tickets,
       };
 
       AlertService.createAlert(data);
@@ -1007,7 +1033,8 @@ async function restoreRecycleItem(recycleKey) {
     try {
       await fetch("/.netlify/functions/restore-alert", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",
+              "x-api-key": window.NOC_API_KEY || "" },
         body: JSON.stringify({ incident_number: incidentId }),
       });
     } catch (error) {
@@ -1077,7 +1104,8 @@ async function purgeAlertsFromCloud(items = []) {
   try {
     await fetch("/.netlify/functions/purge-alerts", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+              "x-api-key": window.NOC_API_KEY || "" },
       body: JSON.stringify({ items: payloadItems }),
     });
   } catch (error) {
@@ -1808,7 +1836,9 @@ function renderDashboardSummary(container, state, slaHours) {
     const s = buildDashboardSectionStats(wr,slaHours);
     return { week, meet:s.meet, fail:s.fail, total:s.total, mttr:`${s.mttrRate}%` };
   });
-  const teamOrder = ["Keng","Jin","Ball"];
+  const teamOrder = (window.NocSettings?.get()?.teams?.list?.length
+    ? window.NocSettings.get().teams.list
+    : ["Keng","Jin","Ball"]);
   const teamRows = teamOrder.map(team=>{
     const s = teamMap[team]||initMetric(); const withoutTotal=Math.max(0,s.total-s.uncontrol);
     return { team, meet:s.meet, fail:s.fail, total:s.total, mttr:buildRate(s.meet,s.total), controlFail:s.controlFail, withoutTotal, withoutRate:buildRate(s.meet,withoutTotal) };
@@ -1839,7 +1869,7 @@ function renderDashboardSummary(container, state, slaHours) {
         </div>
       </div>
       <div class="glass-card p-4 overflow-auto">
-        <h3 class="font-bold mb-3">3) Weekly Summary + Performance Team (Keng / Jin / Ball)</h3>
+        <h3 class="font-bold mb-3">3) Weekly Summary + Performance Team (${teamOrder.join(" / ")})</h3>
         <div class="mb-3 flex items-center gap-2 text-sm">
           <label for="summary-month-select" class="font-medium">Month:</label>
           <select id="summary-month-select" class="bg-slate-100 rounded px-2 py-1">${monthOrder.map(m=>`<option value="${m}" ${m===monthState?"selected":""}>${m}</option>`).join("")}</select>
@@ -2037,7 +2067,7 @@ function renderDashboardDetailsView(state) {
   const contractor = document.getElementById("details-filter-contractor")?.value || "all";
   const slaGroup = document.getElementById("details-filter-sla")?.value || "all";
   const sortMode = document.getElementById("details-sort-mttr")?.value || "asc";
-  const page = Number(document.getElementById("details-page")?.value || 1);
+  const page = state.ui?.dashboardDetailsPage || 1;
   const pageSize = 10;
 
   const mapped = rows.map((row) => {
@@ -2138,9 +2168,9 @@ function renderDashboardDetailsView(state) {
     if (el) el.addEventListener("change", () => renderDashboardDetailsView(Store.getState()));
   });
   const prev = document.getElementById("details-prev");
-  if (prev) prev.addEventListener("click", () => { document.getElementById("details-page").value = String(Math.max(1, safePage - 1)); renderDashboardDetailsView(Store.getState()); });
+  if (prev) prev.addEventListener("click", () => { Store.dispatch(s => ({ ...s, ui: { ...s.ui, dashboardDetailsPage: Math.max(1, safePage - 1) } })); renderDashboardDetailsView(Store.getState()); });
   const next = document.getElementById("details-next");
-  if (next) next.addEventListener("click", () => { document.getElementById("details-page").value = String(Math.min(totalPages, safePage + 1)); renderDashboardDetailsView(Store.getState()); });
+  if (next) next.addEventListener("click", () => { Store.dispatch(s => ({ ...s, ui: { ...s.ui, dashboardDetailsPage: Math.min(totalPages, safePage + 1) } })); renderDashboardDetailsView(Store.getState()); });
 
 }
 function renderSearchIncidentView(state) {
@@ -2159,7 +2189,7 @@ function renderSearchIncidentView(state) {
     status: document.getElementById("incident-filter-status")?.value || "all",
     createdBy: (document.getElementById("incident-filter-created-by")?.value || "").trim(),
     tableSearch: (document.getElementById("incident-table-search")?.value || "").trim(),
-    page: Number(document.getElementById("incident-page")?.value || 1),
+    page: Store.getState().ui?.searchIncidentPage || 1,
     editTicketNo: (document.getElementById("incident-edit-ticket")?.value || "").trim(),
 
   };
@@ -2402,8 +2432,7 @@ function renderSearchIncidentView(state) {
       </div>
     `);
   const rerenderAndResetPage = () => {
-    const pageEl = document.getElementById("incident-page");
-    if (pageEl) pageEl.value = "1";
+    Store.dispatch(s => ({ ...s, ui: { ...s.ui, searchIncidentPage: 1 } }));
     renderSearchIncidentView(Store.getState());
   };
 
@@ -2429,23 +2458,20 @@ function renderSearchIncidentView(state) {
 
   const prevBtn = document.getElementById("incident-prev");
   if (prevBtn) prevBtn.addEventListener("click", () => {
-    const pageEl = document.getElementById("incident-page");
-    if (pageEl) pageEl.value = String(Math.max(1, safePage - 1));
+    Store.dispatch(s => ({ ...s, ui: { ...s.ui, searchIncidentPage: Math.max(1, safePage - 1) } }));
     renderSearchIncidentView(Store.getState());
   });
 
   const nextBtn = document.getElementById("incident-next");
   if (nextBtn) nextBtn.addEventListener("click", () => {
-    const pageEl = document.getElementById("incident-page");
-    if (pageEl) pageEl.value = String(Math.min(totalPages, safePage + 1));
+    Store.dispatch(s => ({ ...s, ui: { ...s.ui, searchIncidentPage: Math.min(totalPages, safePage + 1) } }));
     renderSearchIncidentView(Store.getState());
   });
 
   container.querySelectorAll(".incident-page-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const pageNo = Number(btn.dataset.page || 1);
-      const pageEl = document.getElementById("incident-page");
-      if (pageEl) pageEl.value = String(pageNo);
+      Store.dispatch(s => ({ ...s, ui: { ...s.ui, searchIncidentPage: pageNo } }));
       renderSearchIncidentView(Store.getState());
     });
   });
@@ -2485,6 +2511,12 @@ function getAllCorrectiveIncidents(state) {
 }
 
 function getZoneByTeam(team) {
+  // ดึงจาก Settings ก่อน (subcontractors มี zone field)
+  const subs = window.NocSettings?.get()?.teams?.subcontractors || [];
+  const found = subs.find(s => s.name === team);
+  if (found?.zone) return found.zone;
+
+  // fallback hardcode
   const zoneMap = {
     "TAS (Zone1)": "Zone 1",
     BAN: "Zone 1",
@@ -2709,13 +2741,13 @@ function renderSubcontractorView(state) {
   }
 
   // Workload bar chart by subcontractor
-  const chartWorkloadWrap = document.getElementById("chartWorkload")?.closest(".glass-card");
+  const chartWorkloadWrap = document.getElementById("chartWorkload")?.closest(".panel-body, .glass-card");
   if (chartWorkloadWrap) {
     if (window._subBarChart) {
       window._subBarChart.destroy();
       window._subBarChart = null;
     }
-    chartWorkloadWrap.innerHTML = `<h4 class="font-bold mb-4">Workload by Subcontractor</h4><div class="h-64"><canvas id="chartWorkload"></canvas></div>`;
+    chartWorkloadWrap.innerHTML = `<div class="chart-shell"><canvas id="chartWorkload"></canvas></div>`;
     const barCanvas = document.getElementById("chartWorkload");
     if (barCanvas && summary.length > 0) {
       window._subBarChart = new Chart(barCanvas, {
@@ -4950,6 +4982,32 @@ function collectUpdateSiteEntries(containerEl) {
     .filter((entry, index) => index === 0 || !isSiteEntryEmpty(entry));
 }
 
+function populateSelectFromCatalog(selectId, catalogKey, placeholder, extraOptions) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const cats = window.NocSettings?.getAll()?.catalogs;
+  const items = (cats && Array.isArray(cats[catalogKey]) && cats[catalogKey].length)
+    ? cats[catalogKey]
+    : [];
+  const base = `<option value="">${placeholder || '— เลือก —'}</option>`;
+  const opts = items.map(v => `<option value="${v}">${v}</option>`).join('');
+  const extra = (extraOptions || []).map(o => `<option value="${o.v}">${o.t}</option>`).join('');
+  sel.innerHTML = base + opts + extra;
+}
+
+function populateSubCheckboxGrid(gridId, inputClass, labelClass) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  const subs = window.NocSettings?.getAll()?.teams?.subcontractors;
+  const list = (subs && subs.length) ? subs : [
+    { name: 'TAS (Zone1)' }, { name: 'BAN' }, { name: 'TAS (Zone2)' }, { name: 'JL' },
+    { name: 'ATG' }, { name: 'TP' }, { name: 'NPY' }, { name: 'JJ&A' }
+  ];
+  grid.innerHTML = list.map(s =>
+    `<label class="${labelClass}"><input type="checkbox" class="${inputClass}" value="${s.name}"> ${s.name}</label>`
+  ).join('');
+}
+
 function ensureUpdateModal() {
   if (document.getElementById("modal-corrective-update")) return;
 
@@ -5075,16 +5133,7 @@ function ensureUpdateModal() {
               <!-- Sub Contractor -->
               <div>
                 <label class="upd-fl">Sub Contractor <span style="font-weight:500;text-transform:none;letter-spacing:0">(เลือกได้หลายเจ้า)</span></label>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:6px">
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="TAS (Zone1)"> TAS (Zone1)</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="BAN"> BAN</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="TAS (Zone2)"> TAS (Zone2)</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="JL"> JL</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="ATG"> ATG</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="TP"> TP</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="NPY"> NPY</label>
-                  <label class="upd-sub-label"><input type="checkbox" class="upd-sub" value="JJ&A"> JJ&A</label>
-                </div>
+                <div id="upd-sub-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:6px"></div>
               </div>
             </div>
 
@@ -5678,6 +5727,8 @@ function openEquipmentUpdateModal(incidentId) {
   if (!found) return;
 
   ensureEquipmentUpdateModal();
+  populateSelectFromCatalog('eq-upd-status',  'eqStatuses', '— เลือกสถานะ —');
+  populateSelectFromCatalog('eq-upd-finding', 'eqFindings', '— เลือกสิ่งที่ตรวจพบ —');
   const modal = document.getElementById("modal-corrective-update-equipment");
   const { incident, tab } = found;
 
@@ -5750,6 +5801,7 @@ function openEquipmentUpdateModal(incidentId) {
   };
 
   document.getElementById("btn-save-equipment-update").onclick = async () => {
+  try {
     const current = Store.getState();
     const selectedOrigin = document.getElementById("eq-upd-originate").value;
     const selectedTerminate = document.getElementById("eq-upd-terminate").value;
@@ -5842,6 +5894,10 @@ function openEquipmentUpdateModal(incidentId) {
           .catch((e) => console.warn("Equipment update cloud sync failed:", e));
       }
     }
+  } catch (err) {
+    console.error("[Equipment Update] Save failed:", err);
+    alert("เกิดข้อผิดพลาด บันทึกไม่สำเร็จ: " + err.message);
+  }
   };
 
   openModal(modal);
@@ -6051,6 +6107,7 @@ function openEquipmentFinishModal(incidentId) {
   if (!found) return;
 
   ensureEquipmentFinishModal();
+  populateSelectFromCatalog('eq-finish-cause', 'eqCauses', 'เลือกสาเหตุ');
   const { incident, tab } = found;
   const modal = document.getElementById("modal-corrective-finish-equipment");
 
@@ -6245,7 +6302,8 @@ async function syncFinishedIncidentToCloud(incidentId, payload, completedAt) {
   try {
     await fetch("/.netlify/functions/finish-incident", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+              "x-api-key": window.NOC_API_KEY || "" },
       body: JSON.stringify({
         incidentId,
         incident_number: incidentId,
@@ -6327,6 +6385,12 @@ function openCorrectiveUpdateModal(incidentId) {
   const { incident } = found;
   window._updSelectedFiles = []; // reset attachment list for this modal open
   ensureUpdateModal();
+  populateSubCheckboxGrid('upd-sub-grid', 'upd-sub', 'upd-sub-label');
+  populateSelectFromCatalog('upd-ofc-type',   'ofcTypes',    'เลือกประเภท');
+  populateSelectFromCatalog('upd-cause',      'causes',      'เลือกสาเหตุ');
+  populateSelectFromCatalog('upd-initial-fix','fixMethods',  '— เลือกวิธีแก้เบื้องต้น —');
+  populateSelectFromCatalog('upd-stop-reason','stopReasons', '— เลือกเหตุผล —', [{ v:'__other__', t:'อื่นๆ (กรอกเอง)' }]);
+  populateSelectFromCatalog('upd-network-type','networkTypes','—');
 
   const modal = document.getElementById("modal-corrective-update");
   const stopReasonSelectEl = document.getElementById("upd-stop-reason");
@@ -6502,6 +6566,7 @@ function openCorrectiveUpdateModal(incidentId) {
   };
 
   document.getElementById("btn-save-corrective-update").onclick = async () => {
+  try {
     // Require at least one photo or file attachment
     if (!window._updSelectedFiles || window._updSelectedFiles.length === 0) {
       alert("กรุณาถ่ายภาพ 📷 หรือแนบไฟล์ 📎 อย่างน้อย 1 รายการก่อนบันทึก");
@@ -6609,6 +6674,10 @@ function openCorrectiveUpdateModal(incidentId) {
         }),
       }).catch((e) => console.warn("LINE notify failed:", e));
     }
+  } catch (err) {
+    console.error("[Corrective Update] Save failed:", err);
+    alert("เกิดข้อผิดพลาด บันทึกไม่สำเร็จ: " + err.message);
+  }
   };
 
   openModal(modal);
@@ -6756,16 +6825,7 @@ function ensureFinishModal() {
             <!-- Sub Contractor -->
             <div>
               <p class="fin-slabel"><i data-lucide="users" style="width:12px;height:12px"></i> Sub Contractor <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.65">(เลือกได้หลายเจ้า)</span></p>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="TAS (Zone1)"> TAS (Zone1)</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="BAN"> BAN</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="TAS (Zone2)"> TAS (Zone2)</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="JL"> JL</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="ATG"> ATG</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="TP"> TP</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="NPY"> NPY</label>
-                <label class="fin-sub-lbl"><input type="checkbox" class="finish-sub" value="JJ&A"> JJ&A</label>
-              </div>
+              <div id="finish-sub-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px"></div>
             </div>
 
             <!-- Timeline -->
@@ -7766,6 +7826,9 @@ function openCorrectiveFinishModal(incidentId) {
   // Reset photo files for fresh open
   window.finishPhotoFiles = {};
   ensureFinishModal();
+  populateSubCheckboxGrid('finish-sub-grid', 'finish-sub', 'fin-sub-lbl');
+  populateSelectFromCatalog('finish-cause',  'causes',      'เลือกสาเหตุ');
+  populateSelectFromCatalog('finish-method', 'fixMethods',  'เลือกวิธีการ');
   const modal = document.getElementById("modal-corrective-finish");
   // Reset all photo previews to empty state
   ["finish-photo-before","finish-photo-damage","finish-photo-unable","finish-photo-connector","finish-photo-sticker"].forEach((id) => {
@@ -7875,6 +7938,7 @@ function openCorrectiveFinishModal(incidentId) {
   bindAutoSolutionGenerator();
 
   document.getElementById("btn-save-finish").onclick = async () => {
+  try {
     // ── 0. บังคับรูปภาพครบ 5 หมวด ──
     const PHOTO_CATEGORIES = [
       { id: "finish-photo-before",    label: "รูปก่อนดำเนินการ" },
@@ -8044,6 +8108,10 @@ function openCorrectiveFinishModal(incidentId) {
     } catch (e) {
       console.warn("LINE finish notify build failed:", e);
     }
+  } catch (err) {
+    console.error("[NS Finish] Save failed:", err);
+    alert("เกิดข้อผิดพลาด บันทึก NS Finish ไม่สำเร็จ: " + err.message);
+  }
   };
 
   openModal(modal);
@@ -8782,6 +8850,10 @@ bindNsFinishReportEvents();
       }
 
       _prevAlertIds = currentIds;
+
+      // อัปเดต Live · N active ใน sidebar
+      const sbCount = document.getElementById("sb-active-count");
+      if (sbCount) sbCount.textContent = activeAlerts.length;
     });
 
     Store.subscribe(render);

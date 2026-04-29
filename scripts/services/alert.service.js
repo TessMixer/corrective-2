@@ -440,7 +440,8 @@ window.AlertService = {
     // Call legacy API as background task
     fetch("/.netlify/functions/cancel-alert", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+              "x-api-key": window.NOC_API_KEY || "" },
       body: JSON.stringify({ incident_number: incidentId }),
     }).catch(e => console.warn("Cancel API background error:", e));
   },
@@ -481,7 +482,8 @@ window.AlertService = {
       }
       fetch("/.netlify/functions/restore-alert", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",
+              "x-api-key": window.NOC_API_KEY || "" },
         body: JSON.stringify({ incident_number: incidentId }),
       }).catch(e => console.warn("Restore API background error:", e));
       return;
@@ -581,7 +583,8 @@ window.AlertService = {
     // Call legacy API as background task
     fetch("/.netlify/functions/respond-incident", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+              "x-api-key": window.NOC_API_KEY || "" },
       body: JSON.stringify({ incident_number: incidentId, work_type: selectedType, eta }),
     }).catch(e => console.warn("Respond API background error:", e));
   },

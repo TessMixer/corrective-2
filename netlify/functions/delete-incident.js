@@ -1,3 +1,5 @@
+const { handlePreflight, withCors } = require('./_cors');
+const { requireAuth } = require('./_auth');
 // netlify/functions/delete-incident.js
 const admin = require("firebase-admin");
 
@@ -32,7 +34,7 @@ function matchesIncident(item = {}, incidentId) {
   return candidates.some((value) => normalizeId(value) === target);
 }
 
-exports.handler = async (event) => {
+async function _handler(event) {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
@@ -80,4 +82,15 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: error.message }),
     };
   }
+}
+
+// CORS-wrapped handler
+
+exports.handler = async (event) => {
+  const pre = handlePreflight(event);
+  if (pre) return pre;
+  const authErr = requireAuth(event);
+  if (authErr) return withCors(authErr);
+  const result = await _handler(event);
+  return withCors(result);
 };

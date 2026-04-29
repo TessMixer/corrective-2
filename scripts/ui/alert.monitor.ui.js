@@ -120,8 +120,8 @@ function renderTable(alerts) {
           </td>
 
           <td>
-            ${a.createdAt 
-              ? new Date(a.createdAt).toLocaleString() 
+            ${a.createdAt
+              ? (window.DateUtils ? window.DateUtils.formatDateTime(a.createdAt) : new Date(a.createdAt).toLocaleString())
               : '-'}
           </td>
 

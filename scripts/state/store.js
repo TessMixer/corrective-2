@@ -39,13 +39,17 @@ const Store = (function () {
         dashboardDetailsSheetName: 'Details',
         dashboardDetailsSubView: 'data-sheet',
         alertDetailReturnView: 'alert',
-        modal: null
+        modal: null,
+        dashboardDetailsPage: 1,
+        searchIncidentPage: 1
       }
 
     };
 
   // ผู้ฟังการเปลี่ยนแปลง state
   const listeners = [];
+  const dispatchQueue = [];
+  let isDispatching = false;
 
   // ===== CORE METHODS =====
 
@@ -60,9 +64,22 @@ const Store = (function () {
   }
 
   function dispatch(reducer) {
-    const current = getState();
-    const updated = reducer(current);
-    setState(updated);
+    // ถ้ากำลัง dispatch อยู่ให้เข้าคิวก่อน ป้องกัน re-entrancy ทำให้ state ทับกัน
+    if (isDispatching) {
+      dispatchQueue.push(reducer);
+      return;
+    }
+    isDispatching = true;
+    try {
+      const current = getState();
+      const updated = reducer(current);
+      setState(updated);
+    } finally {
+      isDispatching = false;
+      if (dispatchQueue.length > 0) {
+        dispatch(dispatchQueue.shift());
+      }
+    }
   }
 
   function subscribe(fn) {

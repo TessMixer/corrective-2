@@ -558,7 +558,7 @@
 .s-vendors { display: flex; flex-direction: column; gap: 8px; }
 .s-vendor {
   display: grid;
-  grid-template-columns: 44px 1fr 180px auto auto;
+  grid-template-columns: 44px 1fr auto;
   align-items: center;
   gap: 14px;
   padding: 11px 14px;
@@ -621,6 +621,19 @@
 .s-cat header b { font-size: 12.5px; font-weight: 600; }
 .s-cat header button { margin-left: auto; }
 .s-cat-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Dynamic catalog section (new editable layout) */
+.s-cat-section .ci {
+  width: 30px; height: 30px;
+  background: var(--accent-soft);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.s-cat-section .ci svg { width: 14px; height: 14px; }
+.stg-cat-add { white-space: nowrap; flex-shrink: 0; }
+.stg-cat-inp:focus { border-color: var(--accent); }
 
 /* ============================================================ */
 /* INTEGRATIONS                                                  */
